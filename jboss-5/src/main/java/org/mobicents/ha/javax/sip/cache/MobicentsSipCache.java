@@ -29,8 +29,10 @@ import gov.nist.javax.sip.stack.SIPServerTransaction;
 import java.util.Properties;
 
 import org.jboss.cache.CacheException;
+import org.jboss.cache.CacheManager;
 import org.jboss.cache.Fqn;
 import org.jboss.cache.Node;
+import org.jboss.ha.framework.server.CacheManagerLocator;
 import org.mobicents.cache.MobicentsCache;
 import org.mobicents.ha.javax.sip.ClusteredSipStack;
 import org.mobicents.ha.javax.sip.SipStackImpl;
@@ -46,7 +48,9 @@ import org.mobicents.ha.javax.sip.SipStackImpl;
 public class MobicentsSipCache implements SipCache {
 	public static final String JBOSS_CACHE_CONFIG_PATH = "org.mobicents.ha.javax.sip.JBOSS_CACHE_CONFIG_PATH";
 	public static final String DEFAULT_FILE_CONFIG_PATH = "META-INF/cache-configuration.xml"; 
-	
+	public static final String STANDALONE = "org.mobicents.ha.javax.sip.cache.MobicentsSipCache.standalone";
+	public static final String CACHE_NAME = "org.mobicents.ha.javax.sip.cache.MobicentsSipCache.cacheName";
+	public static final String DEFAULT_CACHE_NAME = "jain-sip-cache";
 	ClusteredSipStack clusteredSipStack = null;
 	Properties configProperties = null;	
 	
@@ -105,14 +109,26 @@ public class MobicentsSipCache implements SipCache {
 		this.configProperties = configurationProperties;
 	}
 
-	public void init() throws SipCacheException {
-		String pojoConfigurationPath = configProperties.getProperty(JBOSS_CACHE_CONFIG_PATH, DEFAULT_FILE_CONFIG_PATH);
-		if (clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_INFO)) {
-			clusteredSipStack.getStackLogger().logInfo(
-					"Mobicents JAIN SIP JBoss Cache Configuration path is : " + pojoConfigurationPath);
-		}
+	public void init() throws SipCacheException {			
 		try {			
-			cache = new MobicentsCache(pojoConfigurationPath);						
+			if(configProperties.getProperty(MobicentsSipCache.STANDALONE) == null || "false".equals(configProperties.getProperty(MobicentsSipCache.STANDALONE))) {
+				CacheManagerLocator locator = CacheManagerLocator.getCacheManagerLocator();
+				// Locator accepts as param a set of JNDI properties to help in lookup;
+				// this isn't necessary inside the AS
+				CacheManager cacheManager = locator.getCacheManager(null);
+				if (clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_INFO)) {
+					clusteredSipStack.getStackLogger().logInfo(
+							"Mobicents JAIN SIP JBoss Cache Manager instance : " + cacheManager);
+				}
+				cache = new MobicentsCache(cacheManager, configProperties.getProperty(CACHE_NAME,DEFAULT_CACHE_NAME));
+			} else {
+				String pojoConfigurationPath = configProperties.getProperty(JBOSS_CACHE_CONFIG_PATH, DEFAULT_FILE_CONFIG_PATH);
+				if (clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_INFO)) {
+					clusteredSipStack.getStackLogger().logInfo(
+							"Mobicents JAIN SIP JBoss Cache Configuration path is : " + pojoConfigurationPath);
+				}
+				cache = new MobicentsCache(pojoConfigurationPath);
+			}									
 			cacheListener = new JBossJainSipCacheListener(clusteredSipStack);
 			cache.getJBossCache().addCacheListener(cacheListener);			
 		} catch (Exception e) {

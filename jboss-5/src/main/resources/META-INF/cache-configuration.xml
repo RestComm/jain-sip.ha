@@ -17,7 +17,7 @@
 		transactions.
 	-->
 	<transaction
-		transactionManagerLookupClass="org.jboss.cache.transaction.GenericTransactionManagerLookup"
+		transactionManagerLookupClass="org.jboss.cache.transaction.JBossTransactionManagerLookup"
 		syncRollbackPhase="false" syncCommitPhase="false" />
 
 	<!--
@@ -51,10 +51,10 @@
 	<!--
 		serialization related configuration, used for replication and cache
 		loading
-	-->
+	-->	
 	<serialization objectInputStreamPoolSize="12"
 		objectOutputStreamPoolSize="14" version="3.0.0"
-		marshallerClass="org.jboss.cache.marshall.VersionAwareMarshaller"
+		marshallerClass="org.jboss.cache.marshall.CacheMarshaller300"
 		useLazyDeserialization="false" useRegionBasedMarshalling="false" />
 
 	<!--
@@ -120,69 +120,7 @@
 			-->
 		</jgroupsConfig>
 	</clustering>
-
-	<!--
-		Eviction configuration. WakeupInterval defines how often the eviction
-		thread runs, in milliseconds. 0 means the eviction thread will never
-		run.
-	-->
-	<eviction wakeUpInterval="500">
-		<default algorithmClass="org.jboss.cache.eviction.LRUAlgorithm"
-			eventQueueSize="200000">
-
-			<property name="maxNodes" value="5000" />
-			<property name="timeToLive" value="1000" />
-		</default>
-
-		<region name="/org/jboss/data1">
-			<property name="timeToLive" value="2000" />
-		</region>
-
-		<region name="/org/jboss/data2" algorithmClass="org.jboss.cache.eviction.FIFOAlgorithm"
-			eventQueueSize="100000">
-			<property name="maxNodes" value="3000" />
-			<property name="minTimeToLive" value="4000" />
-		</region>
-	</eviction>
-
-	<!--
-		Cache loaders. If passivation is enabled, state is offloaded to the
-		cache loaders ONLY when evicted. Similarly, when the state is accessed
-		again, it is removed from the cache loader and loaded into memory.
-
-		Otherwise, state is always maintained in the cache loader as well as
-		in memory. Set 'shared' to true if all instances in the cluster use
-		the same cache loader instance, e.g., are talking to the same
-		database.
-	-->
-
-	<loaders passivation="false" shared="false">
-		<preload>
-			<node fqn="/org/jboss" />
-			<node fqn="/org/tempdata" />
-		</preload>
-
-		<!--
-			we can have multiple cache loaders, which get chained
-		-->
-		<loader class="org.jboss.cache.loader.JDBCCacheLoader" async="true"
-			fetchPersistentState="true" ignoreModifications="true"
-			purgeOnStartup="true">
-			<properties>
-				cache.jdbc.table.name=jbosscache
-				cache.jdbc.table.create=true
-				cache.jdbc.table.drop=true
-	        </properties>
-
-			<singletonStore enabled="true"
-				class="org.jboss.cache.loader.SingletonStoreCacheLoader">
-				<properties>
-					pushStateWhenCoordinator=true
-					pushStateWhenCoordinatorTimeout=20000
-	            </properties>
-			</singletonStore>
-		</loader>
-	</loaders>
+	
 	<!--
 		Define custom interceptors. All custom interceptors need to extend
 		org.jboss.cache.interceptors.base.CommandInterceptor

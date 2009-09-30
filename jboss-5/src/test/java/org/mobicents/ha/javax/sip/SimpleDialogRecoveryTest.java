@@ -54,6 +54,8 @@ import javax.sip.message.MessageFactory;
 import javax.sip.message.Request;
 import javax.sip.message.Response;
 
+import org.mobicents.ha.javax.sip.cache.MobicentsSipCache;
+
 import junit.framework.TestCase;
 /**
  * This test aims to test Mobicents Jain Sip failover recovery.
@@ -513,6 +515,7 @@ public class SimpleDialogRecoveryTest extends TestCase {
             sipFactory.setPathName("org.mobicents.ha");
             Properties properties = new Properties();
             properties.setProperty("javax.sip.STACK_NAME", stackName);
+            properties.setProperty(MobicentsSipCache.STANDALONE, "true");
             //properties.setProperty("javax.sip.OUTBOUND_PROXY", Integer
             //                .toString(BALANCER_PORT));
             // You need 16 for logging traces. 32 for debug + traces.
