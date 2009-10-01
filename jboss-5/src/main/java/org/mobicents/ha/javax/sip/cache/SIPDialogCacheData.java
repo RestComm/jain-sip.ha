@@ -21,16 +21,12 @@
  */
 package org.mobicents.ha.javax.sip.cache;
 
-import java.util.Properties;
-
-import javax.naming.Context;
-import javax.naming.InitialContext;
-import javax.transaction.UserTransaction;
-
 import gov.nist.javax.sip.stack.SIPDialog;
 
+import javax.transaction.Transaction;
+import javax.transaction.TransactionManager;
+
 import org.jboss.cache.Fqn;
-import org.jboss.cache.Node;
 import org.mobicents.cache.CacheData;
 import org.mobicents.cache.MobicentsCache;
 
@@ -39,9 +35,11 @@ import org.mobicents.cache.MobicentsCache;
  *
  */
 public class SIPDialogCacheData extends CacheData {
-
+	protected TransactionManager transactionManager;
+	
 	public SIPDialogCacheData(Fqn nodeFqn, MobicentsCache mobicentsCache) {
 		super(nodeFqn, mobicentsCache);
+		transactionManager = getMobicentsCache().getJBossCache().getConfiguration().getRuntimeConfig().getTransactionManager();
 	}
 
 	public SIPDialog getSIPDialog(String dialogId) {
@@ -53,23 +51,6 @@ public class SIPDialogCacheData extends CacheData {
 	}
 	
 	public void putSIPDialog(SIPDialog dialog) throws SipCacheException {
-		UserTransaction tx = null;
-		try {
-			Properties prop = new Properties();
-			prop.put(Context.INITIAL_CONTEXT_FACTORY, "org.jboss.cache.transaction.DummyContextFactory");
-			tx = (UserTransaction) new InitialContext(prop).lookup("UserTransaction");
-			if(tx != null) {
-				tx.begin();
-			}			
-			getNode().put(dialog.getDialogId(), dialog);
-			if(tx != null) {
-				tx.commit();
-			}
-		} catch (Exception e) {
-			if(tx != null) {
-				try { tx.rollback(); } catch(Throwable t) {}
-			}
-			throw new SipCacheException("A problem occured while putting the following dialog " + dialog.getDialogId() + "  into Mobicents Cache", e);
-		} 
+		getNode().put(dialog.getDialogId(), dialog);
 	}
 }

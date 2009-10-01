@@ -28,6 +28,9 @@ import gov.nist.javax.sip.stack.SIPServerTransaction;
 
 import java.util.Properties;
 
+import javax.transaction.Transaction;
+import javax.transaction.TransactionManager;
+
 import org.jboss.cache.CacheException;
 import org.jboss.cache.CacheManager;
 import org.jboss.cache.Fqn;
@@ -55,6 +58,7 @@ public class MobicentsSipCache implements SipCache {
 	Properties configProperties = null;	
 	
 	protected MobicentsCache cache;
+	protected TransactionManager transactionManager;
 	protected JBossJainSipCacheListener cacheListener;
 	
 	protected Node<String, SIPDialog> dialogRootNode = null;
@@ -83,8 +87,24 @@ public class MobicentsSipCache implements SipCache {
 	 */
 	public void putDialog(SIPDialog dialog) throws SipCacheException {
 		SIPDialogCacheData cacheData = new SIPDialogCacheData(Fqn.fromString(SipStackImpl.DIALOG_ROOT + dialog.getDialogId()), cache);
-		cacheData.create();
-		cacheData.putSIPDialog(dialog);
+		Transaction tx = null;
+		try {
+			tx = transactionManager.getTransaction();
+			if(tx == null) {
+				transactionManager.begin();
+				tx = transactionManager.getTransaction();				
+			}				
+			cacheData.create();
+			cacheData.putSIPDialog(dialog);
+			if(tx != null) {
+				tx.commit();
+			}
+		} catch (Exception e) {
+			if(tx != null) {
+				try { tx.rollback(); } catch(Throwable t) {}
+			}
+			throw new SipCacheException("A problem occured while putting the following dialog " + dialog.getDialogId() + "  into Mobicents Cache", e);
+		} 
 	}
 
 	/* (non-Javadoc)
@@ -92,7 +112,23 @@ public class MobicentsSipCache implements SipCache {
 	 */
 	public void removeDialog(String dialogId) throws SipCacheException {
 		SIPDialogCacheData cacheData = new SIPDialogCacheData(Fqn.fromString(SipStackImpl.DIALOG_ROOT + dialogId), cache);
-		cacheData.remove();
+		Transaction tx = null;
+		try {
+			tx = transactionManager.getTransaction();
+			if(tx == null) {
+				transactionManager.begin();
+				tx = transactionManager.getTransaction();				
+			}				
+			cacheData.remove();
+			if(tx != null) {
+				tx.commit();
+			}
+		} catch (Exception e) {
+			if(tx != null) {
+				try { tx.rollback(); } catch(Throwable t) {}
+			}
+			throw new SipCacheException("A problem occured while putting the following dialog " + dialogId + "  into Mobicents Cache", e);
+		} 
 	}
 
 	/* (non-Javadoc)
@@ -140,6 +176,7 @@ public class MobicentsSipCache implements SipCache {
 
 	public void start() throws SipCacheException {
 		// Cache has already been starte, nothing to do here
+		transactionManager = cache.getJBossCache().getConfiguration().getRuntimeConfig().getTransactionManager();
 	}
 
 	public void stop() throws SipCacheException {
