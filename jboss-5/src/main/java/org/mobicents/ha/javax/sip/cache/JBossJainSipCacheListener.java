@@ -59,7 +59,7 @@ public class JBossJainSipCacheListener {
 	public void cacheStarted(CacheStartedEvent cacheStartedEvent) {
 		if (clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_INFO)) {
 			clusteredSipStack.getStackLogger().logInfo(
-					"Mobicents JAIN SIP Tree Cache started, status: " + cacheStartedEvent.getCache().getCacheStatus() + 
+					"Mobicents Cache started, status: " + cacheStartedEvent.getCache().getCacheStatus() + 
 					", Mode: " + cacheStartedEvent.getCache().getConfiguration().getCacheModeString());
 		}
 	}
@@ -68,7 +68,7 @@ public class JBossJainSipCacheListener {
 	public void cacheStopped(CacheStoppedEvent cacheStoppedEvent) {
 		if (clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_INFO)) {
 			clusteredSipStack.getStackLogger().logInfo(
-					"Mobicents JAIN SIP Tree Cache stopped, status: " + cacheStoppedEvent.getCache().getCacheStatus() + 
+					"Mobicents Cache stopped, status: " + cacheStoppedEvent.getCache().getCacheStatus() + 
 					", Mode: " + cacheStoppedEvent.getCache().getConfiguration().getCacheModeString());
 		}
 	}
