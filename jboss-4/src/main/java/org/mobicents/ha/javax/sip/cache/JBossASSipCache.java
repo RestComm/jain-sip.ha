@@ -159,18 +159,18 @@ public class JBossASSipCache implements SipCache {
 	
 	public void init() throws SipCacheException {
 		pojoCache = getPojoCacheMBean("jboss.cache:service=TomcatClusteringCache");
-		try {
-			pojoCache.createService();
-		} catch (Exception e) {
-			throw new SipCacheException("Unexpected exception while creating the pojo cache", e);
-		}
+//		try {
+//			pojoCache.createService();
+//		} catch (Exception e) {
+//			throw new SipCacheException("Unexpected exception while creating the pojo cache", e);
+//		}
 		treeCacheListener = new JBossJainSipCacheListener(clusteredSipStack);
 		pojoCache.addTreeCacheListener(treeCacheListener);
 	}
 
 	public void start() throws SipCacheException {
 		try {
-			pojoCache.start();
+//			pojoCache.start();
 			transactionManager = pojoCache.getTransactionManager();
 		} catch (Exception e) {
 			throw new SipCacheException("Couldn't start the TreeCache", e);
@@ -183,13 +183,13 @@ public class JBossASSipCache implements SipCache {
 	}
 
 	public void stop() throws SipCacheException {
-		pojoCache.stopService();
+//		pojoCache.stopService();
 		if (clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_INFO)) {
 			clusteredSipStack.getStackLogger().logInfo(
 					"Mobicents JAIN SIP Tree Cache stopped, state: " + pojoCache.getStateString() + 
 					", Mode: " + pojoCache.getCacheMode());
 		}
-		pojoCache.destroyService();
+//		pojoCache.destroyService();
 	}
 
 }

@@ -68,7 +68,7 @@ import junit.framework.TestCase;
  */
 public class SimpleDialogRecoveryTest extends TestCase {
 
-	public static final String IP_ADDRESS = "192.168.0.11";
+	public static final String IP_ADDRESS = "192.168.0.13";
 	
     public static final int BALANCER_PORT = 5050;
 
