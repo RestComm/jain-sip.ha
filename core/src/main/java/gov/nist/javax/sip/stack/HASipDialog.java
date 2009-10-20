@@ -33,10 +33,10 @@ import org.mobicents.ha.javax.sip.cache.SipCacheException;
  * @author jean.deruelle@gmail.com
  *
  */
-public class HASipDialog extends SIPDialog {
-
-	private static final long serialVersionUID = 1L;
+public class HASipDialog extends SIPDialog {	
 	
+	private static final long serialVersionUID = -779892668482217624L;
+
 	public HASipDialog(SIPTransaction transaction) {
 		super(transaction);
 	}
