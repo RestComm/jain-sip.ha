@@ -27,11 +27,7 @@ import gov.nist.javax.sip.stack.SIPDialog;
 import java.util.Properties;
 
 import javax.management.ObjectName;
-import javax.naming.Context;
-import javax.naming.InitialContext;
-import javax.transaction.Transaction;
 import javax.transaction.TransactionManager;
-import javax.transaction.UserTransaction;
 
 import org.jboss.cache.CacheException;
 import org.jboss.cache.aop.PojoCacheMBean;
@@ -74,22 +70,22 @@ public class JBossASSipCache implements SipCache {
 	 * @see org.mobicents.ha.javax.sip.cache.SipCache#putDialog(gov.nist.javax.sip.stack.SIPDialog)
 	 */
 	public void putDialog(SIPDialog dialog) throws SipCacheException {
-		Transaction tx = null;
+//		Transaction tx = null;
 		try {
-			
-			tx = transactionManager.getTransaction();
-			if(tx == null) {
-				transactionManager.begin();
-				tx = transactionManager.getTransaction();				
-			}
+			// no need to initiate a tx for a single put
+//			tx = transactionManager.getTransaction();
+//			if(tx == null) {
+//				transactionManager.begin();
+//				tx = transactionManager.getTransaction();				
+//			}
 			pojoCache.put(SipStackImpl.DIALOG_ROOT, dialog.getDialogId(), dialog);
-			if(tx != null) {
-				tx.commit();
-			}
+//			if(tx != null) {
+//				tx.commit();
+//			}
 		} catch (Exception e) {
-			if(tx != null) {
-				try { tx.rollback(); } catch(Throwable t) {}
-			}
+//			if(tx != null) {
+//				try { tx.rollback(); } catch(Throwable t) {}
+//			}
 			throw new SipCacheException("A problem occured while putting the following dialog " + dialog.getDialogId() + "  into the TreeCache", e);
 		} 
 	}
@@ -98,22 +94,23 @@ public class JBossASSipCache implements SipCache {
 	 * @see org.mobicents.ha.javax.sip.cache.SipCache#removeDialog(java.lang.String)
 	 */
 	public void removeDialog(String dialogId) throws SipCacheException {
-		Transaction tx = null;
+//		Transaction tx = null;
 		try {
-			
-			tx = transactionManager.getTransaction();
-			if(tx == null) {
-				transactionManager.begin();
-				tx = transactionManager.getTransaction();				
-			}
+			// no need to initiate a tx for a single put
+//			tx = transactionManager.getTransaction();
+//			tx = transactionManager.getTransaction();
+//			if(tx == null) {
+//				transactionManager.begin();
+//				tx = transactionManager.getTransaction();				
+//			}
 			pojoCache.remove(SipStackImpl.DIALOG_ROOT, dialogId);
-			if(tx != null) {
-				tx.commit();
-			}
+//			if(tx != null) {
+//				tx.commit();
+//			}
 		} catch (Exception e) {
-			if(tx != null) {
-				try { tx.rollback(); } catch(Throwable t) {}
-			}
+//			if(tx != null) {
+//				try { tx.rollback(); } catch(Throwable t) {}
+//			}
 			throw new SipCacheException("A problem occured while removing the following dialog " + dialogId + " from the TreeCache", e);
 		}
 	}
