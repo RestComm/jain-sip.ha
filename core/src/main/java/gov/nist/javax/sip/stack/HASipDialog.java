@@ -21,8 +21,6 @@
  */
 package gov.nist.javax.sip.stack;
 
-import javax.sip.DialogState;
-
 import gov.nist.javax.sip.SipProviderImpl;
 import gov.nist.javax.sip.message.SIPResponse;
 
