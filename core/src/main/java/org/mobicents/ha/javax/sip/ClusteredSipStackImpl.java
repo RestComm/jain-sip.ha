@@ -21,6 +21,7 @@
  */
 package org.mobicents.ha.javax.sip;
 
+import gov.nist.core.Separators;
 import gov.nist.core.StackLogger;
 import gov.nist.javax.sip.message.SIPRequest;
 import gov.nist.javax.sip.message.SIPResponse;
@@ -31,6 +32,7 @@ import gov.nist.javax.sip.stack.SIPTransaction;
 
 import java.lang.reflect.Constructor;
 import java.util.Properties;
+import java.util.StringTokenizer;
 
 import javax.sip.DialogState;
 import javax.sip.PeerUnavailableException;
@@ -168,7 +170,9 @@ public abstract class ClusteredSipStackImpl extends gov.nist.javax.sip.SipStackI
 			getStackLogger().logDebug("checking if the dialog " + dialogId + " is present in the local cache");
 		}		
 		SIPDialog sipDialog = super.getDialog(dialogId);
-		if(sipDialog == null) {
+		int nbToken = new StringTokenizer(dialogId, Separators.COLON).countTokens();
+		// we should only check the cache for dialog Id where the remote tag is set since we support only established dialog failover
+		if(sipDialog == null && nbToken == 3) {
 			if(getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
 				getStackLogger().logDebug("local dialog " + dialogId + " is null, checking in the distributed cache");
 			}

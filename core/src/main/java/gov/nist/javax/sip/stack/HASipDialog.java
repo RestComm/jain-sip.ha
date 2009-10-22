@@ -66,7 +66,7 @@ public class HASipDialog extends SIPDialog {
 		super.setState(state);
 		DialogState newState = getState();
 		//Since we support only established call failover we replicate only on CONFIRMED
-		if(DialogState.CONFIRMED.equals(newState) && !oldState.equals(newState)){
+		if(DialogState.CONFIRMED.equals(newState) && !newState.equals(oldState)){
 			try {
 				((ClusteredSipStack)getStack()).getSipCache().putDialog(this);
 			} catch (SipCacheException e) {
