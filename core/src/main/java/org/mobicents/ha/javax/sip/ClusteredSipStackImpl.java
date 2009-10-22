@@ -89,7 +89,9 @@ public abstract class ClusteredSipStackImpl extends gov.nist.javax.sip.SipStackI
 		} catch (Exception e) {
 			throw new PeerUnavailableException("Unable to initialize the SipCache", e);
 		}
-		loadBalancerHeartBeatingService.init(this, configurationProperties);
+		if(loadBalancerHeartBeatingService != null) {
+			loadBalancerHeartBeatingService.init(this, configurationProperties);
+		}
 	}		
 	
 	@Override
@@ -99,7 +101,9 @@ public abstract class ClusteredSipStackImpl extends gov.nist.javax.sip.SipStackI
 		} catch (Exception e) {
 			throw new SipException("Unable to start the SipCache", e);
 		}
-		loadBalancerHeartBeatingService.start();
+		if(loadBalancerHeartBeatingService != null) {
+			loadBalancerHeartBeatingService.start();
+		}
 		super.start();		
 	}
 	
@@ -111,7 +115,9 @@ public abstract class ClusteredSipStackImpl extends gov.nist.javax.sip.SipStackI
 		} catch (Exception e) {
 			getStackLogger().logError("Unable to stop the SipCache", e);
 		}
-		loadBalancerHeartBeatingService.stop();
+		if(loadBalancerHeartBeatingService != null) {
+			loadBalancerHeartBeatingService.stop();
+		}
 	}
 	
 	@Override
@@ -183,7 +189,10 @@ public abstract class ClusteredSipStackImpl extends gov.nist.javax.sip.SipStackI
 
 	@Override
 	public void putDialog(SIPDialog dialog) {
-		putDialogIntoDistributedCache(dialog);
+		// safe check, we put it in the cache only for CONFIRMED state since only established call failover is supported right now
+		if(DialogState.CONFIRMED.equals(dialog.getState())) {
+			putDialogIntoDistributedCache(dialog);
+		}
 		super.putDialog(dialog);		
 	}
 		

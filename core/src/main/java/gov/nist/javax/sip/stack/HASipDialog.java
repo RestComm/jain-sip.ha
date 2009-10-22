@@ -21,6 +21,8 @@
  */
 package gov.nist.javax.sip.stack;
 
+import javax.sip.DialogState;
+
 import gov.nist.javax.sip.SipProviderImpl;
 import gov.nist.javax.sip.message.SIPResponse;
 
@@ -61,11 +63,13 @@ public class HASipDialog extends SIPDialog {
 	@Override
 	public void setState(int state) {
 		super.setState(state);
-		//replicate the dialog when its state has been updated
-		try {
-			((ClusteredSipStack)getStack()).getSipCache().putDialog(this);
-		} catch (SipCacheException e) {
-			getStack().getStackLogger().logError("problem storing dialog " + getDialogId() + " into the distributed cache", e);
+		//Since we support only established call failover we replicate only on CONFIRMED
+		if(DialogState.CONFIRMED.equals(state)){
+			try {
+				((ClusteredSipStack)getStack()).getSipCache().putDialog(this);
+			} catch (SipCacheException e) {
+				getStack().getStackLogger().logError("problem storing dialog " + getDialogId() + " into the distributed cache", e);
+			}
 		}
 	}
 }
