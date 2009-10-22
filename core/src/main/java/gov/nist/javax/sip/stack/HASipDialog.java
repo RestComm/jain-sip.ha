@@ -21,6 +21,8 @@
  */
 package gov.nist.javax.sip.stack;
 
+import javax.sip.DialogState;
+
 import gov.nist.javax.sip.SipProviderImpl;
 import gov.nist.javax.sip.message.SIPResponse;
 
@@ -60,9 +62,11 @@ public class HASipDialog extends SIPDialog {
 
 	@Override
 	public void setState(int state) {
+		DialogState oldState = getState();
 		super.setState(state);
+		DialogState newState = getState();
 		//Since we support only established call failover we replicate only on CONFIRMED
-		if(CONFIRMED_STATE ==  state){
+		if(DialogState.CONFIRMED.equals(newState) && !oldState.equals(newState)){
 			try {
 				((ClusteredSipStack)getStack()).getSipCache().putDialog(this);
 			} catch (SipCacheException e) {
