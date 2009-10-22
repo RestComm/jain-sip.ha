@@ -371,9 +371,8 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 				displayBalancerFound = true;
 			}
 		}
-		if(logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
-			logger.logDebug("Finished gathering");
-			logger.logDebug("Gathered info[" + info + "]");
+		if(logger.isLoggingEnabled(StackLogger.TRACE_TRACE)) {
+			logger.logTrace("Finished gathering, Gathered info[" + info + "]");
 		}
 	}		
 	
@@ -401,9 +400,8 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 				displayBalancerFound = true;
 			}
 		}
-		if(logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
-			logger.logDebug("Finished gathering");
-			logger.logDebug("Gathered info[" + info + "]");
+		if(logger.isLoggingEnabled(StackLogger.TRACE_TRACE)) {
+			logger.logTrace("Finished gathering, Gathered info[" + info + "]");
 		}
 	}
 	
