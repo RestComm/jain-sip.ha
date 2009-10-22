@@ -54,4 +54,6 @@ public interface ClusteredSipStack extends SipStack {
 	SipCache getSipCache();
 	
 	StackLogger getStackLogger();
+	
+	LoadBalancerHeartBeatingService getLoadBalancerHeartBeatingService();
 }

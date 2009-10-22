@@ -29,6 +29,7 @@ import gov.nist.javax.sip.stack.SIPClientTransaction;
 import gov.nist.javax.sip.stack.SIPDialog;
 import gov.nist.javax.sip.stack.SIPTransaction;
 
+import java.lang.reflect.Constructor;
 import java.util.Properties;
 
 import javax.sip.DialogState;
@@ -56,17 +57,40 @@ import org.mobicents.ha.javax.sip.cache.SipCacheFactory;
  */
 public abstract class ClusteredSipStackImpl extends gov.nist.javax.sip.SipStackImpl implements ClusteredSipStack {	
 	private SipCache sipCache = null;
+	private LoadBalancerHeartBeatingService loadBalancerHeartBeatingService = null;
 	
 	public ClusteredSipStackImpl(Properties configurationProperties) throws PeerUnavailableException {
 		super(configurationProperties);
+		String lbHbServiceClassName = configurationProperties.getProperty(LoadBalancerHeartBeatingService.LB_HB_SERVICE_CLASS_NAME);
+		if(lbHbServiceClassName != null) {
+			try {
+	            // create parameters argument to identify constructor
+	            Class[] paramTypes = new Class[0];
+	            // get constructor of SipStack in order to instantiate
+	            Constructor lbHbServiceConstructor = 
+	            	Class.forName(lbHbServiceClassName).getConstructor(paramTypes);
+	            // Wrap properties object in order to pass to constructor of
+	            // SipSatck
+	            Object[] conArgs = new Object[0];
+	            // Creates a new instance of SipStack Class with the supplied
+	            // properties.
+	            loadBalancerHeartBeatingService = (LoadBalancerHeartBeatingService) lbHbServiceConstructor.newInstance(conArgs);	            
+	        } catch (Exception e) {
+	            String errmsg = "The loadBalancerHeartBeatingService class name: "
+	                    + lbHbServiceClassName
+	                    + " could not be instantiated. Ensure the org.mobicents.ha.javax.sip.LoadBalancerHeartBeatingServiceClassName property has been set correctly and that the class is on the classpath.";
+	            throw new PeerUnavailableException(errmsg, e);
+	        }
+		}
 		// get/create the jboss cache instance to store all sip stack related data into it
 		sipCache = SipCacheFactory.createSipCache(this, configurationProperties);
 		try {
 			sipCache.init();
 		} catch (Exception e) {
 			throw new PeerUnavailableException("Unable to initialize the SipCache", e);
-		}		
-	}
+		}
+		loadBalancerHeartBeatingService.init(this, configurationProperties);
+	}		
 	
 	@Override
 	public void start() throws ProviderDoesNotExistException, SipException {
@@ -75,6 +99,7 @@ public abstract class ClusteredSipStackImpl extends gov.nist.javax.sip.SipStackI
 		} catch (Exception e) {
 			throw new SipException("Unable to start the SipCache", e);
 		}
+		loadBalancerHeartBeatingService.start();
 		super.start();		
 	}
 	
@@ -86,6 +111,7 @@ public abstract class ClusteredSipStackImpl extends gov.nist.javax.sip.SipStackI
 		} catch (Exception e) {
 			getStackLogger().logError("Unable to stop the SipCache", e);
 		}
+		loadBalancerHeartBeatingService.stop();
 	}
 	
 	@Override
@@ -233,5 +259,9 @@ public abstract class ClusteredSipStackImpl extends gov.nist.javax.sip.SipStackI
 	 */
 	public SipCache getSipCache() {
 		return sipCache;
+	}
+	
+	public LoadBalancerHeartBeatingService getLoadBalancerHeartBeatingService() {
+		return loadBalancerHeartBeatingService;
 	}
 }
