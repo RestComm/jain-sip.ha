@@ -414,10 +414,7 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 
 		@SuppressWarnings("unchecked")
 		@Override
-		public void run() {
-			if(logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
-				logger.logDebug("Start");
-			}
+		public void run() {			
 			ArrayList<SIPNode> info = getConnectorsAsSIPNode();						
 			sendKeepAliveToBalancers(info);
 		}
