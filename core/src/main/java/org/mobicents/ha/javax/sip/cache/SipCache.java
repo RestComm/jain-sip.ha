@@ -81,4 +81,10 @@ public interface SipCache {
 	 */
 	void removeDialog(String dialogId) throws SipCacheException;
 
+	/**
+	 * Indicates if the cache is running in local or clustered mode.
+	 * @return
+	 */
+	boolean inLocalMode();
+	
 }

@@ -49,7 +49,7 @@ public class JBossASSipCache implements SipCache {
 	protected TransactionManager transactionManager;
 	protected PojoCacheMBean pojoCache;
 	protected JBossJainSipCacheListener treeCacheListener;
-	
+	private boolean isLocal = false;
 	/**
 	 * 
 	 */
@@ -171,7 +171,7 @@ public class JBossASSipCache implements SipCache {
 			transactionManager = pojoCache.getTransactionManager();
 		} catch (Exception e) {
 			throw new SipCacheException("Couldn't start the TreeCache", e);
-		}
+		}		
 		if (clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_INFO)) {
 			clusteredSipStack.getStackLogger().logInfo(
 					"Mobicents JAIN SIP Tree Cache started, state: " + pojoCache.getStateString() + 
@@ -187,6 +187,10 @@ public class JBossASSipCache implements SipCache {
 					", Mode: " + pojoCache.getCacheMode());
 		}
 //		pojoCache.destroyService();
+	}
+
+	public boolean inLocalMode() {		
+		return isLocal;
 	}
 
 }

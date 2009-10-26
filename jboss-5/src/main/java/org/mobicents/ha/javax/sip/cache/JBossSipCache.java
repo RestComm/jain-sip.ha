@@ -37,6 +37,7 @@ import org.jboss.cache.CacheException;
 import org.jboss.cache.DefaultCacheFactory;
 import org.jboss.cache.Fqn;
 import org.jboss.cache.Node;
+import org.jboss.cache.config.Configuration.CacheMode;
 import org.mobicents.ha.javax.sip.ClusteredSipStack;
 import org.mobicents.ha.javax.sip.SipStackImpl;
 
@@ -120,7 +121,7 @@ public class JBossSipCache implements SipCache {
 			if(tx != null) {
 				tx.begin();
 			}
-			dialogRootNode.removeChild(Fqn.fromString(dialogId));
+			dialogRootNode.removeChild(dialogId);
 			if(tx != null) {
 				tx.commit();
 			}
@@ -168,9 +169,9 @@ public class JBossSipCache implements SipCache {
 		} catch (Exception e) {
 			throw new SipCacheException("Couldn't start JBoss Cache", e);
 		}
-		dialogRootNode = cache.getRoot().getChild(Fqn.fromString(SipStackImpl.DIALOG_ROOT));
+		dialogRootNode = cache.getRoot().getChild(SipStackImpl.DIALOG_ROOT);
 		if(dialogRootNode == null) {
-			dialogRootNode = cache.getRoot().addChild(Fqn.fromString(SipStackImpl.DIALOG_ROOT));	
+			dialogRootNode = cache.getRoot().addChild(Fqn.fromElements(SipStackImpl.DIALOG_ROOT));	
 		}
 	}
 
@@ -179,4 +180,11 @@ public class JBossSipCache implements SipCache {
 		cache.destroy();
 	}
 
+	/*
+	 * (non-Javadoc)
+	 * @see org.mobicents.ha.javax.sip.cache.SipCache#inLocalMode()
+	 */
+	public boolean inLocalMode() {
+		return cache.getConfiguration().getCacheMode() == CacheMode.LOCAL;
+	}
 }

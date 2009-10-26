@@ -8,13 +8,10 @@
 		<version>0.1-SNAPSHOT</version>
 	</parent>
 
-	<groupId>org.mobicents.ha.javax.sip</groupId>
 	<artifactId>mobicents-jain-sip-jboss4</artifactId>
 
-	<packaging>jar</packaging>
-
 	<properties>
-		<jboss.version>4.2.3.GA</jboss.version>
+		<version.jboss>4.2.3.GA</version.jboss>
 	</properties>
 
 	<dependencies>
@@ -42,16 +39,16 @@
 		<dependency>
 			<groupId>commons-logging</groupId>
 			<artifactId>commons-logging</artifactId>
-			<version>${commons-logging.version}</version>
+			<version>1.0.1</version>
 			<scope>provided</scope>
 		</dependency>
 		
-		<dependency>
+		<!--dependency>
 			<groupId>concurrent</groupId>
 			<artifactId>concurrent</artifactId>
 			<version>${concurrent.version}</version>
 			<scope>provided</scope>
-		</dependency>
+		</dependency-->
 
 		<dependency>
 			<groupId>jboss.aop</groupId>
@@ -85,14 +82,14 @@
 		<dependency>
 			<groupId>jboss</groupId>
 			<artifactId>jboss-jmx</artifactId>
-			<version>${jboss.version}</version>
+			<version>${version.jboss}</version>
 			<scope>provided</scope>
 		</dependency>
 
 		<dependency>
 			<groupId>jboss</groupId>
 			<artifactId>jboss-system</artifactId>
-			<version>${jboss.version}</version>
+			<version>${version.jboss}</version>
 			<scope>provided</scope>
 		</dependency>
 

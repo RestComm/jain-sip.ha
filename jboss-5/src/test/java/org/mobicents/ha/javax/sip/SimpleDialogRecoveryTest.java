@@ -54,7 +54,7 @@ import javax.sip.message.MessageFactory;
 import javax.sip.message.Request;
 import javax.sip.message.Response;
 
-import org.mobicents.ha.javax.sip.cache.MobicentsSipCache;
+import org.mobicents.ha.javax.sip.cache.ManagedMobicentsSipCache;
 
 import junit.framework.TestCase;
 /**
@@ -70,7 +70,17 @@ import junit.framework.TestCase;
  */
 public class SimpleDialogRecoveryTest extends TestCase {
 
-	public static final String IP_ADDRESS = "192.168.0.11";
+	private static String getIpAddressFromProperties(){
+		Properties p = new Properties();
+		try {
+			p.load(SimpleDialogRecoveryTest.class.getClassLoader().getResourceAsStream("test.properties"));
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		return p.getProperty("IP_ADDRESS","127.0.0.1");
+	}
+	
+	public static final String IP_ADDRESS = getIpAddressFromProperties();
 	
     public static final int BALANCER_PORT = 5050;
 
@@ -249,7 +259,7 @@ public class SimpleDialogRecoveryTest extends TestCase {
 
         private SipStack sipStack;
 
-        private static final String myAddress = IP_ADDRESS;
+        private final String myAddress = IP_ADDRESS;
 
         private String stackName;
 
@@ -515,7 +525,7 @@ public class SimpleDialogRecoveryTest extends TestCase {
             sipFactory.setPathName("org.mobicents.ha");
             Properties properties = new Properties();
             properties.setProperty("javax.sip.STACK_NAME", stackName);
-            properties.setProperty(MobicentsSipCache.STANDALONE, "true");
+            properties.setProperty(ManagedMobicentsSipCache.STANDALONE, "true");
             //properties.setProperty("javax.sip.OUTBOUND_PROXY", Integer
             //                .toString(BALANCER_PORT));
             // You need 16 for logging traces. 32 for debug + traces.

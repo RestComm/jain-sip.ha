@@ -23,9 +23,6 @@ package org.mobicents.ha.javax.sip.cache;
 
 import gov.nist.javax.sip.stack.SIPDialog;
 
-import javax.transaction.Transaction;
-import javax.transaction.TransactionManager;
-
 import org.jboss.cache.Fqn;
 import org.mobicents.cache.CacheData;
 import org.mobicents.cache.MobicentsCache;
@@ -35,11 +32,9 @@ import org.mobicents.cache.MobicentsCache;
  *
  */
 public class SIPDialogCacheData extends CacheData {
-	protected TransactionManager transactionManager;
-	
+		
 	public SIPDialogCacheData(Fqn nodeFqn, MobicentsCache mobicentsCache) {
 		super(nodeFqn, mobicentsCache);
-		transactionManager = getMobicentsCache().getJBossCache().getConfiguration().getRuntimeConfig().getTransactionManager();
 	}
 
 	public SIPDialog getSIPDialog(String dialogId) {

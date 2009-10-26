@@ -173,4 +173,8 @@ public class JBossTreeSipCache implements SipCache {
 		treeCache.destroyService();
 	}
 
+	public boolean inLocalMode() {
+		return false;
+	}
+
 }

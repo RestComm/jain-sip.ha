@@ -30,7 +30,6 @@ import gov.nist.javax.sip.stack.SIPClientTransaction;
 import gov.nist.javax.sip.stack.SIPDialog;
 import gov.nist.javax.sip.stack.SIPTransaction;
 
-import java.lang.reflect.Constructor;
 import java.util.Properties;
 import java.util.StringTokenizer;
 
@@ -66,17 +65,7 @@ public abstract class ClusteredSipStackImpl extends gov.nist.javax.sip.SipStackI
 		String lbHbServiceClassName = configurationProperties.getProperty(LoadBalancerHeartBeatingService.LB_HB_SERVICE_CLASS_NAME);
 		if(lbHbServiceClassName != null) {
 			try {
-	            // create parameters argument to identify constructor
-	            Class[] paramTypes = new Class[0];
-	            // get constructor of SipStack in order to instantiate
-	            Constructor lbHbServiceConstructor = 
-	            	Class.forName(lbHbServiceClassName).getConstructor(paramTypes);
-	            // Wrap properties object in order to pass to constructor of
-	            // SipSatck
-	            Object[] conArgs = new Object[0];
-	            // Creates a new instance of SipStack Class with the supplied
-	            // properties.
-	            loadBalancerHeartBeatingService = (LoadBalancerHeartBeatingService) lbHbServiceConstructor.newInstance(conArgs);	            
+	            loadBalancerHeartBeatingService = (LoadBalancerHeartBeatingService) Class.forName(lbHbServiceClassName).newInstance();	            
 	        } catch (Exception e) {
 	            String errmsg = "The loadBalancerHeartBeatingService class name: "
 	                    + lbHbServiceClassName
@@ -124,77 +113,79 @@ public abstract class ClusteredSipStackImpl extends gov.nist.javax.sip.SipStackI
 	
 	@Override
 	public SIPDialog createDialog(SIPTransaction transaction) {
-		
-		SIPDialog retval = null;
-        if (transaction instanceof SIPClientTransaction) {
-            String dialogId = ((SIPRequest) transaction.getRequest()).getDialogId(false);
-            if (this.earlyDialogTable.get(dialogId) != null) {
-                SIPDialog dialog = this.earlyDialogTable.get(dialogId);
-                if (dialog.getState() == null || dialog.getState() == DialogState.EARLY) {
-                    retval = dialog;
-                } else {
-                    retval = new HASipDialog(transaction);
-                    this.earlyDialogTable.put(dialogId, retval);
-                }
-            } else {
-                retval = new HASipDialog(transaction);
-                this.earlyDialogTable.put(dialogId, retval);
-            }
-        } else {
-            retval = new HASipDialog(transaction);
-        }
-        return retval;
+		if (sipCache.inLocalMode()) {
+			return super.createDialog(transaction);
+		}
+		else {
+			SIPDialog retval = null;
+			if (transaction instanceof SIPClientTransaction) {
+				final String dialogId = ((SIPRequest) transaction.getRequest()).getDialogId(false);
+				retval = this.earlyDialogTable.get(dialogId);
+				if (retval == null || (retval.getState() != null && retval.getState() != DialogState.EARLY)) {
+					retval = new HASipDialog(transaction);
+					this.earlyDialogTable.put(dialogId, retval);
+				}
+			} else {
+				retval = new HASipDialog(transaction);
+			}
+			return retval;
+		}
 	}
 	
 	@Override
 	public SIPDialog createDialog(SIPClientTransaction transaction, SIPResponse sipResponse) {
-        String dialogId = ((SIPRequest) transaction.getRequest()).getDialogId(false);
-        SIPDialog retval = null;
-        if (this.earlyDialogTable.get(dialogId) != null) {
-            retval = this.earlyDialogTable.get(dialogId);
-            if (sipResponse.isFinalResponse()) {
-                this.earlyDialogTable.remove(dialogId);
-            }
-
-        } else {
-            retval = new HASipDialog(transaction, sipResponse);
-        }
-        return retval;
-
+		if (sipCache.inLocalMode()) {
+			return super.createDialog(transaction,sipResponse);
+		}
+		else {
+			final String dialogId = ((SIPRequest) transaction.getRequest()).getDialogId(false);
+			SIPDialog retval = this.earlyDialogTable.get(dialogId);
+			if (retval != null && sipResponse.isFinalResponse()) {
+				this.earlyDialogTable.remove(dialogId);
+			} else {
+				retval = new HASipDialog(transaction, sipResponse);
+			}
+			return retval;
+		}
     }
 
 	
 	@Override
 	public SIPDialog getDialog(String dialogId) {
-		if(getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
-			getStackLogger().logDebug("checking if the dialog " + dialogId + " is present in the local cache");
-		}		
-		SIPDialog sipDialog = super.getDialog(dialogId);
-		int nbToken = new StringTokenizer(dialogId, Separators.COLON).countTokens();
-		// we should only check the cache for dialog Id where the remote tag is set since we support only established dialog failover
-		if(sipDialog == null && nbToken == 3) {
-			if(getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
-				getStackLogger().logDebug("local dialog " + dialogId + " is null, checking in the distributed cache");
-			}
-			sipDialog = getDialogFromDistributedCache(dialogId);
-			if(sipDialog != null) {
-				if(getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
-					getStackLogger().logDebug("dialog " + dialogId + " found in the distributed cache, storing it locally");
-				}
-				super.putDialog(sipDialog);
-			} else {
-				if(getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
-					getStackLogger().logDebug("dialog " + dialogId + " not found in the distributed cache");
-				}
-			}
+		if (sipCache.inLocalMode()) {
+			return super.getDialog(dialogId);
 		}
-		return sipDialog;
+		else {
+			if(getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+				getStackLogger().logDebug("checking if the dialog " + dialogId + " is present in the local cache");
+			}		
+			SIPDialog sipDialog = super.getDialog(dialogId);
+			int nbToken = new StringTokenizer(dialogId, Separators.COLON).countTokens();
+			// we should only check the cache for dialog Id where the remote tag is set since we support only established dialog failover
+			if(sipDialog == null && nbToken == 3) {
+				if(getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+					getStackLogger().logDebug("local dialog " + dialogId + " is null, checking in the distributed cache");
+				}
+				sipDialog = getDialogFromDistributedCache(dialogId);
+				if(sipDialog != null) {
+					if(getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+						getStackLogger().logDebug("dialog " + dialogId + " found in the distributed cache, storing it locally");
+					}
+					super.putDialog(sipDialog);
+				} else {
+					if(getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+						getStackLogger().logDebug("dialog " + dialogId + " not found in the distributed cache");
+					}
+				}
+			}
+			return sipDialog;
+		}
 	}		
 
 	@Override
-	public void putDialog(SIPDialog dialog) {
-		// safe check, we put it in the cache only for CONFIRMED state since only established call failover is supported right now
-		if(DialogState.CONFIRMED.equals(dialog.getState())) {
+	public void putDialog(SIPDialog dialog) {	
+		if (!sipCache.inLocalMode() && DialogState.CONFIRMED.equals(dialog.getState())) {
+			// only replicate dialogs in confirmed state
 			putDialogIntoDistributedCache(dialog);
 		}
 		super.putDialog(dialog);		
@@ -202,7 +193,9 @@ public abstract class ClusteredSipStackImpl extends gov.nist.javax.sip.SipStackI
 		
 	@Override
 	public void removeDialog(SIPDialog dialog) {
-		removeDialogFromDistributedCache(dialog.getDialogId());
+		if (!sipCache.inLocalMode()) {
+			removeDialogFromDistributedCache(dialog.getDialogId());
+		}
 		super.removeDialog(dialog);
 	}
 	

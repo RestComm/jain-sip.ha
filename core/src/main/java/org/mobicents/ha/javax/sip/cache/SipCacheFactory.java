@@ -21,7 +21,6 @@
  */
 package org.mobicents.ha.javax.sip.cache;
 
-import java.lang.reflect.Constructor;
 import java.util.Properties;
 
 import javax.sip.PeerUnavailableException;
@@ -43,20 +42,9 @@ public class SipCacheFactory {
 			throw new IllegalArgumentException("the sip cache class name can't be null, please set the org.mobicents.ha.javax.sip.CACHE_CLASS_NAME property accordingly");
 		}
 		try {
-            // create parameters argument to identify constructor
-            Class[] paramTypes = new Class[0];
-            // get constructor of SipCache in order to instantiate
-            Constructor sipCacheConstructor = 
-            	Class.forName(cacheClassName).getConstructor(paramTypes);
-            // Wrap properties object in order to pass to constructor of
-            // SipSatck
-            Object[] conArgs = new Object[0];
-            // Creates a new instance of SipCache Class with the supplied
-            // properties.
-            SipCache sipCache = (SipCache) sipCacheConstructor.newInstance(conArgs);
+            SipCache sipCache = (SipCache) Class.forName(cacheClassName).newInstance();
             sipCache.setClusteredSipStack(clusteredSipStack);
             sipCache.setConfigurationProperties(configurationProperties);
-            
             return sipCache;
         } catch (Exception e) {
             String errmsg = "The SipCache class name: "

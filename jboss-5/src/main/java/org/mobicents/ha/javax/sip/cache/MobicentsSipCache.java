@@ -21,21 +21,11 @@
  */
 package org.mobicents.ha.javax.sip.cache;
 
-import gov.nist.core.StackLogger;
-import gov.nist.javax.sip.stack.SIPClientTransaction;
 import gov.nist.javax.sip.stack.SIPDialog;
-import gov.nist.javax.sip.stack.SIPServerTransaction;
 
 import java.util.Properties;
 
-import javax.transaction.Transaction;
-import javax.transaction.TransactionManager;
-
-import org.jboss.cache.CacheException;
-import org.jboss.cache.CacheManager;
 import org.jboss.cache.Fqn;
-import org.jboss.cache.Node;
-import org.jboss.ha.framework.server.CacheManagerLocator;
 import org.mobicents.cache.MobicentsCache;
 import org.mobicents.ha.javax.sip.ClusteredSipStack;
 import org.mobicents.ha.javax.sip.SipStackImpl;
@@ -46,89 +36,50 @@ import org.mobicents.ha.javax.sip.SipStackImpl;
  * <b>org.mobicents.ha.javax.sip.JBOSS_CACHE_CONFIG_PATH</b>
  * 
  * @author jean.deruelle@gmail.com
+ * @author martins
  *
  */
-public class MobicentsSipCache implements SipCache {
-	public static final String JBOSS_CACHE_CONFIG_PATH = "org.mobicents.ha.javax.sip.JBOSS_CACHE_CONFIG_PATH";
-	public static final String DEFAULT_FILE_CONFIG_PATH = "META-INF/cache-configuration.xml"; 
-	public static final String STANDALONE = "org.mobicents.ha.javax.sip.cache.MobicentsSipCache.standalone";
-	public static final String CACHE_NAME = "org.mobicents.ha.javax.sip.cache.MobicentsSipCache.cacheName";
-	public static final String DEFAULT_CACHE_NAME = "jain-sip-cache";
+public abstract class MobicentsSipCache implements SipCache {
+	
 	ClusteredSipStack clusteredSipStack = null;
-	Properties configProperties = null;	
-	
+	protected Properties configProperties;
 	protected MobicentsCache cache;
-	protected TransactionManager transactionManager;
-	protected JBossJainSipCacheListener cacheListener;
-	
-	protected Node<String, SIPDialog> dialogRootNode = null;
-	protected Node<String, SIPClientTransaction> clientTxRootNode = null;
-	protected Node<String, SIPServerTransaction> serverTxRootNode = null;
 	
 	/**
 	 * 
 	 */
 	public MobicentsSipCache() {}
 
+	/**
+	 * Creates a new {@link SIPDialogCacheData} instance for the specified dialog id.
+	 * @param dialogId
+	 * @return
+	 */
+	private SIPDialogCacheData getSipDialogCacheData(String dialogId) {
+		return new SIPDialogCacheData(Fqn.fromElements(SipStackImpl.DIALOG_ROOT,dialogId), cache);
+	}
+	
 	/* (non-Javadoc)
 	 * @see org.mobicents.ha.javax.sip.cache.SipCache#getDialog(java.lang.String)
 	 */
 	public SIPDialog getDialog(String dialogId) throws SipCacheException {		
-		try {
-			SIPDialogCacheData cacheData = new SIPDialogCacheData(Fqn.fromString(SipStackImpl.DIALOG_ROOT + dialogId), cache);
-			return cacheData.getSIPDialog(dialogId);			
-		} catch (CacheException e) {
-			throw new SipCacheException("A problem occured while retrieving the following dialog " + dialogId + " from Mobicents Cache", e);
-		}
+		return getSipDialogCacheData(dialogId).getSIPDialog(dialogId);			
 	}
 
 	/* (non-Javadoc)
 	 * @see org.mobicents.ha.javax.sip.cache.SipCache#putDialog(gov.nist.javax.sip.stack.SIPDialog)
 	 */
 	public void putDialog(SIPDialog dialog) throws SipCacheException {
-		SIPDialogCacheData cacheData = new SIPDialogCacheData(Fqn.fromString(SipStackImpl.DIALOG_ROOT + dialog.getDialogId()), cache);
-		Transaction tx = null;
-		try {
-			tx = transactionManager.getTransaction();
-			if(tx == null) {
-				transactionManager.begin();
-				tx = transactionManager.getTransaction();				
-			}				
-			cacheData.create();
-			cacheData.putSIPDialog(dialog);
-			if(tx != null) {
-				tx.commit();
-			}
-		} catch (Exception e) {
-			if(tx != null) {
-				try { tx.rollback(); } catch(Throwable t) {}
-			}
-			throw new SipCacheException("A problem occured while putting the following dialog " + dialog.getDialogId() + "  into Mobicents Cache", e);
-		} 
+		final SIPDialogCacheData cacheData = getSipDialogCacheData(dialog.getDialogId());
+		cacheData.create();
+		cacheData.putSIPDialog(dialog);
 	}
 
 	/* (non-Javadoc)
 	 * @see org.mobicents.ha.javax.sip.cache.SipCache#removeDialog(java.lang.String)
 	 */
 	public void removeDialog(String dialogId) throws SipCacheException {
-		SIPDialogCacheData cacheData = new SIPDialogCacheData(Fqn.fromString(SipStackImpl.DIALOG_ROOT + dialogId), cache);
-		Transaction tx = null;
-		try {
-			tx = transactionManager.getTransaction();
-			if(tx == null) {
-				transactionManager.begin();
-				tx = transactionManager.getTransaction();				
-			}				
-			cacheData.remove();
-			if(tx != null) {
-				tx.commit();
-			}
-		} catch (Exception e) {
-			if(tx != null) {
-				try { tx.rollback(); } catch(Throwable t) {}
-			}
-			throw new SipCacheException("A problem occured while putting the following dialog " + dialogId + "  into Mobicents Cache", e);
-		} 
+		getSipDialogCacheData(dialogId).remove();
 	}
 
 	/* (non-Javadoc)
@@ -145,42 +96,29 @@ public class MobicentsSipCache implements SipCache {
 		this.configProperties = configurationProperties;
 	}
 
-	public void init() throws SipCacheException {			
-		try {			
-			if(configProperties.getProperty(MobicentsSipCache.STANDALONE) == null || "false".equals(configProperties.getProperty(MobicentsSipCache.STANDALONE))) {
-				CacheManagerLocator locator = CacheManagerLocator.getCacheManagerLocator();
-				// Locator accepts as param a set of JNDI properties to help in lookup;
-				// this isn't necessary inside the AS
-				CacheManager cacheManager = locator.getCacheManager(null);
-				if (clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_INFO)) {
-					clusteredSipStack.getStackLogger().logInfo(
-							"Mobicents JAIN SIP JBoss Cache Manager instance : " + cacheManager);
-				}
-				cache = new MobicentsCache(cacheManager, configProperties.getProperty(CACHE_NAME,DEFAULT_CACHE_NAME));
-			} else {
-				String pojoConfigurationPath = configProperties.getProperty(JBOSS_CACHE_CONFIG_PATH, DEFAULT_FILE_CONFIG_PATH);
-				if (clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_INFO)) {
-					clusteredSipStack.getStackLogger().logInfo(
-							"Mobicents JAIN SIP JBoss Cache Configuration path is : " + pojoConfigurationPath);
-				}
-				cache = new MobicentsCache(pojoConfigurationPath);
-			}									
-			cacheListener = new JBossJainSipCacheListener(clusteredSipStack);
-			cache.getJBossCache().addCacheListener(cacheListener);			
-		} catch (Exception e) {
-			throw new SipCacheException("Couldn't init Mobicents Cache", e);
-		}
-		SIPDialogCacheData dialogRoot = new SIPDialogCacheData(Fqn.fromString(SipStackImpl.DIALOG_ROOT), cache);
-		dialogRoot.create();
-	}
+	/*
+	 * (non-Javadoc)
+	 * @see org.mobicents.ha.javax.sip.cache.SipCache#init()
+	 */
+	public abstract void init() throws SipCacheException;
+	
+	/*
+	 * (non-Javadoc)
+	 * @see org.mobicents.ha.javax.sip.cache.SipCache#start()
+	 */
+	public abstract void start() throws SipCacheException;
 
-	public void start() throws SipCacheException {
-		// Cache has already been starte, nothing to do here
-		transactionManager = cache.getJBossCache().getConfiguration().getRuntimeConfig().getTransactionManager();
-	}
+	/*
+	 * (non-Javadoc)
+	 * @see org.mobicents.ha.javax.sip.cache.SipCache#stop()
+	 */
+	public abstract void stop() throws SipCacheException;
 
-	public void stop() throws SipCacheException {
-		cache.stop();		
+	/*
+	 * (non-Javadoc)
+	 * @see org.mobicents.ha.javax.sip.cache.SipCache#inLocalMode()
+	 */
+	public boolean inLocalMode() {
+		return cache.isLocalMode();
 	}
-
 }
