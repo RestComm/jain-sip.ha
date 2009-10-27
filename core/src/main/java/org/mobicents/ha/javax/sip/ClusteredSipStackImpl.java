@@ -184,7 +184,7 @@ public abstract class ClusteredSipStackImpl extends gov.nist.javax.sip.SipStackI
 
 	@Override
 	public void putDialog(SIPDialog dialog) {	
-		if (!sipCache.inLocalMode() && DialogState.CONFIRMED.equals(dialog.getState())) {
+		if (!sipCache.inLocalMode() && DialogState.CONFIRMED == dialog.getState()) {
 			// only replicate dialogs in confirmed state
 			putDialogIntoDistributedCache(dialog);
 		}
