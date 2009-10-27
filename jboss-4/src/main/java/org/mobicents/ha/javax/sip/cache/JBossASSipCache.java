@@ -149,44 +149,53 @@ public class JBossASSipCache implements SipCache {
 			String str = "Could not access JBoss AS TreeCache service "
 					+ (objectName == null ? "<null>" : objectName)
 					+ " for SIP Dialog clustering";
-			clusteredSipStack.getStackLogger().logDebug(str);
+			clusteredSipStack.getStackLogger().logError(str);
 			throw new SipCacheException(str, t);
 		}
 	}
 	
 	public void init() throws SipCacheException {
-		pojoCache = getPojoCacheMBean("jboss.cache:service=TomcatClusteringCache");
+		try {
+			pojoCache = getPojoCacheMBean("jboss.cache:service=TomcatClusteringCache");
+			treeCacheListener = new JBossJainSipCacheListener(clusteredSipStack);
+			pojoCache.addTreeCacheListener(treeCacheListener);
+		} catch (SipCacheException e) {
+			clusteredSipStack.getStackLogger().logError("Could not initialize the cache, defaulting to local mode");
+			isLocal = true;
+		}
 //		try {
 //			pojoCache.createService();
 //		} catch (Exception e) {
 //			throw new SipCacheException("Unexpected exception while creating the pojo cache", e);
-//		}
-		treeCacheListener = new JBossJainSipCacheListener(clusteredSipStack);
-		pojoCache.addTreeCacheListener(treeCacheListener);
+//		}		
 	}
 
 	public void start() throws SipCacheException {
-		try {
-//			pojoCache.start();
-			transactionManager = pojoCache.getTransactionManager();
-		} catch (Exception e) {
-			throw new SipCacheException("Couldn't start the TreeCache", e);
-		}		
-		if (clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_INFO)) {
-			clusteredSipStack.getStackLogger().logInfo(
-					"Mobicents JAIN SIP Tree Cache started, state: " + pojoCache.getStateString() + 
-					", Mode: " + pojoCache.getCacheMode());
+		if(!isLocal) {
+			try {
+	//			pojoCache.start();
+				transactionManager = pojoCache.getTransactionManager();
+			} catch (Exception e) {
+				throw new SipCacheException("Couldn't start the TreeCache", e);
+			}		
+			if (clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_INFO)) {
+				clusteredSipStack.getStackLogger().logInfo(
+						"Mobicents JAIN SIP Tree Cache started, state: " + pojoCache.getStateString() + 
+						", Mode: " + pojoCache.getCacheMode());
+			}
 		}
 	}
 
 	public void stop() throws SipCacheException {
-//		pojoCache.stopService();
-		if (clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_INFO)) {
-			clusteredSipStack.getStackLogger().logInfo(
-					"Mobicents JAIN SIP Tree Cache stopped, state: " + pojoCache.getStateString() + 
-					", Mode: " + pojoCache.getCacheMode());
+		if(!isLocal) {
+	//		pojoCache.stopService();
+			if (clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_INFO)) {
+				clusteredSipStack.getStackLogger().logInfo(
+						"Mobicents JAIN SIP Tree Cache stopped, state: " + pojoCache.getStateString() + 
+						", Mode: " + pojoCache.getCacheMode());
+			}
+	//		pojoCache.destroyService();
 		}
-//		pojoCache.destroyService();
 	}
 
 	public boolean inLocalMode() {		
