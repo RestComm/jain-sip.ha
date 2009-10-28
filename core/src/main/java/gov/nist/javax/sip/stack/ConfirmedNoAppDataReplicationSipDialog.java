@@ -35,19 +35,19 @@ import org.mobicents.ha.javax.sip.cache.SipCacheException;
  * @author jean.deruelle@gmail.com
  *
  */
-public class HASipDialog extends SIPDialog {	
+public class ConfirmedNoAppDataReplicationSipDialog extends SIPDialog {	
 	
 	private static final long serialVersionUID = -779892668482217624L;
 
-	public HASipDialog(SIPTransaction transaction) {
+	public ConfirmedNoAppDataReplicationSipDialog(SIPTransaction transaction) {
 		super(transaction);
 	}
 	
-	public HASipDialog(SIPClientTransaction transaction, SIPResponse sipResponse) {
+	public ConfirmedNoAppDataReplicationSipDialog(SIPClientTransaction transaction, SIPResponse sipResponse) {
 		super(transaction, sipResponse);
 	}
 	
-    public HASipDialog(SipProviderImpl sipProvider, SIPResponse sipResponse) {
+    public ConfirmedNoAppDataReplicationSipDialog(SipProviderImpl sipProvider, SIPResponse sipResponse) {
 		super(sipProvider, sipResponse);
 	}	
 
@@ -74,13 +74,12 @@ public class HASipDialog extends SIPDialog {
 	@Override
 	public void setApplicationData(Object applicationData) {
 		super.setApplicationData(applicationData);
-		replicateState();
 	}
 	
 	/*
 	 * 
 	 */
-	private void replicateState() {
+	void replicateState() {
 		final DialogState dialogState = getState();
 		if (dialogState == DialogState.CONFIRMED) {
 			try {

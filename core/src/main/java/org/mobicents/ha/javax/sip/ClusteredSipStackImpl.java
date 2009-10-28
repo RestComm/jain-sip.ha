@@ -23,9 +23,10 @@ package org.mobicents.ha.javax.sip;
 
 import gov.nist.core.Separators;
 import gov.nist.core.StackLogger;
+import gov.nist.javax.sip.SipProviderImpl;
 import gov.nist.javax.sip.message.SIPRequest;
 import gov.nist.javax.sip.message.SIPResponse;
-import gov.nist.javax.sip.stack.HASipDialog;
+import gov.nist.javax.sip.stack.ConfirmedReplicationSipDialog;
 import gov.nist.javax.sip.stack.SIPClientTransaction;
 import gov.nist.javax.sip.stack.SIPDialog;
 import gov.nist.javax.sip.stack.SIPTransaction;
@@ -59,6 +60,7 @@ import org.mobicents.ha.javax.sip.cache.SipCacheFactory;
 public abstract class ClusteredSipStackImpl extends gov.nist.javax.sip.SipStackImpl implements ClusteredSipStack {	
 	private SipCache sipCache = null;
 	private LoadBalancerHeartBeatingService loadBalancerHeartBeatingService = null;
+	private ReplicationStrategy replicationStrategy = ReplicationStrategy.ConfirmedDialog;
 	
 	public ClusteredSipStackImpl(Properties configurationProperties) throws PeerUnavailableException {
 		super(configurationProperties);
@@ -82,6 +84,13 @@ public abstract class ClusteredSipStackImpl extends gov.nist.javax.sip.SipStackI
 		}
 		if(loadBalancerHeartBeatingService != null) {
 			loadBalancerHeartBeatingService.init(this, configurationProperties);
+		}
+		String replicationStrategyProperty = configurationProperties.getProperty(ClusteredSipStack.REPLICATION_STRATEGY_PROPERTY);
+		if(replicationStrategyProperty != null) {
+			replicationStrategy = ReplicationStrategy.valueOf(replicationStrategyProperty);
+		}
+		if(getStackLogger().isLoggingEnabled(StackLogger.TRACE_INFO)) {
+			getStackLogger().logInfo("Replication Strategy is " + replicationStrategy);
 		}
 	}		
 	
@@ -122,11 +131,11 @@ public abstract class ClusteredSipStackImpl extends gov.nist.javax.sip.SipStackI
 				final String dialogId = ((SIPRequest) transaction.getRequest()).getDialogId(false);
 				retval = this.earlyDialogTable.get(dialogId);
 				if (retval == null || (retval.getState() != null && retval.getState() != DialogState.EARLY)) {
-					retval = new HASipDialog(transaction);
+					retval = HASipDialogFactory.createHASipDialog(replicationStrategy, transaction);
 					this.earlyDialogTable.put(dialogId, retval);
 				}
 			} else {
-				retval = new HASipDialog(transaction);
+				retval = HASipDialogFactory.createHASipDialog(replicationStrategy, transaction);
 			}
 			return retval;
 		}
@@ -143,11 +152,17 @@ public abstract class ClusteredSipStackImpl extends gov.nist.javax.sip.SipStackI
 			if (retval != null && sipResponse.isFinalResponse()) {
 				this.earlyDialogTable.remove(dialogId);
 			} else {
-				retval = new HASipDialog(transaction, sipResponse);
+				retval = HASipDialogFactory.createHASipDialog(replicationStrategy, transaction, sipResponse);
 			}
 			return retval;
 		}
     }
+	
+	@Override
+	public SIPDialog createDialog(SipProviderImpl sipProvider,
+			SIPResponse sipResponse) {
+		return HASipDialogFactory.createHASipDialog(replicationStrategy, sipProvider, sipResponse);
+	}
 
 	
 	@Override
@@ -216,7 +231,7 @@ public abstract class ClusteredSipStackImpl extends gov.nist.javax.sip.SipStackI
 			getStackLogger().logError("sipStack " + this + " problem getting dialog " + dialogId + " from the distributed cache", e);
 		}
 		if(sipDialog != null) {			
-			((HASipDialog)sipDialog).initAfterLoad(this);
+			((ConfirmedReplicationSipDialog)sipDialog).initAfterLoad(this);
 		}
 		return sipDialog;
 	}

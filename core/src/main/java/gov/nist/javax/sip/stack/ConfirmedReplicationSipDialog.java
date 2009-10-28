@@ -19,42 +19,36 @@
  * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
-package org.mobicents.ha.javax.sip;
+package gov.nist.javax.sip.stack;
 
-import gov.nist.core.StackLogger;
-import gov.nist.javax.sip.stack.SIPDialog;
-
-import javax.sip.SipStack;
-
-import org.mobicents.ha.javax.sip.cache.SipCache;
+import gov.nist.javax.sip.SipProviderImpl;
+import gov.nist.javax.sip.message.SIPResponse;
 
 /**
- * This interface defines the method to be implemented by a SipStack that can be clustered.
+ * Extends the standard NIST SIP Stack Dialog so that it gets replicated every time there is a State change
  * 
  * @author jean.deruelle@gmail.com
  *
  */
-public interface ClusteredSipStack extends SipStack {	
-	public static final String CACHE_CLASS_NAME_PROPERTY = "org.mobicents.ha.javax.sip.CACHE_CLASS_NAME";
-	public static final String REPLICATION_STRATEGY_PROPERTY = "org.mobicents.ha.javax.sip.REPLICATION_STRATEGY";
+public class ConfirmedReplicationSipDialog extends ConfirmedNoAppDataReplicationSipDialog {	
 	
-	SIPDialog getDialog(String dialogId);	
+	private static final long serialVersionUID = -779892668482217624L;
 
-	void putDialog(SIPDialog dialog);
-		
-	void removeDialog(SIPDialog dialog);		
-
-	/**
-	 * @param sipCache the sipCache to set
-	 */
-	void setSipCache(SipCache sipCache);
-
-	/**
-	 * @return the sipCache
-	 */
-	SipCache getSipCache();
+	public ConfirmedReplicationSipDialog(SIPTransaction transaction) {
+		super(transaction);
+	}
 	
-	StackLogger getStackLogger();
+	public ConfirmedReplicationSipDialog(SIPClientTransaction transaction, SIPResponse sipResponse) {
+		super(transaction, sipResponse);
+	}
 	
-	LoadBalancerHeartBeatingService getLoadBalancerHeartBeatingService();
+    public ConfirmedReplicationSipDialog(SipProviderImpl sipProvider, SIPResponse sipResponse) {
+		super(sipProvider, sipResponse);
+	}	
+
+	@Override
+	public void setApplicationData(Object applicationData) {
+		super.setApplicationData(applicationData);
+		replicateState();
+	}	
 }
