@@ -23,6 +23,7 @@ package org.mobicents.ha.javax.sip.cache;
 
 import gov.nist.core.StackLogger;
 
+import org.jboss.cache.Fqn;
 import org.jboss.cache.notifications.annotation.CacheStarted;
 import org.jboss.cache.notifications.annotation.CacheStopped;
 import org.jboss.cache.notifications.annotation.NodeCreated;
@@ -35,6 +36,7 @@ import org.jboss.cache.notifications.event.NodeCreatedEvent;
 import org.jboss.cache.notifications.event.NodeModifiedEvent;
 import org.jboss.cache.notifications.event.NodeRemovedEvent;
 import org.mobicents.ha.javax.sip.ClusteredSipStack;
+import org.mobicents.ha.javax.sip.SipStackImpl;
 
 /**
  * Listener on the cache to be notified and update the local stack accordingly
@@ -75,26 +77,38 @@ public class JBossJainSipCacheListener {
 	
 	@NodeCreated
 	public void nodeCreated(NodeCreatedEvent nodeCreatedEvent) {		
-		if (!nodeCreatedEvent.isOriginLocal() && clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+		if(nodeCreatedEvent.isOriginLocal()) {
+			return ;
+		}
+		final Fqn fqn = nodeCreatedEvent.getFqn();
+		if (!nodeCreatedEvent.isOriginLocal() && clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG) && fqn.get(0).toString().indexOf(SipStackImpl.DIALOG_ROOT) != -1) {
 			clusteredSipStack.getStackLogger().logDebug("sipStack " + clusteredSipStack + 
-					" Node created : " + nodeCreatedEvent.getFqn());
+					" Node created : " + fqn);
 		}
 	}
 
 	@NodeModified
 	public void nodeModified(NodeModifiedEvent nodeModifiedEvent) {
-		if (!nodeModifiedEvent.isOriginLocal() && clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+		if(nodeModifiedEvent.isOriginLocal()) {
+			return ;
+		}
+		final Fqn fqn = nodeModifiedEvent.getFqn();
+		if (!nodeModifiedEvent.isOriginLocal() && clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG) && fqn.get(0).toString().indexOf(SipStackImpl.DIALOG_ROOT) != -1) {
 			clusteredSipStack.getStackLogger().logDebug("sipStack " + clusteredSipStack + 
-					" Node modified : " + nodeModifiedEvent.getFqn());
+					" Node modified : " + fqn);
 		}
 		
 	}
 
 	@NodeRemoved
 	public void nodeRemoved(NodeRemovedEvent nodeRemovedEvent) {
-		if (!nodeRemovedEvent.isOriginLocal() && clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+		if(nodeRemovedEvent.isOriginLocal()) {
+			return ;
+		}
+		final Fqn fqn = nodeRemovedEvent.getFqn();
+		if (!nodeRemovedEvent.isOriginLocal() && clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG) && fqn.get(0).toString().indexOf(SipStackImpl.DIALOG_ROOT) != -1) {
 			clusteredSipStack.getStackLogger().logDebug("sipStack " + clusteredSipStack + 
-					" Node removed : " + nodeRemovedEvent.getFqn());
+					" Node removed : " + fqn);
 		}		
 	}
 

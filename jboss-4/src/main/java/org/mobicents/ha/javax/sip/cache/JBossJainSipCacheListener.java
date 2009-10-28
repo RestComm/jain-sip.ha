@@ -28,6 +28,7 @@ import org.jboss.cache.TreeCache;
 import org.jboss.cache.TreeCacheListener;
 import org.jgroups.View;
 import org.mobicents.ha.javax.sip.ClusteredSipStack;
+import org.mobicents.ha.javax.sip.SipStackImpl;
 
 /**
  * Listener on the cache to be notified and update the local stack accordingly
@@ -73,7 +74,7 @@ public class JBossJainSipCacheListener implements TreeCacheListener {
 	 * @see org.jboss.cache.TreeCacheListener#nodeCreated(org.jboss.cache.Fqn)
 	 */
 	public void nodeCreated(Fqn fqn) {
-		if (clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+		if (clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG) && fqn.get(0).toString().indexOf(SipStackImpl.DIALOG_ROOT) != -1) {
 			clusteredSipStack.getStackLogger().logDebug("sipStack " + clusteredSipStack + 
 					" Node created : " + fqn);
 		}
@@ -83,7 +84,7 @@ public class JBossJainSipCacheListener implements TreeCacheListener {
 	 * @see org.jboss.cache.TreeCacheListener#nodeEvicted(org.jboss.cache.Fqn)
 	 */
 	public void nodeEvicted(Fqn fqn) {
-		if (clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+		if (clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG) && fqn.get(0).toString().indexOf(SipStackImpl.DIALOG_ROOT) != -1) {
 			clusteredSipStack.getStackLogger().logDebug("sipStack " + clusteredSipStack + 
 					" Node evicted : " + fqn);
 		}
@@ -93,7 +94,7 @@ public class JBossJainSipCacheListener implements TreeCacheListener {
 	 * @see org.jboss.cache.TreeCacheListener#nodeLoaded(org.jboss.cache.Fqn)
 	 */
 	public void nodeLoaded(Fqn fqn) {
-		if (clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+		if (clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG) && fqn.get(0).toString().indexOf(SipStackImpl.DIALOG_ROOT) != -1) {
 			clusteredSipStack.getStackLogger().logDebug("sipStack " + clusteredSipStack + 
 					" Node loaded : " + fqn);
 		}
@@ -103,7 +104,7 @@ public class JBossJainSipCacheListener implements TreeCacheListener {
 	 * @see org.jboss.cache.TreeCacheListener#nodeModified(org.jboss.cache.Fqn)
 	 */
 	public void nodeModified(Fqn fqn) {
-		if (clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+		if (clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG) && fqn.get(0).toString().indexOf(SipStackImpl.DIALOG_ROOT) != -1) {
 			clusteredSipStack.getStackLogger().logDebug("sipStack " + clusteredSipStack + 
 					" Node modified : " + fqn);
 		}
@@ -114,7 +115,7 @@ public class JBossJainSipCacheListener implements TreeCacheListener {
 	 * @see org.jboss.cache.TreeCacheListener#nodeRemoved(org.jboss.cache.Fqn)
 	 */
 	public void nodeRemoved(Fqn fqn) {
-		if (clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+		if (clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG) && fqn.get(0).toString().indexOf(SipStackImpl.DIALOG_ROOT) != -1) {
 			clusteredSipStack.getStackLogger().logDebug("sipStack " + clusteredSipStack + 
 					" Node removed : " + fqn);
 		}		
@@ -124,7 +125,7 @@ public class JBossJainSipCacheListener implements TreeCacheListener {
 	 * @see org.jboss.cache.TreeCacheListener#nodeVisited(org.jboss.cache.Fqn)
 	 */
 	public void nodeVisited(Fqn fqn) {
-		if (clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+		if (clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG) && fqn.get(0).toString().indexOf(SipStackImpl.DIALOG_ROOT) != -1) {
 			clusteredSipStack.getStackLogger().logDebug("sipStack " + clusteredSipStack + 
 					" Node visited : " + fqn);
 		}
