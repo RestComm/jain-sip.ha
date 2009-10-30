@@ -25,7 +25,7 @@ import gov.nist.javax.sip.SipProviderImpl;
 import gov.nist.javax.sip.message.SIPResponse;
 
 /**
- * Extends the standard NIST SIP Stack Dialog so that it gets replicated every time there is a State change
+ * Extends the ConfirmedNoAppDataReplicationSipDialog class and also replicate the transaction application data when it changes
  * 
  * @author jean.deruelle@gmail.com
  *
@@ -52,7 +52,11 @@ public class ConfirmedReplicationSipDialog extends ConfirmedNoAppDataReplication
 	public void setApplicationData(Object applicationData) {
 		this.appData = applicationData;
 		replicateState();
-	}	
+	}
+	
+	public Object getApplicationDataToReplicate() {
+		return appData;
+	}
 	
 	@Override
 	public Object getApplicationData() {

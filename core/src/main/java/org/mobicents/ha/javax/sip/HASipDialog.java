@@ -21,42 +21,10 @@
  */
 package org.mobicents.ha.javax.sip;
 
-import gov.nist.core.StackLogger;
-import gov.nist.javax.sip.stack.SIPDialog;
-
-import javax.sip.SipStack;
-
-import org.mobicents.ha.javax.sip.cache.SipCache;
-
 /**
- * This interface defines the method to be implemented by a SipStack that can be clustered.
- * 
  * @author jean.deruelle@gmail.com
  *
  */
-public interface ClusteredSipStack extends SipStack {	
-	public static final String CACHE_CLASS_NAME_PROPERTY = "org.mobicents.ha.javax.sip.CACHE_CLASS_NAME";
-	public static final String REPLICATION_STRATEGY_PROPERTY = "org.mobicents.ha.javax.sip.REPLICATION_STRATEGY";
-	
-	SIPDialog getDialog(String dialogId);	
-
-	void putDialog(SIPDialog dialog);
-		
-	void removeDialog(SIPDialog dialog);		
-
-	/**
-	 * @param sipCache the sipCache to set
-	 */
-	void setSipCache(SipCache sipCache);
-
-	/**
-	 * @return the sipCache
-	 */
-	SipCache getSipCache();
-	
-	StackLogger getStackLogger();
-	
-	LoadBalancerHeartBeatingService getLoadBalancerHeartBeatingService();
-
-	ReplicationStrategy getReplicationStrategy();
+public interface HASipDialog {
+	void initAfterLoad(ClusteredSipStack clusteredSipStack);
 }

@@ -22,8 +22,12 @@
 package org.mobicents.ha.javax.sip.cache;
 
 import gov.nist.core.StackLogger;
+import gov.nist.javax.sip.SipProviderImpl;
+import gov.nist.javax.sip.message.SIPResponse;
+import gov.nist.javax.sip.stack.AbstractHASipDialog;
 import gov.nist.javax.sip.stack.SIPDialog;
 
+import java.util.Map;
 import java.util.Properties;
 
 import javax.naming.Context;
@@ -34,6 +38,7 @@ import org.jboss.cache.CacheException;
 import org.jboss.cache.PropertyConfigurator;
 import org.jboss.cache.TreeCache;
 import org.mobicents.ha.javax.sip.ClusteredSipStack;
+import org.mobicents.ha.javax.sip.HASipDialogFactory;
 import org.mobicents.ha.javax.sip.SipStackImpl;
 
 /**
@@ -45,6 +50,8 @@ import org.mobicents.ha.javax.sip.SipStackImpl;
  *
  */
 public class JBossTreeSipCache implements SipCache {
+	private static final String APPDATA = "APPDATA";
+	private static final String METADATA = "METADATA";
 	public static final String TREE_CACHE_CONFIG_PATH = "org.mobicents.ha.javax.sip.TREE_CACHE_CONFIG_PATH";
 	public static final String DEFAULT_FILE_CONFIG_PATH = "META-INF/replSync-service.xml"; 
 	
@@ -64,7 +71,18 @@ public class JBossTreeSipCache implements SipCache {
 	 */
 	public SIPDialog getDialog(String dialogId) throws SipCacheException {		
 		try {
-			return (SIPDialog) treeCache.get(SipStackImpl.DIALOG_ROOT, dialogId);
+			Map<String, Object> dialogMetaData = (Map<String, Object>) treeCache.get(SipStackImpl.DIALOG_ROOT + dialogId, METADATA);
+			Object dialogAppData = treeCache.get(SipStackImpl.DIALOG_ROOT + dialogId, APPDATA);
+			
+			AbstractHASipDialog haSipDialog = null; 
+			if(dialogMetaData != null) {
+				haSipDialog = HASipDialogFactory.createHASipDialog(clusteredSipStack.getReplicationStrategy(), (SipProviderImpl)clusteredSipStack.getSipProviders().next(), (SIPResponse) dialogMetaData.get(AbstractHASipDialog.LAST_RESPONSE));
+				haSipDialog.setDialogId(dialogId);
+				haSipDialog.setMetaDataToReplicate(dialogMetaData);
+				haSipDialog.setApplicationDataToReplicate(dialogAppData);
+			}
+			
+			return haSipDialog;
 		} catch (CacheException e) {
 			throw new SipCacheException("A problem occured while retrieving the following dialog " + dialogId + " from the TreeCache", e);
 		}
@@ -82,7 +100,15 @@ public class JBossTreeSipCache implements SipCache {
 			if(tx != null) {
 				tx.begin();
 			}
-			treeCache.put(SipStackImpl.DIALOG_ROOT, dialog.getDialogId(), dialog);
+			final AbstractHASipDialog haSipDialog = (AbstractHASipDialog) dialog;
+			final Map<String, Object> dialogMetaData = haSipDialog.getMetaDataToReplicate();
+			if(dialogMetaData != null) {
+				treeCache.put(SipStackImpl.DIALOG_ROOT + dialog.getDialogId(), METADATA, dialogMetaData);
+			}
+			final Object dialogAppData = haSipDialog.getApplicationDataToReplicate();
+			if(dialogAppData != null) {
+				treeCache.put(SipStackImpl.DIALOG_ROOT + dialog.getDialogId(), APPDATA, dialogAppData);
+			}
 			if(tx != null) {
 				tx.commit();
 			}
@@ -106,7 +132,7 @@ public class JBossTreeSipCache implements SipCache {
 			if(tx != null) {
 				tx.begin();
 			}
-			treeCache.remove(SipStackImpl.DIALOG_ROOT, dialogId);
+			treeCache.remove(SipStackImpl.DIALOG_ROOT + dialogId);
 			if(tx != null) {
 				tx.commit();
 			}

@@ -23,6 +23,7 @@ package org.mobicents.ha.javax.sip;
 
 import gov.nist.javax.sip.SipProviderImpl;
 import gov.nist.javax.sip.message.SIPResponse;
+import gov.nist.javax.sip.stack.AbstractHASipDialog;
 import gov.nist.javax.sip.stack.ConfirmedNoAppDataReplicationSipDialog;
 import gov.nist.javax.sip.stack.ConfirmedReplicationSipDialog;
 import gov.nist.javax.sip.stack.SIPClientTransaction;
@@ -36,7 +37,7 @@ import gov.nist.javax.sip.stack.SIPTransaction;
  */
 public class HASipDialogFactory {
 
-	public static SIPDialog createHASipDialog(ReplicationStrategy replicationStrategy, SIPTransaction transaction) {
+	public static AbstractHASipDialog createHASipDialog(ReplicationStrategy replicationStrategy, SIPTransaction transaction) {
 		switch (replicationStrategy) {
 		case ConfirmedDialog:
 			return new ConfirmedReplicationSipDialog(transaction);
@@ -47,7 +48,7 @@ public class HASipDialogFactory {
 		}
 	}
 	
-	public static SIPDialog createHASipDialog(ReplicationStrategy replicationStrategy, SIPClientTransaction transaction, SIPResponse sipResponse) {
+	public static AbstractHASipDialog createHASipDialog(ReplicationStrategy replicationStrategy, SIPClientTransaction transaction, SIPResponse sipResponse) {
 		switch (replicationStrategy) {
 		case ConfirmedDialog:
 			return new ConfirmedReplicationSipDialog(transaction, sipResponse);
@@ -58,7 +59,7 @@ public class HASipDialogFactory {
 		}
 	}
 	
-	public static SIPDialog createHASipDialog(ReplicationStrategy replicationStrategy, SipProviderImpl sipProvider, SIPResponse sipResponse) {
+	public static AbstractHASipDialog createHASipDialog(ReplicationStrategy replicationStrategy, SipProviderImpl sipProvider, SIPResponse sipResponse) {
 		switch (replicationStrategy) {
 		case ConfirmedDialog:
 			return new ConfirmedReplicationSipDialog(sipProvider, sipResponse);

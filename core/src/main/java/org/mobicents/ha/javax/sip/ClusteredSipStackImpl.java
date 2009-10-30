@@ -231,7 +231,7 @@ public abstract class ClusteredSipStackImpl extends gov.nist.javax.sip.SipStackI
 			getStackLogger().logError("sipStack " + this + " problem getting dialog " + dialogId + " from the distributed cache", e);
 		}
 		if(sipDialog != null) {			
-			((ConfirmedReplicationSipDialog)sipDialog).initAfterLoad(this);
+			((HASipDialog)sipDialog).initAfterLoad(this);
 		}
 		return sipDialog;
 	}
@@ -284,5 +284,9 @@ public abstract class ClusteredSipStackImpl extends gov.nist.javax.sip.SipStackI
 	
 	public LoadBalancerHeartBeatingService getLoadBalancerHeartBeatingService() {
 		return loadBalancerHeartBeatingService;
+	}
+	
+	public ReplicationStrategy getReplicationStrategy() {
+		return replicationStrategy;
 	}
 }

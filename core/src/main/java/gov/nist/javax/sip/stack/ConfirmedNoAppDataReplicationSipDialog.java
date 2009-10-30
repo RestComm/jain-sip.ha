@@ -21,21 +21,21 @@
  */
 package gov.nist.javax.sip.stack;
 
-import javax.sip.DialogState;
-
 import gov.nist.javax.sip.SipProviderImpl;
 import gov.nist.javax.sip.message.SIPResponse;
+
+import javax.sip.DialogState;
 
 import org.mobicents.ha.javax.sip.ClusteredSipStack;
 import org.mobicents.ha.javax.sip.cache.SipCacheException;
 
 /**
- * Extends the standard NIST SIP Stack Dialog so that it gets replicated every time there is a State change
+ * Extends the standard NIST SIP Stack Dialog so that it gets replicated when the dialog state is confirmed
  * 
  * @author jean.deruelle@gmail.com
  *
  */
-public class ConfirmedNoAppDataReplicationSipDialog extends SIPDialog {	
+public class ConfirmedNoAppDataReplicationSipDialog extends AbstractHASipDialog {	
 	
 	private static final long serialVersionUID = -779892668482217624L;
 
@@ -49,32 +49,12 @@ public class ConfirmedNoAppDataReplicationSipDialog extends SIPDialog {
 	
     public ConfirmedNoAppDataReplicationSipDialog(SipProviderImpl sipProvider, SIPResponse sipResponse) {
 		super(sipProvider, sipResponse);
-	}	
-
-	/**
-	 * Updates the local dialog transient attributes that were not serialized during the replication 
-	 * @param sipStackImpl the sip Stack Impl that reloaded this dialog from the distributed cache
-	 */
-	public void initAfterLoad(ClusteredSipStack sipStackImpl) {
-		setSipProvider((SipProviderImpl) sipStackImpl.getSipProviders().next());
-		setStack((SIPTransactionStack)sipStackImpl);
-	}		
-
-	@Override
-	public void setState(int state) {
-		DialogState oldState = getState();
-		super.setState(state);
-		DialogState newState = getState();
-		// we replicate only if the state has really changed
-		if(!newState.equals(oldState)){
-			replicateState();
-		}
-	}
+	}				
 	
 	/*
 	 * 
 	 */
-	void replicateState() {
+	protected void replicateState() {
 		final DialogState dialogState = getState();
 		if (dialogState == DialogState.CONFIRMED) {
 			try {
@@ -83,5 +63,9 @@ public class ConfirmedNoAppDataReplicationSipDialog extends SIPDialog {
 				getStack().getStackLogger().logError("problem storing dialog " + getDialogId() + " into the distributed cache", e);
 			}
 		}
+	}
+	
+	public Object getApplicationDataToReplicate() {
+		return null;
 	}
 }

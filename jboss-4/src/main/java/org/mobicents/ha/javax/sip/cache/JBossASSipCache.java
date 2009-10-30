@@ -22,8 +22,12 @@
 package org.mobicents.ha.javax.sip.cache;
 
 import gov.nist.core.StackLogger;
+import gov.nist.javax.sip.SipProviderImpl;
+import gov.nist.javax.sip.message.SIPResponse;
+import gov.nist.javax.sip.stack.AbstractHASipDialog;
 import gov.nist.javax.sip.stack.SIPDialog;
 
+import java.util.Map;
 import java.util.Properties;
 
 import javax.management.ObjectName;
@@ -33,6 +37,7 @@ import org.jboss.cache.CacheException;
 import org.jboss.cache.aop.PojoCacheMBean;
 import org.jboss.mx.util.MBeanProxyExt;
 import org.mobicents.ha.javax.sip.ClusteredSipStack;
+import org.mobicents.ha.javax.sip.HASipDialogFactory;
 import org.mobicents.ha.javax.sip.SipStackImpl;
 
 /**
@@ -43,6 +48,9 @@ import org.mobicents.ha.javax.sip.SipStackImpl;
  *
  */
 public class JBossASSipCache implements SipCache {
+	private static final String APPDATA = "APPDATA";
+	private static final String METADATA = "METADATA";
+	
 	ClusteredSipStack clusteredSipStack = null;
 	Properties configProperties = null;	
 	
@@ -50,17 +58,24 @@ public class JBossASSipCache implements SipCache {
 	protected PojoCacheMBean pojoCache;
 	protected JBossJainSipCacheListener treeCacheListener;
 	private boolean isLocal = false;
-	/**
-	 * 
-	 */
-	public JBossASSipCache() {}
 
 	/* (non-Javadoc)
 	 * @see org.mobicents.ha.javax.sip.cache.SipCache#getDialog(java.lang.String)
 	 */
 	public SIPDialog getDialog(String dialogId) throws SipCacheException {		
 		try {
-			return (SIPDialog) pojoCache.get(SipStackImpl.DIALOG_ROOT, dialogId);
+			Map<String, Object> dialogMetaData = (Map<String, Object>) pojoCache.get(SipStackImpl.DIALOG_ROOT + dialogId, METADATA);
+			Object dialogAppData = pojoCache.get(SipStackImpl.DIALOG_ROOT + dialogId, APPDATA);
+			
+			AbstractHASipDialog haSipDialog = null; 
+			if(dialogMetaData != null) {
+				haSipDialog = HASipDialogFactory.createHASipDialog(clusteredSipStack.getReplicationStrategy(), (SipProviderImpl)clusteredSipStack.getSipProviders().next(), (SIPResponse) dialogMetaData.get(AbstractHASipDialog.LAST_RESPONSE));
+				haSipDialog.setDialogId(dialogId);
+				haSipDialog.setMetaDataToReplicate(dialogMetaData);
+				haSipDialog.setApplicationDataToReplicate(dialogAppData);				
+			}
+			
+			return haSipDialog;
 		} catch (CacheException e) {
 			throw new SipCacheException("A problem occured while retrieving the following dialog " + dialogId + " from the TreeCache", e);
 		}
@@ -78,7 +93,15 @@ public class JBossASSipCache implements SipCache {
 //				transactionManager.begin();
 //				tx = transactionManager.getTransaction();				
 //			}
-			pojoCache.put(SipStackImpl.DIALOG_ROOT, dialog.getDialogId(), dialog);
+			final AbstractHASipDialog haSipDialog = (AbstractHASipDialog) dialog;
+			final Map<String, Object> dialogMetaData = haSipDialog.getMetaDataToReplicate();
+			if(dialogMetaData != null) {
+				pojoCache.put(SipStackImpl.DIALOG_ROOT + dialog.getDialogId(), METADATA, dialogMetaData);
+			}
+			final Object dialogAppData = haSipDialog.getApplicationDataToReplicate();
+			if(dialogAppData != null) {
+				pojoCache.put(SipStackImpl.DIALOG_ROOT + dialog.getDialogId(), APPDATA, dialogAppData);
+			}
 //			if(tx != null) {
 //				tx.commit();
 //			}
@@ -103,7 +126,7 @@ public class JBossASSipCache implements SipCache {
 //				transactionManager.begin();
 //				tx = transactionManager.getTransaction();				
 //			}
-			pojoCache.remove(SipStackImpl.DIALOG_ROOT, dialogId);
+			pojoCache.remove(SipStackImpl.DIALOG_ROOT + dialogId);
 //			if(tx != null) {
 //				tx.commit();
 //			}
