@@ -27,7 +27,9 @@ import gov.nist.javax.sip.header.Route;
 import gov.nist.javax.sip.header.RouteList;
 import gov.nist.javax.sip.header.SIPHeader;
 import gov.nist.javax.sip.message.SIPResponse;
+import gov.nist.javax.sip.parser.EventParser;
 
+import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -35,9 +37,14 @@ import java.util.List;
 import java.util.Map;
 
 import javax.sip.DialogState;
+import javax.sip.PeerUnavailableException;
 import javax.sip.SipException;
+import javax.sip.SipFactory;
 import javax.sip.address.Address;
+import javax.sip.address.AddressFactory;
 import javax.sip.header.EventHeader;
+import javax.sip.header.HeaderFactory;
+import javax.sip.header.RouteHeader;
 
 import org.mobicents.ha.javax.sip.ClusteredSipStack;
 import org.mobicents.ha.javax.sip.HASipDialog;
@@ -58,6 +65,16 @@ public abstract class AbstractHASipDialog extends SIPDialog implements HASipDial
 	public static final String IS_REINVITE = "ir";
 	public static final String LAST_RESPONSE = "lr";
 
+	static AddressFactory addressFactory = null;
+	static HeaderFactory headerFactory = null;	
+	
+	static {		
+		try {
+			headerFactory = SipFactory.getInstance().createHeaderFactory();
+			addressFactory = SipFactory.getInstance().createAddressFactory();
+		} catch (PeerUnavailableException e) {}
+	}
+	
 	public AbstractHASipDialog(SIPTransaction transaction) {
 		super(transaction);
 	}
@@ -83,20 +100,33 @@ public abstract class AbstractHASipDialog extends SIPDialog implements HASipDial
 	}	
 	
 	public Map<String, Object> getMetaDataToReplicate() {
-		Map<String, Object> dialogMetaData = new HashMap<String, Object>();
-		dialogMetaData.put(LAST_RESPONSE, getLastResponse());
+		final Map<String, Object> dialogMetaData = new HashMap<String, Object>();
+		dialogMetaData.put(LAST_RESPONSE, getLastResponse().toString());
 		dialogMetaData.put(IS_REINVITE, isReInvite());
-		List<SIPHeader> routeList = new ArrayList<SIPHeader>();
-		Iterator<SIPHeader> it = getRouteSet();
+		final List<SIPHeader> routeList = new ArrayList<SIPHeader>();
+		final Iterator<SIPHeader> it = getRouteSet();
 		while (it.hasNext()) {
 			SIPHeader sipHeader = (SIPHeader) it.next();
 			routeList.add(sipHeader);
 		}
-		dialogMetaData.put(ROUTE_LIST, routeList.toArray(new SIPHeader[routeList.size()]));
+		final String[] routes = new String[routeList.size()];
+		int i = 0;
+		for (SIPHeader sipHeader : routeList) {
+			routes[i++] = sipHeader.getHeaderValue().toString();
+		}
+		dialogMetaData.put(ROUTE_LIST, routes);
 		dialogMetaData.put(TERMINATE_ON_BYE, isTerminatedOnBye());
-		dialogMetaData.put(REMOTE_TARGET, getRemoteTarget());
+		if(getRemoteTarget() != null) {
+			dialogMetaData.put(REMOTE_TARGET, getRemoteTarget().toString());
+		} else {
+			dialogMetaData.put(REMOTE_TARGET, null);
+		}
 		dialogMetaData.put(SERVER_TRANSACTION_FLAG, isServer());
-		dialogMetaData.put(EVENT_HEADER, getEventHeader());
+		if(getEventHeader() != null) {
+			dialogMetaData.put(EVENT_HEADER, getEventHeader().toString());
+		} else {
+			dialogMetaData.put(EVENT_HEADER, null);
+		}
 		dialogMetaData.put(B2BUA, isBackToBackUserAgent());
 		return dialogMetaData;
 	}
@@ -107,29 +137,40 @@ public abstract class AbstractHASipDialog extends SIPDialog implements HASipDial
 	
 	public void setMetaDataToReplicate(Map<String, Object> metaData) {
 		setState(DialogState._CONFIRMED);		
-		Boolean isB2BUA = (Boolean) metaData.get(B2BUA);
+		final Boolean isB2BUA = (Boolean) metaData.get(B2BUA);
 		if(isB2BUA != null) {
 			setBackToBackUserAgent(isB2BUA);
 		}
-		Boolean isReinvite = (Boolean) metaData.get(IS_REINVITE);
+		final Boolean isReinvite = (Boolean) metaData.get(IS_REINVITE);
 		if(isReinvite != null) {
 			setReInviteFlag(isReinvite);
 		}
-		EventHeader eventHeader = (EventHeader) metaData.get(EVENT_HEADER);
-		if(eventHeader != null) {
-			setEventHeader(eventHeader);
+		final String eventHeaderStringified = (String) metaData.get(EVENT_HEADER);
+		if(eventHeaderStringified != null) {
+			try {
+				final EventHeader eventHeader = (EventHeader)new EventParser(eventHeaderStringified).parse();
+				setEventHeader(eventHeader);
+			} catch (ParseException e) {
+				getStack().getStackLogger().logError("Unexpected exception while parsing a deserialized eventHeader", e);
+			}
 		}	
-		Boolean serverTransactionFlag = (Boolean) metaData.get(SERVER_TRANSACTION_FLAG);
+		final Boolean serverTransactionFlag = (Boolean) metaData.get(SERVER_TRANSACTION_FLAG);
 		if(serverTransactionFlag != null) {
 			setServerTransactionFlag(serverTransactionFlag);
 		}
-		Address remoteTarget = (Address) metaData.get(REMOTE_TARGET);
-		if(remoteTarget != null) {
+		final String remoteTargetStringified = (String) metaData.get(REMOTE_TARGET);
+		if(remoteTargetStringified != null) {
 			Contact contact = new Contact();
-	        contact.setAddress(remoteTarget);
-			setRemoteTarget(contact);
+			Address remoteTarget;
+			try {
+				remoteTarget = addressFactory.createAddress(remoteTargetStringified);
+				 contact.setAddress(remoteTarget);
+					setRemoteTarget(contact);
+			} catch (ParseException e) {
+				getStack().getStackLogger().logError("Unexpected exception while parsing a deserialized remoteTarget address", e);
+			}	       
 		}
-		Boolean terminateOnBye = (Boolean) metaData.get(TERMINATE_ON_BYE);
+		final Boolean terminateOnBye = (Boolean) metaData.get(TERMINATE_ON_BYE);
 		if(terminateOnBye != null) {
 			try {
 				terminateOnBye(terminateOnBye);
@@ -137,11 +178,18 @@ public abstract class AbstractHASipDialog extends SIPDialog implements HASipDial
 				// exception is never thrown
 			}
 		}
-		SIPHeader[] routes = (SIPHeader[]) metaData.get(ROUTE_LIST);
-		if(routes != null) {
+		final String[] routes = (String[]) metaData.get(ROUTE_LIST);
+		if(routes != null) {			
 			RouteList routeList = new RouteList();
-			for (SIPHeader sipHeader : routes) {
-				routeList.add((Route)sipHeader);
+			for (String route : routes) {
+				Address routeAddress;
+				try {
+					routeAddress = addressFactory.createAddress(route);
+					final RouteHeader routeHeader = headerFactory.createRouteHeader(routeAddress);
+					routeList.add((Route)routeHeader);
+				} catch (ParseException e) {
+					getStack().getStackLogger().logError("Unexpected exception while parsing a deserialized route address", e);
+				}				
 			}
 			setRouteList(routeList);
 		}

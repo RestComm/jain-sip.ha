@@ -27,11 +27,14 @@ import gov.nist.javax.sip.message.SIPResponse;
 import gov.nist.javax.sip.stack.AbstractHASipDialog;
 import gov.nist.javax.sip.stack.SIPDialog;
 
+import java.text.ParseException;
 import java.util.Map;
 import java.util.Properties;
 
 import javax.naming.Context;
 import javax.naming.InitialContext;
+import javax.sip.PeerUnavailableException;
+import javax.sip.SipFactory;
 import javax.transaction.UserTransaction;
 
 import org.jboss.cache.CacheException;
@@ -76,7 +79,9 @@ public class JBossTreeSipCache implements SipCache {
 			
 			AbstractHASipDialog haSipDialog = null; 
 			if(dialogMetaData != null) {
-				haSipDialog = HASipDialogFactory.createHASipDialog(clusteredSipStack.getReplicationStrategy(), (SipProviderImpl)clusteredSipStack.getSipProviders().next(), (SIPResponse) dialogMetaData.get(AbstractHASipDialog.LAST_RESPONSE));
+				final String lastResponseStringified = (String) dialogMetaData.get(AbstractHASipDialog.LAST_RESPONSE);
+				final SIPResponse lastResponse = (SIPResponse) SipFactory.getInstance().createMessageFactory().createResponse(lastResponseStringified);
+				haSipDialog = HASipDialogFactory.createHASipDialog(clusteredSipStack.getReplicationStrategy(), (SipProviderImpl)clusteredSipStack.getSipProviders().next(), lastResponse);
 				haSipDialog.setDialogId(dialogId);
 				haSipDialog.setMetaDataToReplicate(dialogMetaData);
 				haSipDialog.setApplicationDataToReplicate(dialogAppData);
@@ -84,6 +89,10 @@ public class JBossTreeSipCache implements SipCache {
 			
 			return haSipDialog;
 		} catch (CacheException e) {
+			throw new SipCacheException("A problem occured while retrieving the following dialog " + dialogId + " from the TreeCache", e);
+		} catch (PeerUnavailableException e) {
+			throw new SipCacheException("A problem occured while retrieving the following dialog " + dialogId + " from the TreeCache", e);
+		} catch (ParseException e) {
 			throw new SipCacheException("A problem occured while retrieving the following dialog " + dialogId + " from the TreeCache", e);
 		}
 	}
