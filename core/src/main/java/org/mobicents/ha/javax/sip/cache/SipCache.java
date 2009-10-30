@@ -35,6 +35,12 @@ import org.mobicents.ha.javax.sip.ClusteredSipStack;
  */
 public interface SipCache {
 
+	public static final String SIP_DEFAULT_CACHE_CLASS_NAME = "org.mobicents.ha.javax.sip.cache.ManagedMobicentsSipCache";
+	
+	public static final String DIALOG_PARENT_FQN_ELEMENT = "Dialogs";
+	public static final String SERVER_TX_PARENT_FQN_ELEMENT = "ServerTransactions";
+	public static final String CLIENT_TX_PARENT_FQN_ELEMENT = "ClientTransactions";
+	
 	/**
 	 * Set the Clustered Sip Stack that created this sip cache instance 
 	 * @param clusteredSipStack the Clustered Sip Stack that created this sip cache instance

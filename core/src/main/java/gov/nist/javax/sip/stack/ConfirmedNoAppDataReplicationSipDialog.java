@@ -71,11 +71,6 @@ public class ConfirmedNoAppDataReplicationSipDialog extends SIPDialog {
 		}
 	}
 	
-	@Override
-	public void setApplicationData(Object applicationData) {
-		super.setApplicationData(applicationData);
-	}
-	
 	/*
 	 * 
 	 */

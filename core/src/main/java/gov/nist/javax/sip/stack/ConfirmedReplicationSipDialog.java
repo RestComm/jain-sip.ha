@@ -34,6 +34,8 @@ public class ConfirmedReplicationSipDialog extends ConfirmedNoAppDataReplication
 	
 	private static final long serialVersionUID = -779892668482217624L;
 
+	private Object appData;
+	
 	public ConfirmedReplicationSipDialog(SIPTransaction transaction) {
 		super(transaction);
 	}
@@ -48,7 +50,12 @@ public class ConfirmedReplicationSipDialog extends ConfirmedNoAppDataReplication
 
 	@Override
 	public void setApplicationData(Object applicationData) {
-		super.setApplicationData(applicationData);
+		this.appData = applicationData;
 		replicateState();
 	}	
+	
+	@Override
+	public Object getApplicationData() {
+		return appData;
+	}
 }

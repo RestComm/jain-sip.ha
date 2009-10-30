@@ -26,9 +26,9 @@ import gov.nist.javax.sip.stack.SIPDialog;
 import java.util.Properties;
 
 import org.jboss.cache.Fqn;
+import org.jboss.cache.Region;
 import org.mobicents.cache.MobicentsCache;
 import org.mobicents.ha.javax.sip.ClusteredSipStack;
-import org.mobicents.ha.javax.sip.SipStackImpl;
 
 /**
  * Implementation of the SipCache interface, backed by a Mobicents Cache (JBoss Cache 3.X Cache).
@@ -45,43 +45,59 @@ public abstract class MobicentsSipCache implements SipCache {
 	protected Properties configProperties;
 	protected MobicentsCache cache;
 	
+	private final String name;
+	private final ClassLoader serializationClassLoader;
+	
+	private static final String DEFAULT_NAME = "jain-sip-ha";
+	
+	private SIPDialogCacheData dialogsCacheData;
+	
 	/**
 	 * 
 	 */
-	public MobicentsSipCache() {}
-
-	/**
-	 * Creates a new {@link SIPDialogCacheData} instance for the specified dialog id.
-	 * @param dialogId
-	 * @return
-	 */
-	private SIPDialogCacheData getSipDialogCacheData(String dialogId) {
-		return new SIPDialogCacheData(Fqn.fromElements(SipStackImpl.DIALOG_ROOT,dialogId), cache);
+	public MobicentsSipCache() {
+		this(DEFAULT_NAME,null);
 	}
-	
-	/* (non-Javadoc)
-	 * @see org.mobicents.ha.javax.sip.cache.SipCache#getDialog(java.lang.String)
-	 */
-	public SIPDialog getDialog(String dialogId) throws SipCacheException {		
-		return getSipDialogCacheData(dialogId).getSIPDialog(dialogId);			
+
+	public MobicentsSipCache(String name) {
+		this(name,null);
+	}
+
+	public MobicentsSipCache(ClassLoader serializationClassLoader) {
+		this(DEFAULT_NAME,serializationClassLoader);
+	}
+
+	public MobicentsSipCache(String name, ClassLoader serializationClassLoader) {
+		if (name == null) {
+			throw new NullPointerException("null name");
+		}
+		this.name = name;
+		this.serializationClassLoader = serializationClassLoader;
 	}
 
 	/* (non-Javadoc)
 	 * @see org.mobicents.ha.javax.sip.cache.SipCache#putDialog(gov.nist.javax.sip.stack.SIPDialog)
 	 */
 	public void putDialog(SIPDialog dialog) throws SipCacheException {
-		final SIPDialogCacheData cacheData = getSipDialogCacheData(dialog.getDialogId());
-		cacheData.create();
-		cacheData.putSIPDialog(dialog);
+		dialogsCacheData.putSIPDialog(dialog);
 	}
 
-	/* (non-Javadoc)
+	/*
+	 * (non-Javadoc)
+	 * @see org.mobicents.ha.javax.sip.cache.SipCache#getDialog(java.lang.String)
+	 */
+	public SIPDialog getDialog(String dialogId) throws SipCacheException {
+		return dialogsCacheData.getSIPDialog(dialogId);
+	}
+	
+	/*
+	 * (non-Javadoc)
 	 * @see org.mobicents.ha.javax.sip.cache.SipCache#removeDialog(java.lang.String)
 	 */
 	public void removeDialog(String dialogId) throws SipCacheException {
-		getSipDialogCacheData(dialogId).remove();
+		dialogsCacheData.removeSIPDialog(dialogId);
 	}
-
+	
 	/* (non-Javadoc)
 	 * @see org.mobicents.ha.javax.sip.cache.SipCache#setClusteredSipStack(org.mobicents.ha.javax.sip.ClusteredSipStack)
 	 */
@@ -106,13 +122,23 @@ public abstract class MobicentsSipCache implements SipCache {
 	 * (non-Javadoc)
 	 * @see org.mobicents.ha.javax.sip.cache.SipCache#start()
 	 */
-	public abstract void start() throws SipCacheException;
+	public void start() throws SipCacheException {
+		dialogsCacheData = new SIPDialogCacheData(Fqn.fromElements(name,SipCache.DIALOG_PARENT_FQN_ELEMENT),cache);
+		dialogsCacheData.create();
+		if (serializationClassLoader != null) {
+			Region region = cache.getJBossCache().getRegion(dialogsCacheData.getNodeFqn(),true);
+			region.registerContextClassLoader(serializationClassLoader);
+			region.activate();
+		}
+	}
 
 	/*
 	 * (non-Javadoc)
 	 * @see org.mobicents.ha.javax.sip.cache.SipCache#stop()
 	 */
-	public abstract void stop() throws SipCacheException;
+	public void stop() throws SipCacheException {
+		dialogsCacheData.remove();
+	}
 
 	/*
 	 * (non-Javadoc)
@@ -120,5 +146,13 @@ public abstract class MobicentsSipCache implements SipCache {
 	 */
 	public boolean inLocalMode() {
 		return cache.isLocalMode();
+	}
+	
+	public String getName() {
+		return name;
+	}
+	
+	public ClassLoader getSerializationClassLoader() {
+		return serializationClassLoader;
 	}
 }

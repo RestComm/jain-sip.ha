@@ -64,7 +64,6 @@
 			<modules>
 				<module>jboss-4</module>
 				<module>jboss-5</module>
-				<module>jboss-5-beans</module>
 			</modules>
 			<build>
 				<plugins>
@@ -93,7 +92,6 @@
 			</activation>
 			<modules>
 				<module>jboss-5</module>
-				<module>jboss-5-beans</module>
 			</modules>
 		</profile>
 		<profile>
@@ -101,7 +99,6 @@
 			<modules>
 				<module>jboss-4</module>
 				<module>jboss-5</module>
-				<module>jboss-5-beans</module>
 			</modules>
 		</profile>
 	</profiles>

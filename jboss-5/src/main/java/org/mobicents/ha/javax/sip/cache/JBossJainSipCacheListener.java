@@ -81,7 +81,7 @@ public class JBossJainSipCacheListener {
 			return ;
 		}
 		final Fqn fqn = nodeCreatedEvent.getFqn();
-		if (!nodeCreatedEvent.isOriginLocal() && clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG) && fqn.get(0).toString().indexOf(SipStackImpl.DIALOG_ROOT) != -1) {
+		if (!nodeCreatedEvent.isOriginLocal() && clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG) && fqn.get(0).toString().indexOf(SipCache.DIALOG_PARENT_FQN_ELEMENT) != -1) {
 			clusteredSipStack.getStackLogger().logDebug("sipStack " + clusteredSipStack + 
 					" Node created : " + fqn);
 		}
@@ -93,7 +93,7 @@ public class JBossJainSipCacheListener {
 			return ;
 		}
 		final Fqn fqn = nodeModifiedEvent.getFqn();
-		if (!nodeModifiedEvent.isOriginLocal() && clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG) && fqn.get(0).toString().indexOf(SipStackImpl.DIALOG_ROOT) != -1) {
+		if (!nodeModifiedEvent.isOriginLocal() && clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG) && fqn.get(0).toString().indexOf(SipCache.DIALOG_PARENT_FQN_ELEMENT) != -1) {
 			clusteredSipStack.getStackLogger().logDebug("sipStack " + clusteredSipStack + 
 					" Node modified : " + fqn);
 		}
@@ -106,7 +106,7 @@ public class JBossJainSipCacheListener {
 			return ;
 		}
 		final Fqn fqn = nodeRemovedEvent.getFqn();
-		if (!nodeRemovedEvent.isOriginLocal() && clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG) && fqn.get(0).toString().indexOf(SipStackImpl.DIALOG_ROOT) != -1) {
+		if (!nodeRemovedEvent.isOriginLocal() && clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG) && fqn.get(0).toString().indexOf(SipCache.DIALOG_PARENT_FQN_ELEMENT) != -1) {
 			clusteredSipStack.getStackLogger().logDebug("sipStack " + clusteredSipStack + 
 					" Node removed : " + fqn);
 		}		

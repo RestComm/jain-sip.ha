@@ -25,6 +25,8 @@ import java.util.Properties;
 
 import javax.sip.PeerUnavailableException;
 
+import org.mobicents.ha.javax.sip.cache.SipCache;
+
 /**
  * This class extends the ClusteredSipStack to provide an implementation backed by JBoss Cache 3.X
  * 
@@ -33,11 +35,7 @@ import javax.sip.PeerUnavailableException;
  */
 public class SipStackImpl extends ClusteredSipStackImpl {
 	
-	public static final String SIP_DEFAULT_CACHE_CLASS_NAME = "org.mobicents.ha.javax.sip.cache.ManagedMobicentsSipCache";
 	
-	public static final String DIALOG_ROOT = "Dialogs";
-	public static final String SERVER_TX_ROOT = "ServerTransactions";
-	public static final String CLIENT_TX_ROOT = "ClientTransactions";
 	
 	public SipStackImpl(Properties configurationProperties) throws PeerUnavailableException {		
 		super(updateConfigProperties(configurationProperties));		
@@ -45,7 +43,7 @@ public class SipStackImpl extends ClusteredSipStackImpl {
 	
 	private static final Properties updateConfigProperties(Properties configurationProperties) {
 		if(configurationProperties.getProperty(ClusteredSipStack.CACHE_CLASS_NAME_PROPERTY) == null) {
-			configurationProperties.setProperty(ClusteredSipStack.CACHE_CLASS_NAME_PROPERTY, SIP_DEFAULT_CACHE_CLASS_NAME);
+			configurationProperties.setProperty(ClusteredSipStack.CACHE_CLASS_NAME_PROPERTY, SipCache.SIP_DEFAULT_CACHE_CLASS_NAME);
 		}
 		return configurationProperties;
 	}

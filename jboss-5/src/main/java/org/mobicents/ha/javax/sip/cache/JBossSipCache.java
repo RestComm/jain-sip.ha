@@ -169,9 +169,9 @@ public class JBossSipCache implements SipCache {
 		} catch (Exception e) {
 			throw new SipCacheException("Couldn't start JBoss Cache", e);
 		}
-		dialogRootNode = cache.getRoot().getChild(SipStackImpl.DIALOG_ROOT);
+		dialogRootNode = cache.getRoot().getChild(SipCache.DIALOG_PARENT_FQN_ELEMENT);
 		if(dialogRootNode == null) {
-			dialogRootNode = cache.getRoot().addChild(Fqn.fromElements(SipStackImpl.DIALOG_ROOT));	
+			dialogRootNode = cache.getRoot().addChild(Fqn.fromElements(SipCache.DIALOG_PARENT_FQN_ELEMENT));	
 		}
 	}
 

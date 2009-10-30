@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<deployment xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="urn:jboss:bean-deployer:2.0">
-
-	<bean name="Mobicents.JainSip.Ha.CacheLocator" class="org.mobicents.ha.javax.sip.cache.MobicentsCacheBeanLocator">       
-       <property name="mobicentsCacheBean"><inject bean="Mobicents.Cache"/></property>
-	   <demand>Mobicents.Cache</demand>
-    </bean>
-	   	
-</deployment>

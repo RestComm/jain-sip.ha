@@ -24,6 +24,7 @@ package org.mobicents.ha.javax.sip.cache;
 import gov.nist.javax.sip.stack.SIPDialog;
 
 import org.jboss.cache.Fqn;
+import org.jboss.cache.Node;
 import org.mobicents.cache.CacheData;
 import org.mobicents.cache.MobicentsCache;
 
@@ -32,20 +33,23 @@ import org.mobicents.cache.MobicentsCache;
  *
  */
 public class SIPDialogCacheData extends CacheData {
-		
+
+	private static final Boolean MAP_KEY = Boolean.TRUE;
+	
 	public SIPDialogCacheData(Fqn nodeFqn, MobicentsCache mobicentsCache) {
 		super(nodeFqn, mobicentsCache);
 	}
-
+	
 	public SIPDialog getSIPDialog(String dialogId) {
-		if(exists()) {		
-			return (SIPDialog) getNode().get(dialogId);
-		} else {
-			return null;
-		}
+		final Node<Boolean,SIPDialog> childNode = getNode().getChild(dialogId);
+		return childNode != null ? childNode.get(MAP_KEY) : null;
 	}
 	
 	public void putSIPDialog(SIPDialog dialog) throws SipCacheException {
-		getNode().put(dialog.getDialogId(), dialog);
+		getNode().addChild(Fqn.fromElements(dialog.getDialogId())).put(MAP_KEY, dialog);
+	}
+
+	public boolean removeSIPDialog(String dialogId) {
+		return getNode().removeChild(dialogId);
 	}
 }
