@@ -67,8 +67,7 @@ public class JBossASSipCache implements SipCache {
 	 */
 	public SIPDialog getDialog(String dialogId) throws SipCacheException {		
 		try {
-			Map<String, Object> dialogMetaData = (Map<String, Object>) pojoCache.get(SipStackImpl.DIALOG_ROOT + dialogId, METADATA);
-			Object dialogAppData = pojoCache.get(SipStackImpl.DIALOG_ROOT + dialogId, APPDATA);
+			Map<String, Object> dialogMetaData = (Map<String, Object>) pojoCache.get(SipStackImpl.DIALOG_ROOT + dialogId, METADATA);			
 			
 			AbstractHASipDialog haSipDialog = null; 
 			if(dialogMetaData != null) {
@@ -77,6 +76,7 @@ public class JBossASSipCache implements SipCache {
 				haSipDialog = HASipDialogFactory.createHASipDialog(clusteredSipStack.getReplicationStrategy(), (SipProviderImpl)clusteredSipStack.getSipProviders().next(), lastResponse);
 				haSipDialog.setDialogId(dialogId);
 				haSipDialog.setMetaDataToReplicate(dialogMetaData);
+				Object dialogAppData = pojoCache.get(SipStackImpl.DIALOG_ROOT + dialogId, APPDATA);
 				haSipDialog.setApplicationDataToReplicate(dialogAppData);				
 			}
 			

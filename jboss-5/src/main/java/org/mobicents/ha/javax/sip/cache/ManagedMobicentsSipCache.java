@@ -26,19 +26,10 @@ import gov.nist.javax.sip.stack.SIPClientTransaction;
 import gov.nist.javax.sip.stack.SIPDialog;
 import gov.nist.javax.sip.stack.SIPServerTransaction;
 
-import java.util.Properties;
-
-import javax.transaction.Transaction;
-import javax.transaction.TransactionManager;
-
-import org.jboss.cache.CacheException;
 import org.jboss.cache.CacheManager;
-import org.jboss.cache.Fqn;
 import org.jboss.cache.Node;
 import org.jboss.ha.framework.server.CacheManagerLocator;
 import org.mobicents.cache.MobicentsCache;
-import org.mobicents.ha.javax.sip.ClusteredSipStack;
-import org.mobicents.ha.javax.sip.SipStackImpl;
 
 /**
  * Implementation of the SipCache interface, backed by a Mobicents Cache (JBoss Cache 3.X Cache).
@@ -103,8 +94,8 @@ public class ManagedMobicentsSipCache extends MobicentsSipCache {
 	 */
 	@Override
 	public void stop() throws SipCacheException {
-		super.stop();
-		cache.stop();		
+//		super.stop();
+//		cache.stop();		
 	}
 
 }

@@ -123,7 +123,7 @@ public abstract class MobicentsSipCache implements SipCache {
 	 * @see org.mobicents.ha.javax.sip.cache.SipCache#start()
 	 */
 	public void start() throws SipCacheException {
-		dialogsCacheData = new SIPDialogCacheData(Fqn.fromElements(name,SipCache.DIALOG_PARENT_FQN_ELEMENT),cache);
+		dialogsCacheData = new SIPDialogCacheData(Fqn.fromElements(name,SipCache.DIALOG_PARENT_FQN_ELEMENT),cache, clusteredSipStack);
 		dialogsCacheData.create();
 		if (serializationClassLoader != null) {
 			Region region = cache.getJBossCache().getRegion(dialogsCacheData.getNodeFqn(),true);

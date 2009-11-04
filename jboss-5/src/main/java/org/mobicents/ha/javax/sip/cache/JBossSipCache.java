@@ -39,7 +39,6 @@ import org.jboss.cache.Fqn;
 import org.jboss.cache.Node;
 import org.jboss.cache.config.Configuration.CacheMode;
 import org.mobicents.ha.javax.sip.ClusteredSipStack;
-import org.mobicents.ha.javax.sip.SipStackImpl;
 
 /**
  * Implementation of the SipCache interface, backed by a JBoss Cache 3.X Cache.

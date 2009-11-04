@@ -80,7 +80,8 @@ public class SimpleDialogRecoveryTest extends TestCase {
 		return p.getProperty("IP_ADDRESS","127.0.0.1");
 	}
 	
-	public static final String IP_ADDRESS = getIpAddressFromProperties();
+//	public static final String IP_ADDRESS = getIpAddressFromProperties();
+	public static final String IP_ADDRESS = "192.168.0.12";
 	
     public static final int BALANCER_PORT = 5050;
 
