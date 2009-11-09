@@ -342,8 +342,15 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 			String httpPortString = System.getProperty("org.mobicents.properties.httpPort");
 			String sslPortString = System.getProperty("org.mobicents.properties.sslPort");
 			
-			int httpPort = httpPortString == null ? 0 : Integer.parseInt(httpPortString);
-			int sslPort = httpPortString == null ? 0 : Integer.parseInt(sslPortString);
+			int httpPort = 0;
+			int sslPort = 0;
+			
+			if(httpPortString != null) {
+				httpPort = Integer.parseInt(httpPortString);
+			}
+			if(sslPortString != null) {
+				sslPort = Integer.parseInt(sslPortString);
+			}
 			
 			SIPNode node = new SIPNode(hostName, address, port,
 					transports, jvmRoute, httpPort, sslPort, null);
