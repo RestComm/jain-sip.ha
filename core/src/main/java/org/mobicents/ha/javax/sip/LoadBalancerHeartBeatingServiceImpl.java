@@ -339,8 +339,14 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 				logger.logError("An exception occurred while trying to retrieve the hostname of a sip connector", e);
 			}
 			
+			String httpPortString = System.getProperty("org.mobicents.properties.httpPort");
+			String sslPortString = System.getProperty("org.mobicents.properties.sslPort");
+			
+			int httpPort = httpPortString == null ? 0 : Integer.parseInt(httpPortString);
+			int sslPort = httpPortString == null ? 0 : Integer.parseInt(sslPortString);
+			
 			SIPNode node = new SIPNode(hostName, address, port,
-					transports, jvmRoute);
+					transports, jvmRoute, httpPort, sslPort, null);
 
 			info.add(node);
 		}
