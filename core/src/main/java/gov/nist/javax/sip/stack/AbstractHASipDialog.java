@@ -138,8 +138,8 @@ public abstract class AbstractHASipDialog extends SIPDialog implements HASipDial
 	public void setMetaDataToReplicate(Map<String, Object> metaData) {
 		setState(DialogState._CONFIRMED);		
 		final Boolean isB2BUA = (Boolean) metaData.get(B2BUA);
-		if(isB2BUA != null) {
-			setBackToBackUserAgent(isB2BUA);
+		if(isB2BUA == Boolean.TRUE) {
+			setBackToBackUserAgent();
 		}
 		final Boolean isReinvite = (Boolean) metaData.get(IS_REINVITE);
 		if(isReinvite != null) {
