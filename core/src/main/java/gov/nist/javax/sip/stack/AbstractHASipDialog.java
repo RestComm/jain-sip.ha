@@ -99,8 +99,9 @@ public abstract class AbstractHASipDialog extends SIPDialog implements HASipDial
 		ackSeen = true;
 	}	
 	
-	public Map<String, Object> getMetaDataToReplicate() {
-		final Map<String, Object> dialogMetaData = new HashMap<String, Object>();
+	@SuppressWarnings("unchecked")
+	public Map<String,Object> getMetaDataToReplicate() {
+		Map<String,Object> dialogMetaData = new HashMap<String,Object>();
 		dialogMetaData.put(LAST_RESPONSE, getLastResponse().toString());
 		dialogMetaData.put(IS_REINVITE, isReInvite());
 		final List<SIPHeader> routeList = new ArrayList<SIPHeader>();
@@ -148,8 +149,7 @@ public abstract class AbstractHASipDialog extends SIPDialog implements HASipDial
 		final String eventHeaderStringified = (String) metaData.get(EVENT_HEADER);
 		if(eventHeaderStringified != null) {
 			try {
-				final EventHeader eventHeader = (EventHeader)new EventParser(eventHeaderStringified).parse();
-				setEventHeader(eventHeader);
+				setEventHeader((EventHeader)new EventParser(eventHeaderStringified).parse());
 			} catch (ParseException e) {
 				getStack().getStackLogger().logError("Unexpected exception while parsing a deserialized eventHeader", e);
 			}
@@ -161,11 +161,9 @@ public abstract class AbstractHASipDialog extends SIPDialog implements HASipDial
 		final String remoteTargetStringified = (String) metaData.get(REMOTE_TARGET);
 		if(remoteTargetStringified != null) {
 			Contact contact = new Contact();
-			Address remoteTarget;
 			try {
-				remoteTarget = addressFactory.createAddress(remoteTargetStringified);
-				 contact.setAddress(remoteTarget);
-					setRemoteTarget(contact);
+				contact.setAddress(addressFactory.createAddress(remoteTargetStringified));
+				setRemoteTarget(contact);
 			} catch (ParseException e) {
 				getStack().getStackLogger().logError("Unexpected exception while parsing a deserialized remoteTarget address", e);
 			}	       
@@ -180,13 +178,10 @@ public abstract class AbstractHASipDialog extends SIPDialog implements HASipDial
 		}
 		final String[] routes = (String[]) metaData.get(ROUTE_LIST);
 		if(routes != null) {			
-			RouteList routeList = new RouteList();
+			final RouteList routeList = new RouteList();			
 			for (String route : routes) {
-				Address routeAddress;
 				try {
-					routeAddress = addressFactory.createAddress(route);
-					final RouteHeader routeHeader = headerFactory.createRouteHeader(routeAddress);
-					routeList.add((Route)routeHeader);
+					routeList.add((Route)headerFactory.createRouteHeader(addressFactory.createAddress(route)));
 				} catch (ParseException e) {
 					getStack().getStackLogger().logError("Unexpected exception while parsing a deserialized route address", e);
 				}				

@@ -26,7 +26,6 @@ import gov.nist.core.StackLogger;
 import gov.nist.javax.sip.SipProviderImpl;
 import gov.nist.javax.sip.message.SIPRequest;
 import gov.nist.javax.sip.message.SIPResponse;
-import gov.nist.javax.sip.stack.ConfirmedReplicationSipDialog;
 import gov.nist.javax.sip.stack.SIPClientTransaction;
 import gov.nist.javax.sip.stack.SIPDialog;
 import gov.nist.javax.sip.stack.SIPTransaction;
@@ -55,6 +54,7 @@ import org.mobicents.ha.javax.sip.cache.SipCacheFactory;
  * and populate the local datastructure of the NIST SIP Stack
  * 
  * @author jean.deruelle@gmail.com
+ * @author martins
  *
  */
 public abstract class ClusteredSipStackImpl extends gov.nist.javax.sip.SipStackImpl implements ClusteredSipStack {	
@@ -161,7 +161,12 @@ public abstract class ClusteredSipStackImpl extends gov.nist.javax.sip.SipStackI
 	@Override
 	public SIPDialog createDialog(SipProviderImpl sipProvider,
 			SIPResponse sipResponse) {
-		return HASipDialogFactory.createHASipDialog(replicationStrategy, sipProvider, sipResponse);
+		if (sipCache.inLocalMode()) {
+			return super.createDialog(sipProvider, sipResponse);
+		}
+		else {
+			return HASipDialogFactory.createHASipDialog(replicationStrategy, sipProvider, sipResponse);
+		}
 	}
 
 	
