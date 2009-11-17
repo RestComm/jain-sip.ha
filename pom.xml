@@ -1,5 +1,4 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 
 	<parent>
@@ -10,16 +9,16 @@
 
 	<groupId>org.mobicents.ha.javax.sip</groupId>
 	<artifactId>mobicents-jain-sip-ha</artifactId>
-	<version>0.1-SNAPSHOT</version>
+	<version>0.1</version>
 
 	<packaging>pom</packaging>
 
 	<scm>
-		<connection>scm:svn:https://mobicents.googlecode.com/svn/trunk/servers/jain-sip-ha
+		<connection>scm:svn:https://mobicents.googlecode.com/svn/tags/servers/jain-sip-ha/mobicents-jain-sip-ha-0.1
 		</connection>
-		<developerConnection>scm:svn:https://mobicents.googlecode.com/svn/trunk/servers/jain-sip-ha
+		<developerConnection>scm:svn:https://mobicents.googlecode.com/svn/tags/servers/jain-sip-ha/mobicents-jain-sip-ha-0.1
 		</developerConnection>
-		<url>http://mobicents.googlecode.com/svn/trunk/servers/jain-sip-ha
+		<url>http://mobicents.googlecode.com/svn/tags/servers/jain-sip-ha/mobicents-jain-sip-ha-0.1
 		</url>
 	</scm>
 
