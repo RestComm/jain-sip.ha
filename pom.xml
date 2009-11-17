@@ -73,6 +73,7 @@
 							<autoVersionSubmodules>true</autoVersionSubmodules>
 							<tagBase>https://mobicents.googlecode.com/svn/tags/servers/jain-sip-ha
 							</tagBase>
+							<arguments>-Dmaven.test.skip</arguments>
 						</configuration>
 					</plugin>
 				</plugins>
