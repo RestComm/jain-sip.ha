@@ -364,6 +364,7 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 	 * @param info
 	 */
 	private void sendKeepAliveToBalancers(ArrayList<SIPNode> info) {
+		Thread.currentThread().setContextClassLoader(NodeRegisterRMIStub.class.getClassLoader());
 		for(SipLoadBalancer  balancerDescription:new HashSet<SipLoadBalancer>(register.values())) {
 			try {
 				Registry registry = LocateRegistry.getRegistry(balancerDescription.getAddress().getHostAddress(), balancerDescription.getRmiPort());
