@@ -61,7 +61,7 @@
 		<profile>
 			<id>maven-release</id>
 			<modules>
-				<!-- <module>jboss-4</module> -->
+				<module>jboss-4</module>
 				<module>jboss-5</module>
 			</modules>
 			<build>
