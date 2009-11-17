@@ -113,6 +113,12 @@
 			<version>1.0.1B</version>
 			<scope>provided</scope>
 		</dependency>
+		
+		<dependency>
+			<artifactId>junit</artifactId>
+			<groupId>junit</groupId>
+			<scope>test</scope>
+		</dependency>
 	</dependencies>
 
 	<build>
