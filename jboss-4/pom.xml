@@ -11,9 +11,16 @@
 
 	<properties>
 		<version.jboss>4.2.3.GA</version.jboss>
+		<IP_ADDRESS>192.168.0.11</IP_ADDRESS>
+		<maven.test.skip>true</maven.test.skip>
 	</properties>
 
 	<dependencies>
+		<dependency>
+			<groupId>javax.sip</groupId>
+			<artifactId>jain-sip-ri</artifactId>
+			<scope>provided</scope>
+		</dependency>
 		<dependency>
 			<groupId>org.mobicents.ha.javax.sip</groupId>
 			<artifactId>mobicents-jain-sip-ha-core</artifactId>
@@ -26,6 +33,12 @@
 			<artifactId>log4j</artifactId>
 			<version>1.2.14</version>
 			<scope>provided</scope>
+		</dependency>
+
+		<dependency>
+			<groupId>junit</groupId>
+			<artifactId>junit</artifactId>
+			<scope>test</scope>
 		</dependency>
 
 		<dependency>
