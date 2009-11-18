@@ -215,7 +215,7 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 			address = InetAddress.getByName(addr);
 		} catch (UnknownHostException e) {
 			throw new IllegalArgumentException(
-					"Somethign wrong with host creation.", e);
+					"Something wrong with host creation.", e);
 		}		
 		String balancerName = address.getCanonicalHostName() + ":" + rmiPort;
 
@@ -394,6 +394,7 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 	 * @param info
 	 */
 	private void removeNodesFromBalancers(ArrayList<SIPNode> info) {
+		Thread.currentThread().setContextClassLoader(NodeRegisterRMIStub.class.getClassLoader());
 		for(SipLoadBalancer balancerDescription:new HashSet<SipLoadBalancer>(register.values())) {
 			try {
 				Registry registry = LocateRegistry.getRegistry(balancerDescription.getAddress().getHostAddress(),balancerDescription.getRmiPort());
@@ -472,8 +473,10 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 		logger.logInfo("switching over from " + fromJvmRoute + " to " + toJvmRoute);
 		if(fromJvmRoute == null || toJvmRoute == null) {
 			return;
-		}		
-		try {
+		}	
+		ClassLoader oldClassLoader = Thread.currentThread().getContextClassLoader();
+		try {			
+			Thread.currentThread().setContextClassLoader(NodeRegisterRMIStub.class.getClassLoader());
 			Registry registry = LocateRegistry.getRegistry(sipLoadBalancer.getAddress().getHostAddress(),sipLoadBalancer.getRmiPort());
 			NodeRegisterRMIStub reg=(NodeRegisterRMIStub) registry.lookup("SIPBalancer");
 			reg.switchover(fromJvmRoute, toJvmRoute);
@@ -490,6 +493,8 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 				displayBalancerWarning = false;
 			}
 			displayBalancerFound = true;
-		}				
+		} finally {
+			Thread.currentThread().setContextClassLoader(oldClassLoader);
+		}
 	}
 }
