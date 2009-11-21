@@ -90,8 +90,18 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 		logger = clusteredSipStack.getStackLogger();
 		balancers = stackProperties.getProperty(BALANCERS);
 	}
+	
+	public void stopBalancer() {
+		stop();
+	}
     
     public void start() {
+      	Runtime.getRuntime().addShutdownHook(new Thread() {
+    	    public void run() {
+    	    	stopBalancer();
+    	    	logger.logInfo("Shutting down the Load Balancer Link");}
+    	});
+
     	if (!started) {
 			if (balancers != null && balancers.length() > 0) {
 				String[] balancerDescriptions = balancers.split(BALANCERS_CHAR_SEPARATOR);
