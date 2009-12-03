@@ -8,7 +8,7 @@
 	</parent>
 
 	<artifactId>mobicents-jain-sip-jboss4</artifactId>
-	<version>0.2</version>
+	<version>0.3-SNAPSHOT</version>
 
 	<properties>
 		<version.jboss>4.2.3.GA</version.jboss>
@@ -181,11 +181,4 @@
 			</snapshots>
 		</repository>
 	</repositories>
-
-
-  <scm>
-    <connection>scm:svn:https://mobicents.googlecode.com/svn/tags/parent/mobicents-jain-sip-jboss4-0.2</connection>
-    <developerConnection>scm:svn:https://mobicents.googlecode.com/svn/tags/parent/mobicents-jain-sip-jboss4-0.2</developerConnection>
-    <url>http://mobicents.googlecode.com/svn/tags/parent/mobicents-jain-sip-jboss4-0.2</url>
-  </scm>
 </project>
