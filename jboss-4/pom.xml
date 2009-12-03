@@ -4,11 +4,10 @@
 	<parent>
 		<groupId>org.mobicents.ha.javax.sip</groupId>
 		<artifactId>mobicents-jain-sip-ha</artifactId>
-		<version>0.2</version>
+		<version>0.3-SNAPSHOT</version>
 	</parent>
 
 	<artifactId>mobicents-jain-sip-jboss4</artifactId>
-	<version>0.3-SNAPSHOT</version>
 
 	<properties>
 		<version.jboss>4.2.3.GA</version.jboss>
@@ -25,7 +24,7 @@
 		<dependency>
 			<groupId>org.mobicents.ha.javax.sip</groupId>
 			<artifactId>mobicents-jain-sip-ha-core</artifactId>
-			<version>0.2</version>
+			<version>${version}</version>
 		</dependency>
 	
 		<!-- test deps -->
