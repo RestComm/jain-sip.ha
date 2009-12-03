@@ -154,6 +154,7 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
     		this.hearBeatTaskToRun.cancel();
     	}
 		this.hearBeatTaskToRun = null;
+		loadBalancerHeartBeatingListeners.clear();
 		started = false;
     }
 	
