@@ -23,7 +23,12 @@ package org.mobicents.ha.javax.sip;
 
 import java.util.Properties;
 
+import javax.management.MBeanServer;
+import javax.management.MBeanServerFactory;
+import javax.management.ObjectName;
 import javax.sip.PeerUnavailableException;
+import javax.sip.ProviderDoesNotExistException;
+import javax.sip.SipException;
 
 import org.mobicents.ha.javax.sip.cache.SipCache;
 
@@ -33,9 +38,10 @@ import org.mobicents.ha.javax.sip.cache.SipCache;
  * @author jean.deruelle@gmail.com
  *
  */
-public class SipStackImpl extends ClusteredSipStackImpl {
-	
-	
+public class SipStackImpl extends ClusteredSipStackImpl implements SipStackImplMBean {
+	public static String JAIN_SIP_MBEAN_NAME = "org.mobicents.jain.sip:type=sip-stack,name=mobicents-jain-sip";
+	ObjectName oname = null;
+	MBeanServer mbeanServer = null;
 	
 	public SipStackImpl(Properties configurationProperties) throws PeerUnavailableException {		
 		super(updateConfigProperties(configurationProperties));		
@@ -46,5 +52,66 @@ public class SipStackImpl extends ClusteredSipStackImpl {
 			configurationProperties.setProperty(ClusteredSipStack.CACHE_CLASS_NAME_PROPERTY, SipCache.SIP_DEFAULT_CACHE_CLASS_NAME);
 		}
 		return configurationProperties;
+	}
+
+	public int getNumberOfClientTransactions() {		
+		return getClientTransactionTableSize();
+	}
+
+	public int getNumberOfDialogs() {
+		return dialogTable.size();	
+	}
+	
+	public int getNumberOfEarlyDialogs() {
+		return earlyDialogTable.size();	
+	}
+
+	public int getNumberOfServerTransactions() {
+		return getServerTransactionTableSize();
+	}
+	
+	@Override
+	public void start() throws ProviderDoesNotExistException, SipException {
+		super.start();
+		String mBeanName=JAIN_SIP_MBEAN_NAME + stackName;
+		try {
+			oname = new ObjectName(mBeanName);
+			if (!getMBeanServer().isRegistered(oname)) {
+				getMBeanServer().registerMBean(this, oname);
+			}
+		} catch (Exception e) {
+			getStackLogger().logError("Could not register the stack as an MBean under the following name", e);
+			throw new SipException("Could not register the stack as an MBean under the following name " + mBeanName + ", cause: " + e.getMessage(), e);
+		}
+	}
+	
+	@Override
+	public void stop() {
+		String mBeanName=JAIN_SIP_MBEAN_NAME + stackName;
+		try {
+			if (oname != null && getMBeanServer().isRegistered(oname)) {
+				getMBeanServer().unregisterMBean(oname);
+			}
+		} catch (Exception e) {
+			getStackLogger().logError("Could not unregister the stack as an MBean under the following name" + mBeanName);
+		}
+		super.stop();
+	}
+	
+	/**
+	 * Get the current MBean Server.
+	 * 
+	 * @return
+	 * @throws Exception
+	 */
+	protected MBeanServer getMBeanServer() throws Exception {
+		if (mbeanServer == null) {
+			mbeanServer = (MBeanServer) MBeanServerFactory.findMBeanServer(null).get(0);
+		}
+		return mbeanServer;
+	}
+
+	public boolean isLocalMode() {
+		return getSipCache().inLocalMode();
 	}
 }
