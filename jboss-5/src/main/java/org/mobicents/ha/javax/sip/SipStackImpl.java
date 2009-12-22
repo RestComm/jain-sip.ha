@@ -39,7 +39,7 @@ import org.mobicents.ha.javax.sip.cache.SipCache;
  *
  */
 public class SipStackImpl extends ClusteredSipStackImpl implements SipStackImplMBean {
-	public static String JAIN_SIP_MBEAN_NAME = "org.mobicents.jain.sip:type=sip-stack,name=mobicents-jain-sip";
+	public static String JAIN_SIP_MBEAN_NAME = "org.mobicents.jain.sip:type=sip-stack,name=";
 	ObjectName oname = null;
 	MBeanServer mbeanServer = null;
 	
