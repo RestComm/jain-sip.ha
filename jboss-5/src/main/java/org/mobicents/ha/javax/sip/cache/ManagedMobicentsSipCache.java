@@ -64,15 +64,21 @@ public class ManagedMobicentsSipCache extends MobicentsSipCache {
 	public void init() throws SipCacheException {			
 		try {			
 			if(configProperties.getProperty(ManagedMobicentsSipCache.STANDALONE) == null || "false".equals(configProperties.getProperty(ManagedMobicentsSipCache.STANDALONE))) {
+				ClassLoader previousClassLoader = Thread.currentThread().getContextClassLoader();
+				Thread.currentThread().setContextClassLoader(CacheManagerLocator.class.getClassLoader());
+				
 				CacheManagerLocator locator = CacheManagerLocator.getCacheManagerLocator();
 				// Locator accepts as param a set of JNDI properties to help in lookup;
 				// this isn't necessary inside the AS
 				CacheManager cacheManager = locator.getCacheManager(null);
+//				Context ctx = new InitialContext();
+//				CacheManager cacheManager = (CacheManager) ctx.lookup("java:CacheManager"); 
 				if (clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_INFO)) {
 					clusteredSipStack.getStackLogger().logInfo(
 							"Mobicents JAIN SIP JBoss Cache Manager instance : " + cacheManager);
 				}
-				cache = new MobicentsCache(cacheManager, configProperties.getProperty(CACHE_NAME,DEFAULT_CACHE_NAME));
+				cache = new MobicentsCache(cacheManager, configProperties.getProperty(CACHE_NAME,DEFAULT_CACHE_NAME), false);
+				Thread.currentThread().setContextClassLoader(previousClassLoader);
 			} else {
 				String pojoConfigurationPath = configProperties.getProperty(JBOSS_CACHE_CONFIG_PATH, DEFAULT_FILE_CONFIG_PATH);
 				if (clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_INFO)) {
