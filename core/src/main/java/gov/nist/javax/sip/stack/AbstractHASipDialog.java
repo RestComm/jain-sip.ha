@@ -40,11 +40,9 @@ import javax.sip.DialogState;
 import javax.sip.PeerUnavailableException;
 import javax.sip.SipException;
 import javax.sip.SipFactory;
-import javax.sip.address.Address;
 import javax.sip.address.AddressFactory;
 import javax.sip.header.EventHeader;
 import javax.sip.header.HeaderFactory;
-import javax.sip.header.RouteHeader;
 
 import org.mobicents.ha.javax.sip.ClusteredSipStack;
 import org.mobicents.ha.javax.sip.HASipDialog;
