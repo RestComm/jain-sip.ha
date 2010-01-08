@@ -21,6 +21,7 @@
  */
 package org.mobicents.ha.javax.sip.cache;
 
+import gov.nist.core.StackLogger;
 import gov.nist.javax.sip.SipProviderImpl;
 import gov.nist.javax.sip.message.SIPResponse;
 import gov.nist.javax.sip.stack.AbstractHASipDialog;
@@ -32,6 +33,8 @@ import java.util.Map.Entry;
 
 import javax.sip.PeerUnavailableException;
 import javax.sip.SipFactory;
+import javax.sip.address.Address;
+import javax.sip.header.ContactHeader;
 
 import org.jboss.cache.CacheException;
 import org.jboss.cache.Fqn;
@@ -68,7 +71,32 @@ public class SIPDialogCacheData extends CacheData {
 					haSipDialog.setDialogId(dialogId);
 					haSipDialog.setMetaDataToReplicate(dialogMetaData);
 					Object dialogAppData = childNode.get(APPDATA);
-					haSipDialog.setApplicationDataToReplicate(dialogAppData);				
+					haSipDialog.setApplicationDataToReplicate(dialogAppData);
+					final String contactStringified = (String) dialogMetaData.get(AbstractHASipDialog.CONTACT_HEADER);
+					if(contactStringified != null) {
+						Address contactAddress = SipFactory.getInstance().createAddressFactory().createAddress(contactStringified);
+						ContactHeader contactHeader = SipFactory.getInstance().createHeaderFactory().createContactHeader(contactAddress);
+						haSipDialog.setContactHeader(contactHeader);
+					}
+					if(clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+						clusteredSipStack.getStackLogger().logDebug("HA SIP Dialog " + dialogId + " is Server ? " + haSipDialog.isServer() );
+					}
+					if(haSipDialog.isServer()) {
+						String remoteTag = haSipDialog.getLocalTag();
+						Address remoteParty = haSipDialog.getLocalParty();
+						String localTag = haSipDialog.getRemoteTag();
+						Address localParty = haSipDialog.getRemoteParty();
+						haSipDialog.setLocalTagInternal(localTag);
+						haSipDialog.setLocalPartyInternal(localParty);
+						haSipDialog.setRemoteTagInternal(remoteTag);
+						haSipDialog.setRemotePartyInternal(remoteParty);
+					}					
+					if(clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+						clusteredSipStack.getStackLogger().logDebug("HA SIP Dialog " + dialogId + " localTag  = " + haSipDialog.getLocalTag());
+						clusteredSipStack.getStackLogger().logDebug("HA SIP Dialog " + dialogId + " remoteTag  = " + haSipDialog.getRemoteTag());
+						clusteredSipStack.getStackLogger().logDebug("HA SIP Dialog " + dialogId + " localParty = " + haSipDialog.getLocalParty());
+						clusteredSipStack.getStackLogger().logDebug("HA SIP Dialog " + dialogId + " remoteParty  = " + haSipDialog.getRemoteParty());
+					}
 				}				
 				return haSipDialog;
 			} catch (CacheException e) {
@@ -83,7 +111,10 @@ public class SIPDialogCacheData extends CacheData {
 	}
 	
 	public void putSIPDialog(SIPDialog dialog) throws SipCacheException {
-		final AbstractHASipDialog haDialog = (AbstractHASipDialog) dialog; 
+		final AbstractHASipDialog haDialog = (AbstractHASipDialog) dialog;
+		if(clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+			clusteredSipStack.getStackLogger().logDebug("HA SIP Dialog " + haDialog.getDialogId() + " is Server ? " + haDialog.isServer() );
+		}
 		final Node childNode = getNode().addChild(Fqn.fromElements(dialog.getDialogId()));
 		for (Entry<String, Object> metaData : haDialog.getMetaDataToReplicate().entrySet()) {
 			childNode.put(metaData.getKey(), metaData.getValue());

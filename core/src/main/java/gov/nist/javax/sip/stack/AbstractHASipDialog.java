@@ -40,7 +40,9 @@ import javax.sip.DialogState;
 import javax.sip.PeerUnavailableException;
 import javax.sip.SipException;
 import javax.sip.SipFactory;
+import javax.sip.address.Address;
 import javax.sip.address.AddressFactory;
+import javax.sip.header.ContactHeader;
 import javax.sip.header.EventHeader;
 import javax.sip.header.HeaderFactory;
 
@@ -62,9 +64,15 @@ public abstract class AbstractHASipDialog extends SIPDialog implements HASipDial
 	public static final String ROUTE_LIST = "rl";
 	public static final String IS_REINVITE = "ir";
 	public static final String LAST_RESPONSE = "lr";
+	public static final String IS_SERVER = "is";
+	public static final String FIRST_TX_METHOD = "ftm";
+	public static final String FIRST_TX_ID = "ftid";
+	public static final String FIRST_TX_PORT = "ftp";
+	public static final String FIRST_TX_SECURE = "fts";
+	public static final String CONTACT_HEADER = "ch";
 
 	static AddressFactory addressFactory = null;
-	static HeaderFactory headerFactory = null;	
+	static HeaderFactory headerFactory = null;		
 	
 	static {		
 		try {
@@ -93,6 +101,7 @@ public abstract class AbstractHASipDialog extends SIPDialog implements HASipDial
 		setSipProvider((SipProviderImpl) sipStackImpl.getSipProviders().next());
 		setStack((SIPTransactionStack)sipStackImpl);
 		setAssigned();
+		firstTransactionPort = getSipProvider().getListeningPoint(getLastResponse().getTopmostViaHeader().getTransport()).getPort();
 		ackProcessed = true;
 		ackSeen = true;
 	}	
@@ -114,19 +123,27 @@ public abstract class AbstractHASipDialog extends SIPDialog implements HASipDial
 			routes[i++] = sipHeader.getHeaderValue().toString();
 		}
 		dialogMetaData.put(ROUTE_LIST, routes);
-		dialogMetaData.put(TERMINATE_ON_BYE, isTerminatedOnBye());
+		dialogMetaData.put(TERMINATE_ON_BYE, Boolean.valueOf(isTerminatedOnBye()));
 		if(getRemoteTarget() != null) {
 			dialogMetaData.put(REMOTE_TARGET, getRemoteTarget().toString());
 		} else {
 			dialogMetaData.put(REMOTE_TARGET, null);
 		}
-		dialogMetaData.put(SERVER_TRANSACTION_FLAG, isServer());
+		dialogMetaData.put(SERVER_TRANSACTION_FLAG, Boolean.valueOf(isServer()));
 		if(getEventHeader() != null) {
 			dialogMetaData.put(EVENT_HEADER, getEventHeader().toString());
 		} else {
 			dialogMetaData.put(EVENT_HEADER, null);
 		}
-		dialogMetaData.put(B2BUA, isBackToBackUserAgent());
+		dialogMetaData.put(B2BUA, Boolean.valueOf(isBackToBackUserAgent()));
+		dialogMetaData.put(IS_SERVER, Boolean.valueOf(isServer()));
+		dialogMetaData.put(FIRST_TX_SECURE, Boolean.valueOf(firstTransactionSecure));
+		dialogMetaData.put(FIRST_TX_ID, firstTransactionId);
+		dialogMetaData.put(FIRST_TX_METHOD, firstTransactionMethod);		
+		if(contactHeader != null) {
+			dialogMetaData.put(CONTACT_HEADER, contactHeader.toString());
+		}
+		
 		return dialogMetaData;
 	}
 
@@ -186,6 +203,17 @@ public abstract class AbstractHASipDialog extends SIPDialog implements HASipDial
 			}
 			setRouteList(routeList);
 		}
+		final Boolean isServer = (Boolean) metaData.get(IS_SERVER);
+		if(isServer != null) {
+			firstTransactionSeen = true;
+			firstTransactionIsServerTransaction = isServer;
+		}
+		final Boolean firstTxSecure = (Boolean) metaData.get(FIRST_TX_SECURE);
+		if(firstTxSecure != null) {
+			firstTransactionSecure = firstTxSecure;
+		}
+		firstTransactionId = (String) metaData.get(FIRST_TX_ID);		
+		firstTransactionMethod = (String) metaData.get(FIRST_TX_METHOD);		
 	}
 	
 	public void setApplicationDataToReplicate(Object appData) {
@@ -204,4 +232,26 @@ public abstract class AbstractHASipDialog extends SIPDialog implements HASipDial
 	}
 
 	protected abstract void replicateState();
+
+	public void setLocalTagInternal(String localTag) {
+		super.myTag = localTag;
+	}
+	
+	public void setRemoteTagInternal(String remoteTag) {
+		super.hisTag = remoteTag;
+	}
+
+	public void setLocalPartyInternal(Address localParty) {
+		super.localParty = localParty;
+	}
+
+	public void setRemotePartyInternal(Address remoteParty) {
+		super.remoteParty = remoteParty;
+	}
+
+	public void setContactHeader(ContactHeader contactHeader) {
+		this.contactHeader = (Contact) contactHeader;
+	}
+	
+	
 }
