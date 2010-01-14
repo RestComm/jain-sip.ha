@@ -25,7 +25,7 @@
 	<properties>
 		<mobicents.tools.mavenplugin.eclipse.version>1.0.0.BETA2
 		</mobicents.tools.mavenplugin.eclipse.version>
-		<mobicents.cluster.version>1.2-SNAPSHOT</mobicents.cluster.version>
+		<mobicents.cluster.version>1.2</mobicents.cluster.version>
 	</properties>
 
 	<dependencyManagement>
