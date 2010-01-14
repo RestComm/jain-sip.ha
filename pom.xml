@@ -9,16 +9,16 @@
 
 	<groupId>org.mobicents.ha.javax.sip</groupId>
 	<artifactId>mobicents-jain-sip-ha</artifactId>
-	<version>0.4-SNAPSHOT</version>
+	<version>0.4</version>
 
 	<packaging>pom</packaging>
 
 	<scm>
-		<connection>scm:svn:https://mobicents.googlecode.com/svn/trunk/servers/jain-sip-ha
+		<connection>scm:svn:https://mobicents.googlecode.com/svn/tags/servers/jain-sip-ha/mobicents-jain-sip-ha-0.4
 		</connection>
-		<developerConnection>scm:svn:https://mobicents.googlecode.com/svn/trunk/servers/jain-sip-ha
+		<developerConnection>scm:svn:https://mobicents.googlecode.com/svn/tags/servers/jain-sip-ha/mobicents-jain-sip-ha-0.4
 		</developerConnection>
-		<url>http://mobicents.googlecode.com/svn/trunk/servers/jain-sip-ha
+		<url>http://mobicents.googlecode.com/svn/tags/servers/jain-sip-ha/mobicents-jain-sip-ha-0.4
 		</url>
 	</scm>
 
