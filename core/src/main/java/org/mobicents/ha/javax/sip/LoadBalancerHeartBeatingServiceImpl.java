@@ -55,10 +55,11 @@ import org.mobicents.tools.sip.balancer.SIPNode;
  *
  */
 public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBeatingService {
-	private static final int DEFAULT_RMI_PORT = 2000;
-	private static final String BALANCER_SIP_PORT_CHAR_SEPARATOR = ":";
-	private static final String BALANCERS_CHAR_SEPARATOR = ";";
-	private static final int DEFAULT_LB_SIP_PORT = 5065;		
+	
+	public static final int DEFAULT_RMI_PORT = 2000;
+	public static final String BALANCER_SIP_PORT_CHAR_SEPARATOR = ":";
+	public static final String BALANCERS_CHAR_SEPARATOR = ";";
+	public static final int DEFAULT_LB_SIP_PORT = 5065;		
 	
 	ClusteredSipStack sipStack = null;
 	//the logger

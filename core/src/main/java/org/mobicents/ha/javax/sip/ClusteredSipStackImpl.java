@@ -37,6 +37,7 @@ import javax.sip.DialogState;
 import javax.sip.PeerUnavailableException;
 import javax.sip.ProviderDoesNotExistException;
 import javax.sip.SipException;
+import javax.sip.SipFactory;
 
 import org.mobicents.ha.javax.sip.cache.SipCache;
 import org.mobicents.ha.javax.sip.cache.SipCacheException;
@@ -58,12 +59,16 @@ import org.mobicents.ha.javax.sip.cache.SipCacheFactory;
  *
  */
 public abstract class ClusteredSipStackImpl extends gov.nist.javax.sip.SipStackImpl implements ClusteredSipStack {	
+	
 	private SipCache sipCache = null;
 	private LoadBalancerHeartBeatingService loadBalancerHeartBeatingService = null;
 	private ReplicationStrategy replicationStrategy = ReplicationStrategy.ConfirmedDialog;
+	private LoadBalancerElector loadBalancerElector = null;
 	
 	public ClusteredSipStackImpl(Properties configurationProperties) throws PeerUnavailableException {
+		
 		super(configurationProperties);
+		
 		String lbHbServiceClassName = configurationProperties.getProperty(LoadBalancerHeartBeatingService.LB_HB_SERVICE_CLASS_NAME);
 		if(lbHbServiceClassName != null) {
 			try {
@@ -74,7 +79,23 @@ public abstract class ClusteredSipStackImpl extends gov.nist.javax.sip.SipStackI
 	                    + " could not be instantiated. Ensure the org.mobicents.ha.javax.sip.LoadBalancerHeartBeatingServiceClassName property has been set correctly and that the class is on the classpath.";
 	            throw new PeerUnavailableException(errmsg, e);
 	        }
+	        // create the load balancer elector if specified
+	        String lbElectorClassName = configurationProperties.getProperty(LoadBalancerElector.IMPLEMENTATION_CLASS_NAME_PROPERTY);
+			if(lbElectorClassName != null) {
+				try {
+		            loadBalancerElector = (LoadBalancerElector) Class.forName(lbElectorClassName).newInstance();	            
+		        } catch (Exception e) {
+		            String errmsg = "The loadBalancerElector class name: "
+		                    + lbElectorClassName
+		                    + " could not be instantiated. Ensure the "+LoadBalancerElector.IMPLEMENTATION_CLASS_NAME_PROPERTY+" property has been set correctly and that the class is on the classpath.";
+		            throw new PeerUnavailableException(errmsg, e);
+		        }
+		        loadBalancerElector.setAddressFactory(SipFactory.getInstance().createAddressFactory());
+		        loadBalancerElector.setStackLogger(getStackLogger());
+		        loadBalancerElector.setService(loadBalancerHeartBeatingService);
+			}
 		}
+		
 		// get/create the jboss cache instance to store all sip stack related data into it
 		sipCache = SipCacheFactory.createSipCache(this, configurationProperties);
 		try {
