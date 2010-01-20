@@ -25,6 +25,8 @@ import gov.nist.core.StackLogger;
 import gov.nist.javax.sip.stack.SIPDialog;
 
 import javax.sip.SipStack;
+import javax.sip.address.Address;
+import javax.sip.address.SipURI;
 
 import org.mobicents.ha.javax.sip.cache.SipCache;
 
@@ -32,6 +34,7 @@ import org.mobicents.ha.javax.sip.cache.SipCache;
  * This interface defines the method to be implemented by a SipStack that can be clustered.
  * 
  * @author jean.deruelle@gmail.com
+ * @author martins
  *
  */
 public interface ClusteredSipStack extends SipStack {	
@@ -59,4 +62,14 @@ public interface ClusteredSipStack extends SipStack {
 	LoadBalancerHeartBeatingService getLoadBalancerHeartBeatingService();
 
 	ReplicationStrategy getReplicationStrategy();
+	
+	/**
+	 * Retrieves the {@link LoadBalancerElector} attached to the stack, if such
+	 * feature is being used. The elector provides {@link Address} objects with
+	 * {@link SipURI} pointing to each load balancer, useful to create outgoing
+	 * requests.
+	 * 
+	 * @return
+	 */
+	LoadBalancerElector getLoadBalancerElector();
 }

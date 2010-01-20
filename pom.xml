@@ -14,11 +14,11 @@
 	<packaging>pom</packaging>
 
 	<scm>
-		<connection>scm:svn:https://mobicents.googlecode.com/svn/tags/parent/mobicents-jain-sip-ha-0.5
+		<connection>scm:svn:https://mobicents.googlecode.com/svn/tags/parent/mobicents-jain-sip-ha-0.6
 		</connection>
-		<developerConnection>scm:svn:https://mobicents.googlecode.com/svn/tags/parent/mobicents-jain-sip-ha-0.5
+		<developerConnection>scm:svn:https://mobicents.googlecode.com/svn/tags/parent/mobicents-jain-sip-ha-0.6
 		</developerConnection>
-		<url>http://mobicents.googlecode.com/svn/tags/parent/mobicents-jain-sip-ha-0.5
+		<url>http://mobicents.googlecode.com/svn/tags/parent/mobicents-jain-sip-ha-0.6
 		</url>
 	</scm>
 

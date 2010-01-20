@@ -115,6 +115,10 @@ public abstract class ClusteredSipStackImpl extends gov.nist.javax.sip.SipStackI
 		}
 	}		
 	
+	/*
+	 * (non-Javadoc)
+	 * @see gov.nist.javax.sip.SipStackImpl#start()
+	 */
 	@Override
 	public void start() throws ProviderDoesNotExistException, SipException {
 		try {
@@ -128,6 +132,10 @@ public abstract class ClusteredSipStackImpl extends gov.nist.javax.sip.SipStackI
 		super.start();		
 	}
 	
+	/*
+	 * (non-Javadoc)
+	 * @see gov.nist.javax.sip.SipStackImpl#stop()
+	 */
 	@Override
 	public void stop() {		
 		super.stop();
@@ -141,6 +149,10 @@ public abstract class ClusteredSipStackImpl extends gov.nist.javax.sip.SipStackI
 		}
 	}
 	
+	/*
+	 * (non-Javadoc)
+	 * @see gov.nist.javax.sip.stack.SIPTransactionStack#createDialog(gov.nist.javax.sip.stack.SIPTransaction)
+	 */
 	@Override
 	public SIPDialog createDialog(SIPTransaction transaction) {
 		if (sipCache.inLocalMode()) {
@@ -162,6 +174,10 @@ public abstract class ClusteredSipStackImpl extends gov.nist.javax.sip.SipStackI
 		}
 	}
 	
+	/*
+	 * (non-Javadoc)
+	 * @see gov.nist.javax.sip.stack.SIPTransactionStack#createDialog(gov.nist.javax.sip.stack.SIPClientTransaction, gov.nist.javax.sip.message.SIPResponse)
+	 */
 	@Override
 	public SIPDialog createDialog(SIPClientTransaction transaction, SIPResponse sipResponse) {
 		if (sipCache.inLocalMode()) {
@@ -179,6 +195,10 @@ public abstract class ClusteredSipStackImpl extends gov.nist.javax.sip.SipStackI
 		}
     }
 	
+	/*
+	 * (non-Javadoc)
+	 * @see gov.nist.javax.sip.stack.SIPTransactionStack#createDialog(gov.nist.javax.sip.SipProviderImpl, gov.nist.javax.sip.message.SIPResponse)
+	 */
 	@Override
 	public SIPDialog createDialog(SipProviderImpl sipProvider,
 			SIPResponse sipResponse) {
@@ -190,7 +210,10 @@ public abstract class ClusteredSipStackImpl extends gov.nist.javax.sip.SipStackI
 		}
 	}
 
-	
+	/*
+	 * (non-Javadoc)
+	 * @see gov.nist.javax.sip.stack.SIPTransactionStack#getDialog(java.lang.String)
+	 */
 	@Override
 	public SIPDialog getDialog(String dialogId) {
 		if (sipCache.inLocalMode()) {
@@ -223,6 +246,10 @@ public abstract class ClusteredSipStackImpl extends gov.nist.javax.sip.SipStackI
 		}
 	}		
 
+	/*
+	 * (non-Javadoc)
+	 * @see gov.nist.javax.sip.stack.SIPTransactionStack#putDialog(gov.nist.javax.sip.stack.SIPDialog)
+	 */
 	@Override
 	public void putDialog(SIPDialog dialog) {	
 		if (!sipCache.inLocalMode() && DialogState.CONFIRMED == dialog.getState()) {
@@ -231,7 +258,11 @@ public abstract class ClusteredSipStackImpl extends gov.nist.javax.sip.SipStackI
 		}
 		super.putDialog(dialog);		
 	}
-		
+	
+	/*
+	 * (non-Javadoc)
+	 * @see gov.nist.javax.sip.stack.SIPTransactionStack#removeDialog(gov.nist.javax.sip.stack.SIPDialog)
+	 */
 	@Override
 	public void removeDialog(SIPDialog dialog) {
 		if (!sipCache.inLocalMode()) {
@@ -277,6 +308,7 @@ public abstract class ClusteredSipStackImpl extends gov.nist.javax.sip.SipStackI
 			getStackLogger().logError("sipStack " + this + " problem storing the dialog " + dialogId + " into the distributed cache", e);
 		}
 	}
+	
 	/**
 	 * Remove the dialog from the distributed cache
 	 * @param dialogId the id of the dialog to remove
@@ -294,25 +326,43 @@ public abstract class ClusteredSipStackImpl extends gov.nist.javax.sip.SipStackI
 		}
 	}
 
-	/**
-	 * @param sipCache the sipCache to set
+	/*
+	 * (non-Javadoc)
+	 * @see org.mobicents.ha.javax.sip.ClusteredSipStack#setSipCache(org.mobicents.ha.javax.sip.cache.SipCache)
 	 */
 	public void setSipCache(SipCache sipCache) {
 		this.sipCache = sipCache;
 	}
 
-	/**
-	 * @return the sipCache
+	/*
+	 * (non-Javadoc)
+	 * @see org.mobicents.ha.javax.sip.ClusteredSipStack#getSipCache()
 	 */
 	public SipCache getSipCache() {
 		return sipCache;
 	}
 	
+	/*
+	 * (non-Javadoc)
+	 * @see org.mobicents.ha.javax.sip.ClusteredSipStack#getLoadBalancerHeartBeatingService()
+	 */
 	public LoadBalancerHeartBeatingService getLoadBalancerHeartBeatingService() {
 		return loadBalancerHeartBeatingService;
 	}
 	
+	/*
+	 * (non-Javadoc)
+	 * @see org.mobicents.ha.javax.sip.ClusteredSipStack#getReplicationStrategy()
+	 */
 	public ReplicationStrategy getReplicationStrategy() {
 		return replicationStrategy;
+	}
+	
+	/*
+	 * (non-Javadoc)
+	 * @see org.mobicents.ha.javax.sip.ClusteredSipStack#getLoadBalancerElector()
+	 */
+	public LoadBalancerElector getLoadBalancerElector() {
+		return loadBalancerElector;
 	}
 }
