@@ -34,6 +34,7 @@ import java.util.Properties;
 import javax.management.ObjectName;
 import javax.sip.PeerUnavailableException;
 import javax.sip.SipFactory;
+import javax.sip.address.Address;
 import javax.transaction.TransactionManager;
 
 import org.jboss.cache.CacheException;
@@ -78,6 +79,25 @@ public class JBossASSipCache implements SipCache {
 				haSipDialog.setMetaDataToReplicate(dialogMetaData);
 				Object dialogAppData = pojoCache.get(SipStackImpl.DIALOG_ROOT + dialogId, APPDATA);
 				haSipDialog.setApplicationDataToReplicate(dialogAppData);				
+			}
+			if(clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+				clusteredSipStack.getStackLogger().logDebug("HA SIP Dialog " + dialogId + " is Server ? " + haSipDialog.isServer() );
+			}
+			if(haSipDialog.isServer()) {
+				String remoteTag = haSipDialog.getLocalTag();
+				Address remoteParty = haSipDialog.getLocalParty();
+				String localTag = haSipDialog.getRemoteTag();
+				Address localParty = haSipDialog.getRemoteParty();
+				haSipDialog.setLocalTagInternal(localTag);
+				haSipDialog.setLocalPartyInternal(localParty);
+				haSipDialog.setRemoteTagInternal(remoteTag);
+				haSipDialog.setRemotePartyInternal(remoteParty);
+			}
+			if(clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+				clusteredSipStack.getStackLogger().logDebug("HA SIP Dialog " + dialogId + " localTag  = " + haSipDialog.getLocalTag());
+				clusteredSipStack.getStackLogger().logDebug("HA SIP Dialog " + dialogId + " remoteTag  = " + haSipDialog.getRemoteTag());
+				clusteredSipStack.getStackLogger().logDebug("HA SIP Dialog " + dialogId + " localParty = " + haSipDialog.getLocalParty());
+				clusteredSipStack.getStackLogger().logDebug("HA SIP Dialog " + dialogId + " remoteParty  = " + haSipDialog.getRemoteParty());
 			}
 			
 			return haSipDialog;
