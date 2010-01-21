@@ -146,6 +146,7 @@ public abstract class AbstractLoadBalancerElector implements
 			throw new IllegalStateException();
 		}
 		this.service = service;
+		service.addLoadBalancerHeartBeatingListener(this);
 		for (String balancer : service.getBalancers()) {
 			Address address = createAddress(balancer);
 			if (address != null) {
