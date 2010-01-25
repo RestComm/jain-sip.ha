@@ -30,6 +30,7 @@ import java.util.Properties;
 public interface LoadBalancerHeartBeatingService {
 
 	final static String BALANCERS = "org.mobicents.ha.javax.sip.BALANCERS";
+	final static String HEARTBEAT_INTERVAL = "org.mobicents.ha.javax.sip.HEARTBEAT_INTERVAL";
 	final static String LB_HB_SERVICE_CLASS_NAME = "org.mobicents.ha.javax.sip.LoadBalancerHeartBeatingServiceClassName";
 	
 	void init(ClusteredSipStack clusteredSipStack, Properties stackProperties);

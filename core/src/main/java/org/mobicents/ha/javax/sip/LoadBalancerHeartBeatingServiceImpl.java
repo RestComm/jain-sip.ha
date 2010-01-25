@@ -90,6 +90,7 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 		sipStack = clusteredSipStack;
 		logger = clusteredSipStack.getStackLogger();
 		balancers = stackProperties.getProperty(BALANCERS);
+		heartBeatInterval = Integer.parseInt(stackProperties.getProperty(HEARTBEAT_INTERVAL, "5000"));
 	}
 	
 	public void stopBalancer() {
