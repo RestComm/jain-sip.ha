@@ -103,7 +103,7 @@ public abstract class AbstractHASipDialog extends SIPDialog implements HASipDial
 		setAssigned();
 		firstTransactionPort = getSipProvider().getListeningPoint(getLastResponse().getTopmostViaHeader().getTransport()).getPort();
 		ackProcessed = true;
-		ackSeen = true;
+//		ackSeen = true;
 	}	
 	
 	@SuppressWarnings("unchecked")

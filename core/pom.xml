@@ -17,8 +17,8 @@
 		</dependency>
 		<dependency>
 			<groupId>org.mobicents.tools</groupId>
-			<artifactId>sip-balancer</artifactId>
-			<version>1.0.BETA14-SNAPSHOT</version>
+			<artifactId>sip-balancer-jar</artifactId>
+			<version>1.0.BETA15-SNAPSHOT</version>
 			<scope>provided</scope>
 		</dependency>
 	</dependencies>
