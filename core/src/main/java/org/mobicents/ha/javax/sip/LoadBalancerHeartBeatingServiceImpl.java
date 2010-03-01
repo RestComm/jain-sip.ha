@@ -137,7 +137,10 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 			started = true;
 		}
 		this.hearBeatTaskToRun = new BalancerPingTimerTask();
-		this.heartBeatTimer.scheduleAtFixedRate(this.hearBeatTaskToRun, 0,
+		
+		// Delay the start with 2 seconds so nodes joining under load are really ready to serve requests
+		// Otherwise one of the listeneing points comes a bit later and results in errors.
+		this.heartBeatTimer.scheduleAtFixedRate(this.hearBeatTaskToRun, 2000,
 				this.heartBeatInterval);
 		if(logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
 			logger.logDebug("Created and scheduled tasks for sending heartbeats to the sip balancer.");
