@@ -328,19 +328,27 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 
 	private ArrayList<SIPNode> getConnectorsAsSIPNode() {
 		ArrayList<SIPNode> info = new ArrayList<SIPNode>();
+		Integer sipTcpPort = null;
+		Integer sipUdpPort = null;
+		String address = null;
+		String hostName = null;
 		// Gathering info about server' sip listening points
 		Iterator<ListeningPoint> listeningPointIterator = sipStack.getListeningPoints();
 		while (listeningPointIterator.hasNext()) {
 			ListeningPoint listeningPoint = listeningPointIterator.next();
-			String address = listeningPoint.getIPAddress();
+			address = listeningPoint.getIPAddress();
 			// From Vladimir: for some reason I get "localhost" here instead of IP and this confiuses the LB
 			if(address.equals("localhost")) address = "127.0.0.1";
 			
 			int port = listeningPoint.getPort();
 			String transport = listeningPoint.getTransport();
-			String[] transports = new String[] {transport};
+			if(transport.equalsIgnoreCase("tcp")) {
+				sipTcpPort = port;
+			} else if(transport.equals("udp")) {
+				sipUdpPort = port;
+			}
 			
-			String hostName = null;
+			
 			try {
 				InetAddress[] aArray = InetAddress
 						.getAllByName(address);
@@ -351,25 +359,33 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 			} catch (UnknownHostException e) {
 				logger.logError("An exception occurred while trying to retrieve the hostname of a sip connector", e);
 			}
+		}
 			
 			String httpPortString = System.getProperty("org.mobicents.properties.httpPort");
 			String sslPortString = System.getProperty("org.mobicents.properties.sslPort");
+			SIPNode node = new SIPNode(hostName, address);
 			
 			int httpPort = 0;
 			int sslPort = 0;
 			
 			if(httpPortString != null) {
 				httpPort = Integer.parseInt(httpPortString);
+				node.getProperties().put("httpPort", httpPort);
 			}
 			if(sslPortString != null) {
 				sslPort = Integer.parseInt(sslPortString);
+				node.getProperties().put("sslPort", sslPort);
 			}
 			
-			SIPNode node = new SIPNode(hostName, address, port,
-					transports, jvmRoute, httpPort, sslPort, null);
+			
+			if(sipTcpPort != null) node.getProperties().put("tcpPort", sipTcpPort);
+			if(sipUdpPort != null) node.getProperties().put("udpPort", sipUdpPort);
+			if(jvmRoute != null) node.getProperties().put("jvmRoute", jvmRoute);
+			//, port,
+			//		transports, jvmRoute, httpPort, sslPort, null);
 
 			info.add(node);
-		}
+		
 		return info;
 	}
 	
