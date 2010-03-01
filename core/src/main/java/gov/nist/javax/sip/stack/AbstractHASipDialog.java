@@ -98,7 +98,20 @@ public abstract class AbstractHASipDialog extends SIPDialog implements HASipDial
 	 * @param sipStackImpl the sip Stack Impl that reloaded this dialog from the distributed cache
 	 */
 	public void initAfterLoad(ClusteredSipStack sipStackImpl) {
-		setSipProvider((SipProviderImpl) sipStackImpl.getSipProviders().next());
+		String transport = getLastResponse().getTopmostViaHeader().getTransport();
+		Iterator<SipProviderImpl> providers = sipStackImpl.getSipProviders();
+		boolean providerNotFound = true;
+		while(providers.hasNext()) {
+			SipProviderImpl providerImpl = providers.next();
+			if(providerImpl.getListeningPoint(transport) != null) {
+				setSipProvider(providerImpl);
+				providerNotFound = false;
+			}
+		}
+		if(providerNotFound) {
+			throw new RuntimeException("No providers found for transport=" 
+					+ transport + " on this node. Make sure connectors are configured for this transport");
+		}
 		setStack((SIPTransactionStack)sipStackImpl);
 		setAssigned();
 		firstTransactionPort = getSipProvider().getListeningPoint(getLastResponse().getTopmostViaHeader().getTransport()).getPort();
