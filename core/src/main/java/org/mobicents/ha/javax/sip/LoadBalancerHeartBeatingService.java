@@ -71,6 +71,14 @@ public interface LoadBalancerHeartBeatingService {
 	 */
 	boolean addBalancer(String hostName, int sipPort, int index, int rmiPort)
 			throws IllegalArgumentException;
+	
+	/**
+	 * Get the load balancers objects that were created based on the balancers string AND
+	 * the balancers added later.
+	 * 
+	 * @return
+	 */
+	SipLoadBalancer[] getLoadBalancers();
 
 	/**
 	 * Tries to remove balancer with name: addr[0].addr[1].addr[2].addr[3]

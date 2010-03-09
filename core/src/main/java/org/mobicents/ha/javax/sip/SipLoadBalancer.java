@@ -19,18 +19,42 @@ package org.mobicents.ha.javax.sip;
 import java.io.Serializable;
 import java.net.InetAddress;
 
+import javax.sip.PeerUnavailableException;
+import javax.sip.SipFactory;
+import javax.sip.address.Address;
+import javax.sip.address.AddressFactory;
+import javax.sip.address.SipURI;
+import javax.sip.header.HeaderFactory;
+import javax.sip.header.RouteHeader;
+
+
 /**
  * 
  * @author <A HREF="mailto:jean.deruelle@gmail.com">Jean Deruelle</A> 
  *
  */
 public class SipLoadBalancer implements Serializable {
-	
+	private static SipFactory sipFactory = SipFactory.getInstance();
+	private static AddressFactory addressFactory;
+	private static HeaderFactory headerFactory;
+	static {
+		try {
+			addressFactory = sipFactory.createAddressFactory();
+			headerFactory = sipFactory.createHeaderFactory();
+		} catch (PeerUnavailableException e) {
+			throw new RuntimeException("Problem with factory creation", e);
+		}
+	}
 	private static final long serialVersionUID = 1L;
 	private InetAddress address;
 	private int sipPort;
 	private int rmiPort;
 	private transient LoadBalancerHeartBeatingService loadBalancerHeartBeatingService;
+	private transient RouteHeader balancerRouteHeaderUdp;
+	private transient RouteHeader balancerRouteHeaderTcp;
+	private transient boolean available;
+	private transient boolean displayWarning;
+	private transient Address sipAddress;
 	/**
 	 * @param address
 	 * @param sipPort
@@ -38,10 +62,36 @@ public class SipLoadBalancer implements Serializable {
 	 */
 	public SipLoadBalancer(LoadBalancerHeartBeatingService loadBalancerHeartBeatingService, InetAddress address, int sipPort, int rmiPort) {
 		super();
+		this.available = false;
+		this.displayWarning = true;
 		this.address = address;
 		this.sipPort = sipPort;
 		this.rmiPort = rmiPort;
 		this.loadBalancerHeartBeatingService = loadBalancerHeartBeatingService;
+		try {
+			javax.sip.address.SipURI sipUriUdp = addressFactory.createSipURI(null, address.getHostAddress());
+			sipUriUdp.setPort(sipPort);
+			sipUriUdp.setLrParam();
+			javax.sip.address.SipURI sipAddressUri = (SipURI) sipUriUdp.clone();
+			sipUriUdp.setTransportParam("udp");
+			javax.sip.address.SipURI sipUriTcp = (SipURI) sipUriUdp.clone();
+			sipUriTcp.setTransportParam("tcp");
+			
+			javax.sip.address.Address routeAddressUdp = 
+				addressFactory.createAddress(sipUriUdp);
+			balancerRouteHeaderUdp = 
+				headerFactory.createRouteHeader(routeAddressUdp);
+			
+			javax.sip.address.Address routeAddressTcp = 
+				addressFactory.createAddress(sipUriTcp);
+			balancerRouteHeaderTcp = 
+				headerFactory.createRouteHeader(routeAddressTcp);
+			
+			sipAddress = addressFactory.createAddress(sipAddressUri);
+			
+		} catch (Exception e) {
+			throw new RuntimeException(e);
+		}
 	}
 	/**
 	 * @param address the address to set
@@ -72,6 +122,30 @@ public class SipLoadBalancer implements Serializable {
 	}
 	public void setRmiPort(int rmiPort) {
 		this.rmiPort = rmiPort;
+	}
+	public RouteHeader getBalancerRouteHeaderTcp() {
+		return balancerRouteHeaderTcp;
+	}
+	public RouteHeader getBalancerRouteHeaderUdp() {
+		return balancerRouteHeaderUdp;
+	}
+	public void setBalancerRouteHeaderTcp(RouteHeader balancerRouteHeader) {
+		this.balancerRouteHeaderTcp = balancerRouteHeader;
+	}
+	public void setBalancerRouteHeaderUdp(RouteHeader balancerRouteHeader) {
+		this.balancerRouteHeaderUdp = balancerRouteHeader;
+	}
+	public boolean isAvailable() {
+		return available;
+	}
+	public void setAvailable(boolean available) {
+		this.available = available;
+	}
+	public boolean isDisplayWarning() {
+		return displayWarning;
+	}
+	public void setDisplayWarning(boolean displayWarning) {
+		this.displayWarning = displayWarning;
 	}
 	/* (non-Javadoc)
 	 * @see java.lang.Object#hashCode()
@@ -116,5 +190,11 @@ public class SipLoadBalancer implements Serializable {
 
 	public void switchover(String fromJvmRoute, String toJvmRoute) {
 		loadBalancerHeartBeatingService.sendSwitchoverInstruction(this, fromJvmRoute, toJvmRoute);
+	}
+	public Address getSipAddress() {
+		return sipAddress;
+	}
+	public void setSipAddress(Address sipAddress) {
+		this.sipAddress = sipAddress;
 	}
 }

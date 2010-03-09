@@ -19,7 +19,7 @@ public class RoundRobinLoadBalancerElector extends AbstractLoadBalancerElector {
 	/**
 	 * the list of balancer addresses
 	 */
-	final ArrayList<Address> balancers = new ArrayList<Address>();
+	final ArrayList<SipLoadBalancer> balancers = new ArrayList<SipLoadBalancer>();
 	
 	/**
 	 * index use to iterate the balancer's list
@@ -30,7 +30,7 @@ public class RoundRobinLoadBalancerElector extends AbstractLoadBalancerElector {
 	 * @see org.mobicents.ha.javax.sip.AbstractLoadBalancerElector#addLoadBalancer(javax.sip.address.Address)
 	 */
 	@Override
-	void addLoadBalancer(Address address) {
+	void addLoadBalancer(SipLoadBalancer address) {
 		synchronized (balancers) {
 			balancers.add(address);
 		}
@@ -55,18 +55,27 @@ public class RoundRobinLoadBalancerElector extends AbstractLoadBalancerElector {
 	 */
 	@Override
 	public Address getLoadBalancer() {
-		return getLoadBalancer(true);	
+		return getLoadBalancer(true).getSipAddress();	
 	}
 
-	private Address getLoadBalancer(boolean secondChance) {
+	private SipLoadBalancer getLoadBalancer(boolean secondChance) {
+		SipLoadBalancer result = null;
 		switch (balancers.size()) {
 		case 1:
-			return balancers.get(0);
+			result = balancers.get(0);
+			if(!result.isAvailable()) return null;
+			return result;
 		case 0:	
 			return null;
 		default:
 			try {
-				return balancers.get(getNextIndex());
+				result = balancers.get(getNextIndex());
+				if(!result.isAvailable()) {
+					for(int tries = 0; tries<balancers.size(); tries++) {
+						result = balancers.get(getNextIndex());
+						if(result.isAvailable()) return result;
+					}
+				}
 			}
 			catch(IndexOutOfBoundsException e) {
 				if (secondChance) {
@@ -80,7 +89,8 @@ public class RoundRobinLoadBalancerElector extends AbstractLoadBalancerElector {
 					return null;
 				}				
 			}
-		}	
+		}
+		return result;
 	}
 	
 	/* (non-Javadoc)
@@ -91,6 +101,10 @@ public class RoundRobinLoadBalancerElector extends AbstractLoadBalancerElector {
 		synchronized (balancers) {
 			balancers.remove(address);
 		}
+	}
+
+	public SipLoadBalancer getLoadBalancerExt() {
+		return getLoadBalancer(true);
 	}
 
 }

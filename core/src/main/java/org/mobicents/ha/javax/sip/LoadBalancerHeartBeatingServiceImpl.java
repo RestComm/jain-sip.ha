@@ -76,9 +76,7 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 	private TimerTask hearBeatTaskToRun = null;
 
     private boolean started = false;
-    
-    private boolean displayBalancerWarning = true;
-    private boolean displayBalancerFound = true;
+  
     private Set<LoadBalancerHeartBeatingListener> loadBalancerHeartBeatingListeners;
     
     public LoadBalancerHeartBeatingServiceImpl() {
@@ -402,26 +400,25 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 				Registry registry = LocateRegistry.getRegistry(balancerDescription.getAddress().getHostAddress(), balancerDescription.getRmiPort());
 				NodeRegisterRMIStub reg=(NodeRegisterRMIStub) registry.lookup("SIPBalancer");
 				reg.handlePing(info);
-				displayBalancerWarning = true;
-				if(displayBalancerFound) {
-					logger.logInfo("SIP Load Balancer Found!");
-					displayBalancerFound = false;
+				balancerDescription.setDisplayWarning(true);
+				if(!balancerDescription.isAvailable()) {
+					logger.logInfo("Keepalive: SIP Load Balancer Found! " + balancerDescription);
 				}
+				balancerDescription.setAvailable(true);
 			} catch (Exception e) {
-				if(displayBalancerWarning) {
+				balancerDescription.setAvailable(false);
+				if(balancerDescription.isDisplayWarning()) {
 					logger.logWarning("Cannot access the SIP load balancer RMI registry: " + e.getMessage() +
-							"\nIf you need a cluster configuration make sure the SIP load balancer is running. Host " + balancerDescription.toString());
-//					logger.error("Cannot access the SIP load balancer RMI registry: " , e);
-					displayBalancerWarning = false;
+						"\nIf you need a cluster configuration make sure the SIP load balancer is running. Host " + balancerDescription.toString());
 				}
-				displayBalancerFound = true;
+				balancerDescription.setDisplayWarning(false);
 			}
 		}
 		if(logger.isLoggingEnabled(StackLogger.TRACE_TRACE)) {
 			logger.logTrace("Finished gathering, Gathered info[" + info + "]");
 		}
 	}		
-	
+
 	/**
 	 * @param info
 	 */
@@ -432,19 +429,19 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 				Registry registry = LocateRegistry.getRegistry(balancerDescription.getAddress().getHostAddress(),balancerDescription.getRmiPort());
 				NodeRegisterRMIStub reg=(NodeRegisterRMIStub) registry.lookup("SIPBalancer");
 				reg.forceRemoval(info);
-				displayBalancerWarning = true;
-				if(displayBalancerFound) {
-					logger.logInfo("SIP Load Balancer Found!");
-					displayBalancerFound = false;
+				if(!balancerDescription.isAvailable()) {
+					logger.logInfo("Remove: SIP Load Balancer Found! " + balancerDescription);
+					balancerDescription.setDisplayWarning(true);
 				}
+				balancerDescription.setAvailable(true);
 			} catch (Exception e) {
-				if(displayBalancerWarning) {
+				if(balancerDescription.isDisplayWarning()) {
 					logger.logWarning("Cannot access the SIP load balancer RMI registry: " + e.getMessage() +
 							"\nIf you need a cluster configuration make sure the SIP load balancer is running.");
 //					logger.error("Cannot access the SIP load balancer RMI registry: " , e);
-					displayBalancerWarning = false;
+					balancerDescription.setDisplayWarning(false);
 				}
-				displayBalancerFound = true;
+				balancerDescription.setAvailable(true);
 			}
 		}
 		if(logger.isLoggingEnabled(StackLogger.TRACE_TRACE)) {
@@ -512,21 +509,25 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 			Registry registry = LocateRegistry.getRegistry(sipLoadBalancer.getAddress().getHostAddress(),sipLoadBalancer.getRmiPort());
 			NodeRegisterRMIStub reg=(NodeRegisterRMIStub) registry.lookup("SIPBalancer");
 			reg.switchover(fromJvmRoute, toJvmRoute);
-			displayBalancerWarning = true;
-			if(displayBalancerFound) {
-				logger.logInfo("SIP Load Balancer Found!");
-				displayBalancerFound = false;
+			sipLoadBalancer.setDisplayWarning(true);
+			if(!sipLoadBalancer.isAvailable()) {
+				logger.logInfo("Switchover: SIP Load Balancer Found! " + sipLoadBalancer);
 			}
 		} catch (Exception e) {
-			if(displayBalancerWarning) {
+			sipLoadBalancer.setAvailable(false);
+			if(sipLoadBalancer.isDisplayWarning()) {
 				logger.logWarning("Cannot access the SIP load balancer RMI registry: " + e.getMessage() +
-						"\nIf you need a cluster configuration make sure the SIP load balancer is running.");
-//					logger.error("Cannot access the SIP load balancer RMI registry: " , e);
-				displayBalancerWarning = false;
+				"\nIf you need a cluster configuration make sure the SIP load balancer is running.");
+				//					logger.error("Cannot access the SIP load balancer RMI registry: " , e);
+				sipLoadBalancer.setDisplayWarning(false);
 			}
-			displayBalancerFound = true;
 		} finally {
 			Thread.currentThread().setContextClassLoader(oldClassLoader);
 		}
+	}
+
+	public SipLoadBalancer[] getLoadBalancers() {
+		// This is slow, but it is called rarely, so no prob
+		return register.values().toArray(new SipLoadBalancer[] {});
 	}
 }

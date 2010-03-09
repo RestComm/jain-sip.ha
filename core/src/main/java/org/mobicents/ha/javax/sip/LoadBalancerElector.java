@@ -23,11 +23,19 @@ public interface LoadBalancerElector {
 	/**
 	 * 
 	 * Retrieves the {@link Address} of an active {@link SipLoadBalancer}, to be
-	 * cloned and used in outbond JAIN SIP Messages.
+	 * cloned and used in outbonud JAIN SIP Messages. Use {@link getLoadBalancerExt} instead.
 	 * 
 	 * @return
 	 */
+	@Deprecated
 	public Address getLoadBalancer();
+	
+	/**
+	 * Retrieves a load balancer structure {@link SipLoadBalancer} with cached reusable route headers.
+	 * 
+	 * @return
+	 */
+	public SipLoadBalancer getLoadBalancerExt();
 
 	/**
 	 * Sets the {@link AddressFactory} to be used when creating {@link Address}

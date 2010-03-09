@@ -40,7 +40,7 @@ public abstract class AbstractLoadBalancerElector implements
 	 * Adds the specified load balancer {@link Address}.
 	 * @param address
 	 */
-	abstract void addLoadBalancer(Address address);
+	abstract void addLoadBalancer(SipLoadBalancer address);
 	
 	/**
 	 * Creates a {@link Address} with a {@link SipUri}, from the specified
@@ -104,11 +104,7 @@ public abstract class AbstractLoadBalancerElector implements
 	 * (org.mobicents.ha.javax.sip.SipLoadBalancer)
 	 */
 	public void loadBalancerAdded(SipLoadBalancer balancerDescription) {
-		Address address = createAddress(balancerDescription.getAddress()
-				.getHostName(), balancerDescription.getSipPort());
-		if (address != null) {
-			addLoadBalancer(address);
-		}
+			addLoadBalancer(balancerDescription);
 	}
 
 	/*
@@ -147,11 +143,8 @@ public abstract class AbstractLoadBalancerElector implements
 		}
 		this.service = service;
 		service.addLoadBalancerHeartBeatingListener(this);
-		for (String balancer : service.getBalancers()) {
-			Address address = createAddress(balancer);
-			if (address != null) {
-				addLoadBalancer(address);
-			}
+		for (SipLoadBalancer balancer : service.getLoadBalancers()) {
+			addLoadBalancer(balancer);
 		}
 	}
 	
