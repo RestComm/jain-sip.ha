@@ -42,6 +42,7 @@ public class SipStackImpl extends ClusteredSipStackImpl implements SipStackImplM
 	public static String JAIN_SIP_MBEAN_NAME = "org.mobicents.jain.sip:type=sip-stack,name=";
 	ObjectName oname = null;
 	MBeanServer mbeanServer = null;
+	boolean isMBeanServerNotAvailable = false;
 	
 	public SipStackImpl(Properties configurationProperties) throws PeerUnavailableException {		
 		super(updateConfigProperties(configurationProperties));		
@@ -76,7 +77,7 @@ public class SipStackImpl extends ClusteredSipStackImpl implements SipStackImplM
 		String mBeanName=JAIN_SIP_MBEAN_NAME + stackName;
 		try {
 			oname = new ObjectName(mBeanName);
-			if (!getMBeanServer().isRegistered(oname)) {
+			if (getMBeanServer() != null && !getMBeanServer().isRegistered(oname)) {
 				getMBeanServer().registerMBean(this, oname);
 			}
 		} catch (Exception e) {
@@ -89,7 +90,7 @@ public class SipStackImpl extends ClusteredSipStackImpl implements SipStackImplM
 	public void stop() {
 		String mBeanName=JAIN_SIP_MBEAN_NAME + stackName;
 		try {
-			if (oname != null && getMBeanServer().isRegistered(oname)) {
+			if (oname != null && getMBeanServer() != null && getMBeanServer().isRegistered(oname)) {
 				getMBeanServer().unregisterMBean(oname);
 			}
 		} catch (Exception e) {
@@ -105,8 +106,14 @@ public class SipStackImpl extends ClusteredSipStackImpl implements SipStackImplM
 	 * @throws Exception
 	 */
 	protected MBeanServer getMBeanServer() throws Exception {
-		if (mbeanServer == null) {
-			mbeanServer = (MBeanServer) MBeanServerFactory.findMBeanServer(null).get(0);
+		if (mbeanServer == null && !isMBeanServerNotAvailable) {
+			try {
+				mbeanServer = (MBeanServer) MBeanServerFactory.findMBeanServer(null).get(0);				
+			} catch (Exception e) {
+				getStackLogger().logException(e);
+				getStackLogger().logWarning("No Mbean Server available, so JMX statistics won't be available");
+				isMBeanServerNotAvailable = true;
+			}
 		}
 		return mbeanServer;
 	}
