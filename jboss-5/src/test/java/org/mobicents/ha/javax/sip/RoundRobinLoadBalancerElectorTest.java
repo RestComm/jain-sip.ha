@@ -190,6 +190,11 @@ public class RoundRobinLoadBalancerElectorTest  extends TestCase {
 			// TODO Auto-generated method stub
 			
 		}
+
+		public SipLoadBalancer[] getLoadBalancers() {
+			// TODO Auto-generated method stub
+			return null;
+		}
 		
 	}
 	
