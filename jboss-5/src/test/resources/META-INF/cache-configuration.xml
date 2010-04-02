@@ -9,9 +9,7 @@
    -->
    <locking
          isolationLevel="REPEATABLE_READ"
-         nodeLockingScheme="mvcc"/>
-
-  	 <invocationBatching enabled="true"/>
+         nodeLockingScheme="mvcc"/>  	 
   
    <!--
       If region based marshalling is used, defines whether new regions are inactive on startup.
