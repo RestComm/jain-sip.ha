@@ -247,7 +247,7 @@ public abstract class AbstractHASipDialog extends SIPDialog implements HASipDial
 		// we replicate only if the state has really changed
 		// the fact of setting the last response upon recreation will trigger setState to be called and so the replication
 		// so we make sure to replicate only if the dialog has been created
-		if(!newState.equals(oldState) && !isCreated){
+		if(!newState.equals(oldState) && isCreated){
 			replicateState();
 		}
 	}
