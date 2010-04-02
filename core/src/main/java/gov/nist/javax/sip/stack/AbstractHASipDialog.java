@@ -73,6 +73,7 @@ public abstract class AbstractHASipDialog extends SIPDialog implements HASipDial
 
 	static AddressFactory addressFactory = null;
 	static HeaderFactory headerFactory = null;		
+	boolean isCreated = false;
 	
 	static {		
 		try {
@@ -82,15 +83,18 @@ public abstract class AbstractHASipDialog extends SIPDialog implements HASipDial
 	}
 	
 	public AbstractHASipDialog(SIPTransaction transaction) {
-		super(transaction);
+		super(transaction);		
+		isCreated = true;
 	}
 	
 	public AbstractHASipDialog(SIPClientTransaction transaction, SIPResponse sipResponse) {
 		super(transaction, sipResponse);
+		isCreated = true;
 	}
 	
     public AbstractHASipDialog(SipProviderImpl sipProvider, SIPResponse sipResponse) {
 		super(sipProvider, sipResponse);
+		isCreated = true;
 	}	
 
     /**
@@ -165,7 +169,8 @@ public abstract class AbstractHASipDialog extends SIPDialog implements HASipDial
 	}
 	
 	public void setMetaDataToReplicate(Map<String, Object> metaData) {
-		setState(DialogState._CONFIRMED);		
+		// the call to super is very important otherwise it triggers replication on dialog recreation
+		super.setState(DialogState._CONFIRMED);		
 		final Boolean isB2BUA = (Boolean) metaData.get(B2BUA);
 		if(isB2BUA == Boolean.TRUE) {
 			setBackToBackUserAgent();
@@ -230,7 +235,8 @@ public abstract class AbstractHASipDialog extends SIPDialog implements HASipDial
 	}
 	
 	public void setApplicationDataToReplicate(Object appData) {
-		setApplicationData(appData);
+		// the call to super is very important otherwise it triggers replication on dialog recreation
+		super.setApplicationData(appData);
 	}
 	
 	@Override
@@ -239,7 +245,9 @@ public abstract class AbstractHASipDialog extends SIPDialog implements HASipDial
 		super.setState(state);
 		DialogState newState = getState();
 		// we replicate only if the state has really changed
-		if(!newState.equals(oldState)){
+		// the fact of setting the last response upon recreation will trigger setState to be called and so the replication
+		// so we make sure to replicate only if the dialog has been created
+		if(!newState.equals(oldState) && !isCreated){
 			replicateState();
 		}
 	}

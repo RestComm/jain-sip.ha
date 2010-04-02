@@ -65,6 +65,9 @@ public class SIPDialogCacheData extends CacheData {
 			try {
 				final Map<String, Object> dialogMetaData = childNode.getData();				
 				if(dialogMetaData != null) {
+					if(clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+						clusteredSipStack.getStackLogger().logDebug("sipStack " + this + " dialog " + dialogId + " is present in the distributed cache, recreating it locally");
+					}
 					final String lastResponseStringified = (String) dialogMetaData.get(AbstractHASipDialog.LAST_RESPONSE);
 					final SIPResponse lastResponse = (SIPResponse) SipFactory.getInstance().createMessageFactory().createResponse(lastResponseStringified);
 					haSipDialog = HASipDialogFactory.createHASipDialog(clusteredSipStack.getReplicationStrategy(), (SipProviderImpl)clusteredSipStack.getSipProviders().next(), lastResponse);
@@ -111,6 +114,9 @@ public class SIPDialogCacheData extends CacheData {
 	}
 	
 	public void putSIPDialog(SIPDialog dialog) throws SipCacheException {
+		if(clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+			clusteredSipStack.getStackLogger().logStackTrace();
+		}
 		final AbstractHASipDialog haDialog = (AbstractHASipDialog) dialog;
 		if(clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
 			clusteredSipStack.getStackLogger().logDebug("HA SIP Dialog " + haDialog.getDialogId() + " is Server ? " + haDialog.isServer() );

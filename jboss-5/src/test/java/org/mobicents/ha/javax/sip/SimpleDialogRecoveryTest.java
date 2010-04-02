@@ -82,6 +82,7 @@ public class SimpleDialogRecoveryTest extends TestCase {
 	
 	public static final String IP_ADDRESS = getIpAddressFromProperties();
 //	public static final String IP_ADDRESS = "192.168.0.11";
+	public static final String TRACE_LEVEL = "DEBUG";
 	
     public static final int BALANCER_PORT = 5050;
 
@@ -126,7 +127,7 @@ public class SimpleDialogRecoveryTest extends TestCase {
             properties.setProperty("javax.sip.AUTOMATIC_DIALOG_SUPPORT", "off");
             // You need 16 for logging traces. 32 for debug + traces.
             // Your code will limp at 32 but it is best for debugging.
-            properties.setProperty("gov.nist.javax.sip.TRACE_LEVEL", "32");
+            properties.setProperty("gov.nist.javax.sip.TRACE_LEVEL", "ERROR");
             properties.setProperty("gov.nist.javax.sip.DEBUG_LOG",
                     "./logs/statelessforwarderdebug.txt");
             properties.setProperty("gov.nist.javax.sip.SERVER_LOG", "./logs/statelessforwarderlog.xml");
@@ -531,7 +532,7 @@ public class SimpleDialogRecoveryTest extends TestCase {
             //                .toString(BALANCER_PORT));
             // You need 16 for logging traces. 32 for debug + traces.
             // Your code will limp at 32 but it is best for debugging.
-            properties.setProperty("gov.nist.javax.sip.TRACE_LEVEL", "32");
+            properties.setProperty("gov.nist.javax.sip.TRACE_LEVEL", TRACE_LEVEL);
             properties.setProperty("gov.nist.javax.sip.DEBUG_LOG", "logs/" +
                     stackName + "debug.txt");
             properties.setProperty("gov.nist.javax.sip.SERVER_LOG", "logs/" +
@@ -858,7 +859,7 @@ public class SimpleDialogRecoveryTest extends TestCase {
             // Set to 0 (or NONE) in your production code for max speed.
             // You need 16 (or TRACE) for logging traces. 32 (or DEBUG) for debug + traces.
             // Your code will limp at 32 but it is best for debugging.
-            properties.setProperty("gov.nist.javax.sip.TRACE_LEVEL", "DEBUG");
+            properties.setProperty("gov.nist.javax.sip.TRACE_LEVEL", "ERROR");
 
             try {
                 // Create SipStack object

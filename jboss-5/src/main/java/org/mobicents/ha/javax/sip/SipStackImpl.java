@@ -21,6 +21,8 @@
  */
 package org.mobicents.ha.javax.sip;
 
+import gov.nist.core.StackLogger;
+
 import java.util.Properties;
 
 import javax.management.MBeanServer;
@@ -110,7 +112,7 @@ public class SipStackImpl extends ClusteredSipStackImpl implements SipStackImplM
 			try {
 				mbeanServer = (MBeanServer) MBeanServerFactory.findMBeanServer(null).get(0);				
 			} catch (Exception e) {
-				getStackLogger().logException(e);
+				getStackLogger().logStackTrace(StackLogger.TRACE_DEBUG);
 				getStackLogger().logWarning("No Mbean Server available, so JMX statistics won't be available");
 				isMBeanServerNotAvailable = true;
 			}

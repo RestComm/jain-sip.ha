@@ -290,6 +290,9 @@ public abstract class ClusteredSipStackImpl extends gov.nist.javax.sip.SipStackI
 			getStackLogger().logError("sipStack " + this + " problem getting dialog " + dialogId + " from the distributed cache", e);
 		}
 		if(sipDialog != null) {			
+			if(getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+				getStackLogger().logDebug("sipStack " + this + " dialog " + dialogId + " was present in the distributed cache, initializing it after the load");
+			}
 			((HASipDialog)sipDialog).initAfterLoad(this);
 		}
 		return sipDialog;
