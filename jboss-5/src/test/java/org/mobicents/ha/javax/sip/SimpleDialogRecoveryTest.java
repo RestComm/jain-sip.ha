@@ -411,6 +411,8 @@ public class SimpleDialogRecoveryTest extends TestCase {
                 // System.out.println("shootme: " + request);
                 Response response = messageFactory.createResponse(Response.RINGING,
                         request);
+                ToHeader toHeader = (ToHeader) response.getHeader(ToHeader.NAME);
+                toHeader.setTag("4321"); // Application is supposed to set.
                 ServerTransaction st = requestEvent.getServerTransaction();
 
                 if (st == null) {
@@ -427,7 +429,7 @@ public class SimpleDialogRecoveryTest extends TestCase {
                 ContactHeader contactHeader = headerFactory
                         .createContactHeader(address);
                 response.addHeader(contactHeader);
-                ToHeader toHeader = (ToHeader) okResponse.getHeader(ToHeader.NAME);
+                toHeader = (ToHeader) okResponse.getHeader(ToHeader.NAME);
                 toHeader.setTag("4321"); // Application is supposed to set.
                 okResponse.addHeader(contactHeader);
                 this.inviteTid = st;
