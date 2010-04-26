@@ -21,6 +21,7 @@
  */
 package gov.nist.javax.sip.stack;
 
+import gov.nist.core.StackLogger;
 import gov.nist.javax.sip.SipProviderImpl;
 import gov.nist.javax.sip.header.Contact;
 import gov.nist.javax.sip.header.Route;
@@ -171,13 +172,22 @@ public abstract class AbstractHASipDialog extends SIPDialog implements HASipDial
 	public void setMetaDataToReplicate(Map<String, Object> metaData) {
 		// the call to super is very important otherwise it triggers replication on dialog recreation
 		super.setState(DialogState._CONFIRMED);		
+		if (getStack().getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+			getStack().getStackLogger().logError(getDialogId() + " : lastResponse " + getLastResponse());
+		}
 		final Boolean isB2BUA = (Boolean) metaData.get(B2BUA);
 		if(isB2BUA == Boolean.TRUE) {
 			setBackToBackUserAgent();
 		}
+		if (getStack().getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+			getStack().getStackLogger().logError(getDialogId() + " : isB2BUA " + isB2BUA);
+		}
 		final Boolean isReinvite = (Boolean) metaData.get(IS_REINVITE);
 		if(isReinvite != null) {
 			setReInviteFlag(isReinvite);
+		}
+		if (getStack().getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+			getStack().getStackLogger().logError(getDialogId() + " : isReInvite " + isReinvite);
 		}
 		final String eventHeaderStringified = (String) metaData.get(EVENT_HEADER);
 		if(eventHeaderStringified != null) {
@@ -187,9 +197,15 @@ public abstract class AbstractHASipDialog extends SIPDialog implements HASipDial
 				getStack().getStackLogger().logError("Unexpected exception while parsing a deserialized eventHeader", e);
 			}
 		}	
+		if (getStack().getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+			getStack().getStackLogger().logError(getDialogId() + " : evenHeader " + eventHeaderStringified);
+		}
 		final Boolean serverTransactionFlag = (Boolean) metaData.get(SERVER_TRANSACTION_FLAG);
 		if(serverTransactionFlag != null) {
 			setServerTransactionFlag(serverTransactionFlag);
+		}
+		if (getStack().getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+			getStack().getStackLogger().logError(getDialogId() + " : STX Flag " + serverTransactionFlag);
 		}
 		final String remoteTargetStringified = (String) metaData.get(REMOTE_TARGET);
 		if(remoteTargetStringified != null) {
@@ -201,6 +217,9 @@ public abstract class AbstractHASipDialog extends SIPDialog implements HASipDial
 				getStack().getStackLogger().logError("Unexpected exception while parsing a deserialized remoteTarget address", e);
 			}	       
 		}
+		if (getStack().getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+			getStack().getStackLogger().logError(getDialogId() + " : remoteTarget " + remoteTargetStringified);
+		}
 		final Boolean terminateOnBye = (Boolean) metaData.get(TERMINATE_ON_BYE);
 		if(terminateOnBye != null) {
 			try {
@@ -208,6 +227,9 @@ public abstract class AbstractHASipDialog extends SIPDialog implements HASipDial
 			} catch (SipException e) {
 				// exception is never thrown
 			}
+		}
+		if (getStack().getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+			getStack().getStackLogger().logError(getDialogId() + " : terminateOnBye " + terminateOnBye);
 		}
 		final String[] routes = (String[]) metaData.get(ROUTE_LIST);
 		if(routes != null) {			
@@ -221,17 +243,32 @@ public abstract class AbstractHASipDialog extends SIPDialog implements HASipDial
 			}
 			setRouteList(routeList);
 		}
+		if (getStack().getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+			getStack().getStackLogger().logError(getDialogId() + " : routes " + routes);
+		}
 		final Boolean isServer = (Boolean) metaData.get(IS_SERVER);
 		if(isServer != null) {
 			firstTransactionSeen = true;
 			firstTransactionIsServerTransaction = isServer;
 		}
+		if (getStack().getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+			getStack().getStackLogger().logError(getDialogId() + " : isServer " + isServer);
+		}
 		final Boolean firstTxSecure = (Boolean) metaData.get(FIRST_TX_SECURE);
 		if(firstTxSecure != null) {
 			firstTransactionSecure = firstTxSecure;
 		}
+		if (getStack().getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+			getStack().getStackLogger().logError(getDialogId() + " : firstTxSecure" + firstTxSecure);
+		}
 		firstTransactionId = (String) metaData.get(FIRST_TX_ID);		
-		firstTransactionMethod = (String) metaData.get(FIRST_TX_METHOD);		
+		if (getStack().getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+			getStack().getStackLogger().logError(getDialogId() + " : firstTransactionId " + firstTransactionId);
+		}
+		firstTransactionMethod = (String) metaData.get(FIRST_TX_METHOD);
+		if (getStack().getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+			getStack().getStackLogger().logError(getDialogId() + " : firstTransactionMethod " + firstTransactionMethod);
+		}
 	}
 	
 	public void setApplicationDataToReplicate(Object appData) {
