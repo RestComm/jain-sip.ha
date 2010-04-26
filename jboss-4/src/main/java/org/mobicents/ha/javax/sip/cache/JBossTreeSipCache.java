@@ -239,4 +239,7 @@ public class JBossTreeSipCache implements SipCache {
 		return false;
 	}
 
+	public TreeCache getCache() {
+		return treeCache;
+	}
 }
