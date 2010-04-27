@@ -76,6 +76,7 @@ public abstract class AbstractHASipDialog extends SIPDialog implements HASipDial
 	public static final String LOCAL_TAG = "ltag";
 	public static final String REMOTE_TAG = "rtag";
 	public static final String VERSION = "v";
+	public static final String REMOTE_CSEQ = "rc";
 
 	static AddressFactory addressFactory = null;
 	static HeaderFactory headerFactory = null;		
@@ -208,6 +209,10 @@ public abstract class AbstractHASipDialog extends SIPDialog implements HASipDial
 		if (getStack().getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
 			getStack().getStackLogger().logDebug(getDialogId() + " : localTag " + getLocalTag());
 		}
+		dialogMetaData.put(REMOTE_CSEQ, Long.valueOf(getRemoteSeqNumber()));
+		if (getStack().getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+			getStack().getStackLogger().logDebug(getDialogId() + " : remoteCSeq " + getRemoteSeqNumber());
+		}
 		if(contactHeader != null) {
 			dialogMetaData.put(CONTACT_HEADER, contactHeader.toString());
 		}
@@ -329,6 +334,13 @@ public abstract class AbstractHASipDialog extends SIPDialog implements HASipDial
 		if (getStack().getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
 			getStack().getStackLogger().logDebug(getDialogId() + " : localTag " + getLocalTag());
 		}
+		Long remoteCSeq = (Long) metaData.get(REMOTE_CSEQ);
+		if(remoteCSeq != null) {
+			setRemoteSequenceNumber(remoteCSeq.longValue());
+			if (getStack().getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+				getStack().getStackLogger().logDebug(getDialogId() + " : remoteCSeq " + getRemoteSeqNumber());
+			}
+		}		
 	}
 	
 	public void setApplicationDataToReplicate(Object appData) {
