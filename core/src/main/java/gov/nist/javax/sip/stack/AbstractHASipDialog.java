@@ -21,8 +21,10 @@
  */
 package gov.nist.javax.sip.stack;
 
+import gov.nist.core.Separators;
 import gov.nist.core.StackLogger;
 import gov.nist.javax.sip.SipProviderImpl;
+import gov.nist.javax.sip.header.CallID;
 import gov.nist.javax.sip.header.Contact;
 import gov.nist.javax.sip.header.Route;
 import gov.nist.javax.sip.header.RouteList;
@@ -36,6 +38,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicLong;
 
 import javax.sip.DialogState;
 import javax.sip.PeerUnavailableException;
@@ -58,8 +61,7 @@ public abstract class AbstractHASipDialog extends SIPDialog implements HASipDial
 	
 	private static final long serialVersionUID = 1L;	
 	public static final String B2BUA = "b2b";
-	public static final String EVENT_HEADER = "eh";
-	public static final String SERVER_TRANSACTION_FLAG = "stf";
+	public static final String EVENT_HEADER = "eh";	
 	public static final String REMOTE_TARGET = "rt";
 	public static final String TERMINATE_ON_BYE = "tob";
 	public static final String ROUTE_LIST = "rl";
@@ -71,10 +73,14 @@ public abstract class AbstractHASipDialog extends SIPDialog implements HASipDial
 	public static final String FIRST_TX_PORT = "ftp";
 	public static final String FIRST_TX_SECURE = "fts";
 	public static final String CONTACT_HEADER = "ch";
+	public static final String LOCAL_TAG = "ltag";
+	public static final String REMOTE_TAG = "rtag";
+	public static final String VERSION = "v";
 
 	static AddressFactory addressFactory = null;
 	static HeaderFactory headerFactory = null;		
 	boolean isCreated = false;
+	private AtomicLong version = new AtomicLong(0);
 	
 	static {		
 		try {
@@ -127,8 +133,18 @@ public abstract class AbstractHASipDialog extends SIPDialog implements HASipDial
 	@SuppressWarnings("unchecked")
 	public Map<String,Object> getMetaDataToReplicate() {
 		Map<String,Object> dialogMetaData = new HashMap<String,Object>();
+		dialogMetaData.put(VERSION, Long.valueOf(version.incrementAndGet()));
+		if (getStack().getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+			getStack().getStackLogger().logDebug(getDialogId() + " : version " + version);
+		}
 		dialogMetaData.put(LAST_RESPONSE, getLastResponse().toString());
+		if (getStack().getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+			getStack().getStackLogger().logDebug(getDialogId() + " : lastResponse " + getLastResponse());
+		}
 		dialogMetaData.put(IS_REINVITE, isReInvite());
+		if (getStack().getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+			getStack().getStackLogger().logDebug(getDialogId() + " : isReInvite " + isReInvite());
+		}
 		final List<SIPHeader> routeList = new ArrayList<SIPHeader>();
 		final Iterator<SIPHeader> it = getRouteSet();
 		while (it.hasNext()) {
@@ -141,27 +157,63 @@ public abstract class AbstractHASipDialog extends SIPDialog implements HASipDial
 			routes[i++] = sipHeader.getHeaderValue().toString();
 		}
 		dialogMetaData.put(ROUTE_LIST, routes);
+		if (getStack().getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+			getStack().getStackLogger().logDebug(getDialogId() + " : routes " + routes);
+		}
 		dialogMetaData.put(TERMINATE_ON_BYE, Boolean.valueOf(isTerminatedOnBye()));
+		if (getStack().getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+			getStack().getStackLogger().logDebug(getDialogId() + " : terminateOnBye " + isTerminatedOnBye());
+		}
 		if(getRemoteTarget() != null) {
 			dialogMetaData.put(REMOTE_TARGET, getRemoteTarget().toString());
 		} else {
 			dialogMetaData.put(REMOTE_TARGET, null);
 		}
-		dialogMetaData.put(SERVER_TRANSACTION_FLAG, Boolean.valueOf(isServer()));
+		if (getStack().getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+			getStack().getStackLogger().logDebug(getDialogId() + " : remoteTarget " + getRemoteTarget());
+		}		
 		if(getEventHeader() != null) {
 			dialogMetaData.put(EVENT_HEADER, getEventHeader().toString());
 		} else {
 			dialogMetaData.put(EVENT_HEADER, null);
 		}
+		if (getStack().getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+			getStack().getStackLogger().logDebug(getDialogId() + " : evenHeader " + getEventHeader());
+		}
 		dialogMetaData.put(B2BUA, Boolean.valueOf(isBackToBackUserAgent()));
+		if (getStack().getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+			getStack().getStackLogger().logDebug(getDialogId() + " : isB2BUA " + isBackToBackUserAgent());
+		}
 		dialogMetaData.put(IS_SERVER, Boolean.valueOf(isServer()));
+		if (getStack().getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+			getStack().getStackLogger().logDebug(getDialogId() + " : isServer " + isServer());
+		}
 		dialogMetaData.put(FIRST_TX_SECURE, Boolean.valueOf(firstTransactionSecure));
+		if (getStack().getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+			getStack().getStackLogger().logDebug(getDialogId() + " : firstTxSecure " + firstTransactionSecure);
+		}					
 		dialogMetaData.put(FIRST_TX_ID, firstTransactionId);
-		dialogMetaData.put(FIRST_TX_METHOD, firstTransactionMethod);		
+		if (getStack().getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+			getStack().getStackLogger().logDebug(getDialogId() + " : firstTransactionId " + firstTransactionId);
+		}
+		dialogMetaData.put(FIRST_TX_METHOD, firstTransactionMethod);
+		if (getStack().getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+			getStack().getStackLogger().logDebug(getDialogId() + " : firstTransactionMethod " + firstTransactionMethod);
+		}
+		dialogMetaData.put(REMOTE_TAG, getRemoteTag());
+		if (getStack().getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+			getStack().getStackLogger().logDebug(getDialogId() + " : remoteTag " + getRemoteTag());
+		}
+		dialogMetaData.put(LOCAL_TAG, getLocalTag());
+		if (getStack().getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+			getStack().getStackLogger().logDebug(getDialogId() + " : localTag " + getLocalTag());
+		}
 		if(contactHeader != null) {
 			dialogMetaData.put(CONTACT_HEADER, contactHeader.toString());
 		}
-		
+		if (getStack().getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+			getStack().getStackLogger().logDebug(getDialogId() + " : contactHeader " + contactHeader);
+		}
 		return dialogMetaData;
 	}
 
@@ -173,21 +225,25 @@ public abstract class AbstractHASipDialog extends SIPDialog implements HASipDial
 		// the call to super is very important otherwise it triggers replication on dialog recreation
 		super.setState(DialogState._CONFIRMED);		
 		if (getStack().getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
-			getStack().getStackLogger().logError(getDialogId() + " : lastResponse " + getLastResponse());
+			getStack().getStackLogger().logDebug(getDialogId() + " : lastResponse " + getLastResponse());
+		}
+		version = new AtomicLong((Long)metaData.get(VERSION));
+		if (getStack().getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+			getStack().getStackLogger().logDebug(getDialogId() + " : version " + version);
 		}
 		final Boolean isB2BUA = (Boolean) metaData.get(B2BUA);
 		if(isB2BUA == Boolean.TRUE) {
 			setBackToBackUserAgent();
 		}
 		if (getStack().getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
-			getStack().getStackLogger().logError(getDialogId() + " : isB2BUA " + isB2BUA);
+			getStack().getStackLogger().logDebug(getDialogId() + " : isB2BUA " + isB2BUA);
 		}
 		final Boolean isReinvite = (Boolean) metaData.get(IS_REINVITE);
 		if(isReinvite != null) {
 			setReInviteFlag(isReinvite);
 		}
 		if (getStack().getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
-			getStack().getStackLogger().logError(getDialogId() + " : isReInvite " + isReinvite);
+			getStack().getStackLogger().logDebug(getDialogId() + " : isReInvite " + isReinvite);
 		}
 		final String eventHeaderStringified = (String) metaData.get(EVENT_HEADER);
 		if(eventHeaderStringified != null) {
@@ -198,15 +254,8 @@ public abstract class AbstractHASipDialog extends SIPDialog implements HASipDial
 			}
 		}	
 		if (getStack().getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
-			getStack().getStackLogger().logError(getDialogId() + " : evenHeader " + eventHeaderStringified);
-		}
-		final Boolean serverTransactionFlag = (Boolean) metaData.get(SERVER_TRANSACTION_FLAG);
-		if(serverTransactionFlag != null) {
-			setServerTransactionFlag(serverTransactionFlag);
-		}
-		if (getStack().getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
-			getStack().getStackLogger().logError(getDialogId() + " : STX Flag " + serverTransactionFlag);
-		}
+			getStack().getStackLogger().logDebug(getDialogId() + " : evenHeader " + eventHeaderStringified);
+		}		
 		final String remoteTargetStringified = (String) metaData.get(REMOTE_TARGET);
 		if(remoteTargetStringified != null) {
 			Contact contact = new Contact();
@@ -218,7 +267,7 @@ public abstract class AbstractHASipDialog extends SIPDialog implements HASipDial
 			}	       
 		}
 		if (getStack().getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
-			getStack().getStackLogger().logError(getDialogId() + " : remoteTarget " + remoteTargetStringified);
+			getStack().getStackLogger().logDebug(getDialogId() + " : remoteTarget " + remoteTargetStringified);
 		}
 		final Boolean terminateOnBye = (Boolean) metaData.get(TERMINATE_ON_BYE);
 		if(terminateOnBye != null) {
@@ -229,7 +278,7 @@ public abstract class AbstractHASipDialog extends SIPDialog implements HASipDial
 			}
 		}
 		if (getStack().getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
-			getStack().getStackLogger().logError(getDialogId() + " : terminateOnBye " + terminateOnBye);
+			getStack().getStackLogger().logDebug(getDialogId() + " : terminateOnBye " + terminateOnBye);
 		}
 		final String[] routes = (String[]) metaData.get(ROUTE_LIST);
 		if(routes != null) {			
@@ -244,30 +293,41 @@ public abstract class AbstractHASipDialog extends SIPDialog implements HASipDial
 			setRouteList(routeList);
 		}
 		if (getStack().getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
-			getStack().getStackLogger().logError(getDialogId() + " : routes " + routes);
+			getStack().getStackLogger().logDebug(getDialogId() + " : routes " + routes);
 		}
 		final Boolean isServer = (Boolean) metaData.get(IS_SERVER);
 		if(isServer != null) {
 			firstTransactionSeen = true;
-			firstTransactionIsServerTransaction = isServer;
+			firstTransactionIsServerTransaction = isServer.booleanValue();
 		}
+		setServerTransactionFlag(isServer.booleanValue());
 		if (getStack().getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
-			getStack().getStackLogger().logError(getDialogId() + " : isServer " + isServer);
+			getStack().getStackLogger().logDebug(getDialogId() + " : isServer " + isServer.booleanValue());
 		}
 		final Boolean firstTxSecure = (Boolean) metaData.get(FIRST_TX_SECURE);
 		if(firstTxSecure != null) {
 			firstTransactionSecure = firstTxSecure;
 		}
 		if (getStack().getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
-			getStack().getStackLogger().logError(getDialogId() + " : firstTxSecure" + firstTxSecure);
+			getStack().getStackLogger().logDebug(getDialogId() + " : firstTxSecure " + firstTxSecure);
 		}
 		firstTransactionId = (String) metaData.get(FIRST_TX_ID);		
 		if (getStack().getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
-			getStack().getStackLogger().logError(getDialogId() + " : firstTransactionId " + firstTransactionId);
+			getStack().getStackLogger().logDebug(getDialogId() + " : firstTransactionId " + firstTransactionId);
 		}
 		firstTransactionMethod = (String) metaData.get(FIRST_TX_METHOD);
 		if (getStack().getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
-			getStack().getStackLogger().logError(getDialogId() + " : firstTransactionMethod " + firstTransactionMethod);
+			getStack().getStackLogger().logDebug(getDialogId() + " : firstTransactionMethod " + firstTransactionMethod);
+		}
+		String remoteTag = (String) metaData.get(REMOTE_TAG);
+		setRemoteTag(remoteTag);
+		if (getStack().getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+			getStack().getStackLogger().logDebug(getDialogId() + " : remoteTag " + getRemoteTag());
+		}
+		String localTag = (String) metaData.get(LOCAL_TAG);
+		setLocalTag(localTag);
+		if (getStack().getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+			getStack().getStackLogger().logDebug(getDialogId() + " : localTag " + getLocalTag());
 		}
 	}
 	
@@ -279,12 +339,14 @@ public abstract class AbstractHASipDialog extends SIPDialog implements HASipDial
 	@Override
 	public void setState(int state) {
 		DialogState oldState = getState();
+		long previousVersion = version.get();
 		super.setState(state);
 		DialogState newState = getState();
 		// we replicate only if the state has really changed
 		// the fact of setting the last response upon recreation will trigger setState to be called and so the replication
 		// so we make sure to replicate only if the dialog has been created
-		if(!newState.equals(oldState) && isCreated){
+		// also  we replicate only if the version is the same, otherwise it means setState already triggered a replication by putting the dialog in the stack and therefore in the cache
+		if(!newState.equals(oldState) && previousVersion == version.get()){
 			replicateState();
 		}
 	}
@@ -310,6 +372,66 @@ public abstract class AbstractHASipDialog extends SIPDialog implements HASipDial
 	public void setContactHeader(ContactHeader contactHeader) {
 		this.contactHeader = (Contact) contactHeader;
 	}
+		
+	@Override
+	public void setLastResponse(SIPTransaction transaction,
+			SIPResponse sipResponse) {
+		boolean lastResponseChanged = false;
+		// version can be null on dialog recreation
+		if(version != null) {
+			long previousVersion = version.get(); 
+			if(sipResponse != null && getLastResponse() != null && sipResponse.getStatusCode() >= 200 && !sipResponse.equals(this.getLastResponse())) {
+				lastResponseChanged = true;
+			}		
+			super.setLastResponse(transaction, sipResponse);
+			// we replicate only if the version is the same, otherwise it means lastResponse already triggered a replication by putting the dialog in the stack and therefore in the cache		
+			if(lastResponseChanged && previousVersion == version.get()) {
+				replicateState();
+			}
+		} else {
+			super.setLastResponse(transaction, sipResponse);
+		}
+	}
+
+	public void setLastResponse(SIPResponse lastResponse) {
+		// the call to super is very important otherwise it triggers replication on dialog recreation
+		super.setLastResponse(null, lastResponse);
+		// local sequence number is not reset, so we need to do it
+		this.localSequenceNumber = lastResponse.getCSeq().getSeqNumber();
+		if(getStack().getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+			getStack().getStackLogger().logDebug("update HA SIP Dialog " + this + " and dialogId " + getDialogId() + " with lastResponse " + lastResponse);				
+		}
+        this.originalLocalSequenceNumber = localSequenceNumber;
+	}	
+
+	/**
+	 * @return the isRemoteTagSet
+	 */
+	public boolean isRemoteTagSet() {
+		return hisTag != null && hisTag.trim().length() > 0 ? true : false;
+	}
 	
+	/**
+	 * @return the isRemoteTagSet
+	 */
+	public boolean isLocalTagSet() {
+		return myTag != null && myTag.trim().length() > 0 ? true : false;
+	}
 	
+	/**
+	 * @return the version
+	 */
+	public long getVersion() {
+		return version.get();
+	}
+
+	public String getDialogIdToReplicate() {
+		CallID cid = (CallID) this.getCallId();
+		StringBuilder retval = new StringBuilder(cid.getCallId());
+        retval.append(Separators.COLON);
+        retval.append(myTag);
+        retval.append(Separators.COLON);
+        retval.append(hisTag);        
+        return retval.toString().toLowerCase();
+	}
 }

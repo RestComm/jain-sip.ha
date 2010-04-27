@@ -44,7 +44,7 @@ import javax.sip.message.Response;
 
 import org.jboss.cache.CacheException;
 import org.jboss.cache.Fqn;
-import org.mobicents.ha.javax.sip.cache.JBossTreeSipCache;
+import org.mobicents.ha.javax.sip.cache.MobicentsSipCache;
 
 public class SimpleB2BUAHandler {
 	
@@ -69,7 +69,7 @@ public class SimpleB2BUAHandler {
 	public Dialog getIncomingDialog() {
 		String incomingDialogId = null;
 		try {
-			incomingDialogId = (String) ((JBossTreeSipCache)((ClusteredSipStack)sipProvider.getSipStack()).getSipCache()).getCache().get(Fqn.fromString("DIALOG_IDS"), "incomingDialogId");
+			incomingDialogId = (String) ((MobicentsSipCache)((ClusteredSipStack)sipProvider.getSipStack()).getSipCache()).getMobicentsCache().getJBossCache().get(Fqn.fromString("DIALOG_IDS"), "incomingDialogId");
 		} catch (CacheException e) {
 			// TODO Auto-generated catch block
 			((SipStackImpl)sipStack).getStackLogger().logError("unexpected exception", e);
@@ -86,7 +86,7 @@ public class SimpleB2BUAHandler {
 	public Dialog getOutgoingDialog() {
 		String outgoingDialogId = null;
 		try {
-			outgoingDialogId = (String) ((JBossTreeSipCache)((ClusteredSipStack)sipProvider.getSipStack()).getSipCache()).getCache().get(Fqn.fromString("DIALOG_IDS"), "outgoingDialogId");
+			outgoingDialogId = (String) ((MobicentsSipCache)((ClusteredSipStack)sipProvider.getSipStack()).getSipCache()).getMobicentsCache().getJBossCache().get(Fqn.fromString("DIALOG_IDS"), "outgoingDialogId");
 		} catch (CacheException e) {
 			// TODO Auto-generated catch block
 			((SipStackImpl)sipStack).getStackLogger().logError("unexpected exception", e);
@@ -99,7 +99,7 @@ public class SimpleB2BUAHandler {
 	
 	private void storeOutgoingDialogId(String outgoingDialogId) {
 		try {
-			((JBossTreeSipCache)((ClusteredSipStack)sipProvider.getSipStack()).getSipCache()).getCache().put(Fqn.fromString("DIALOG_IDS"), "outgoingDialogId", outgoingDialogId);
+			((MobicentsSipCache)((ClusteredSipStack)sipProvider.getSipStack()).getSipCache()).getMobicentsCache().getJBossCache().put(Fqn.fromString("DIALOG_IDS"), "outgoingDialogId", outgoingDialogId);
 		} catch (CacheException e) {
 			// TODO Auto-generated catch block
 			((SipStackImpl)sipStack).getStackLogger().logError("unexpected exception", e);
@@ -108,7 +108,7 @@ public class SimpleB2BUAHandler {
 
 	private void storeIncomingDialogId(String incomingDialogId) {
 		try {
-			((JBossTreeSipCache)((ClusteredSipStack)sipProvider.getSipStack()).getSipCache()).getCache().put(Fqn.fromString("DIALOG_IDS"), "incomingDialogId", incomingDialogId);
+			((MobicentsSipCache)((ClusteredSipStack)sipProvider.getSipStack()).getSipCache()).getMobicentsCache().getJBossCache().put(Fqn.fromString("DIALOG_IDS"), "incomingDialogId", incomingDialogId);
 		} catch (CacheException e) {
 			// TODO Auto-generated catch block
 			((SipStackImpl)sipStack).getStackLogger().logError("unexpected exception", e);

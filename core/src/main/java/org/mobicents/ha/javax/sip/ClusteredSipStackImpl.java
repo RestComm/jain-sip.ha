@@ -227,21 +227,32 @@ public abstract class ClusteredSipStackImpl extends gov.nist.javax.sip.SipStackI
 			int nbToken = new StringTokenizer(dialogId, Separators.COLON).countTokens();
 			// we should only check the cache for dialog Id where the remote tag is set since we support only established dialog failover
 			// Issue 1378 : http://code.google.com/p/mobicents/issues/detail?id=1378
-			// there can be more than 3 tokens if the callid part of the dialog id contains a COLON as well 
-			if(sipDialog == null && nbToken >= 3) {
-				if(getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
-					getStackLogger().logDebug("local dialog " + dialogId + " is null, checking in the distributed cache");
-				}
-				sipDialog = getDialogFromDistributedCache(dialogId);
-				if(sipDialog != null) {
+			// there can be more than 3 tokens if the callid part of the dialog id contains a COLON as well
+			if(nbToken >= 3) {
+				if(sipDialog == null ) {
 					if(getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
-						getStackLogger().logDebug("dialog " + dialogId + " found in the distributed cache, storing it locally");
+						getStackLogger().logDebug("local dialog " + dialogId + " is null, checking in the distributed cache");
 					}
-					super.putDialog(sipDialog);
+					sipDialog = getDialogFromDistributedCache(dialogId);
+					if(sipDialog != null) {
+						if(getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+							getStackLogger().logDebug("dialog " + dialogId + " found in the distributed cache, storing it locally");
+						}
+						super.putDialog(sipDialog);
+					} else {
+						if(getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+							getStackLogger().logDebug("dialog " + dialogId + " not found in the distributed cache");
+						}
+					}
 				} else {
 					if(getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
-						getStackLogger().logDebug("dialog " + dialogId + " not found in the distributed cache");
+						getStackLogger().logDebug("local dialog " + dialogId + " is present locally " + sipDialog + " checking if it needs to be updated from the cache");
 					}
+					try {
+						sipCache.updateDialog(sipDialog);
+					} catch (SipCacheException e) {
+						getStackLogger().logError("sipStack " + this + " problem updating dialog " + dialogId + " from the distributed cache", e);
+					}					
 				}
 			}
 			return sipDialog;
@@ -253,12 +264,12 @@ public abstract class ClusteredSipStackImpl extends gov.nist.javax.sip.SipStackI
 	 * @see gov.nist.javax.sip.stack.SIPTransactionStack#putDialog(gov.nist.javax.sip.stack.SIPDialog)
 	 */
 	@Override
-	public void putDialog(SIPDialog dialog) {	
+	public void putDialog(SIPDialog dialog) {
+		super.putDialog(dialog);
 		if (!sipCache.inLocalMode() && DialogState.CONFIRMED == dialog.getState()) {
 			// only replicate dialogs in confirmed state
 			putDialogIntoDistributedCache(dialog);
-		}
-		super.putDialog(dialog);		
+		}			
 	}
 	
 	/*

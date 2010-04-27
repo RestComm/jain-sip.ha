@@ -81,6 +81,14 @@ public abstract class MobicentsSipCache implements SipCache {
 	public void putDialog(SIPDialog dialog) throws SipCacheException {
 		dialogsCacheData.putSIPDialog(dialog);
 	}
+	
+	/*
+	 * (non-Javadoc)
+	 * @see org.mobicents.ha.javax.sip.cache.SipCache#updateDialog(gov.nist.javax.sip.stack.SIPDialog)
+	 */
+	public void updateDialog(SIPDialog dialog) throws SipCacheException {
+		dialogsCacheData.updateSIPDialog(dialog);
+	}
 
 	/*
 	 * (non-Javadoc)
@@ -154,5 +162,9 @@ public abstract class MobicentsSipCache implements SipCache {
 	
 	public ClassLoader getSerializationClassLoader() {
 		return serializationClassLoader;
+	}
+	
+	public MobicentsCache getMobicentsCache() {
+		return cache;
 	}
 }

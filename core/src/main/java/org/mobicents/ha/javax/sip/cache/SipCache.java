@@ -82,6 +82,11 @@ public interface SipCache {
 	 */
 	void putDialog(SIPDialog dialog) throws SipCacheException;
 	/**
+	 * Update the dialog from the cache
+	 * @param dialog the dialog to update
+	 */
+	void updateDialog(SIPDialog sipDialog) throws SipCacheException;
+	/**
 	 * Remove the dialog from the cache
 	 * @param dialogId the id of the dialog to remove
 	 */

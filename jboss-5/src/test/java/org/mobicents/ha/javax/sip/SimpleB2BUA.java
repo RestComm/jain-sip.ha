@@ -23,6 +23,8 @@ import javax.sip.header.HeaderFactory;
 import javax.sip.message.MessageFactory;
 import javax.sip.message.Request;
 
+import org.mobicents.ha.javax.sip.cache.ManagedMobicentsSipCache;
+
 public class SimpleB2BUA implements SipListener {
  
 	private static final String SIP_BIND_ADDRESS = "javax.sip.IP_ADDRESS";
@@ -40,8 +42,7 @@ public class SimpleB2BUA implements SipListener {
 	private SimpleB2BUAHandler b2buaHandler;
 	
 	public SimpleB2BUA(String stackName, int myPort, String ipAddress) throws NumberFormatException, SipException, TooManyListenersException, InvalidArgumentException, ParseException {
-		properties = new Properties();
-        properties.setProperty("org.mobicents.ha.javax.sip.CACHE_CLASS_NAME", "org.mobicents.ha.javax.sip.cache.JBossTreeSipCache");
+		properties = new Properties();        
         properties.setProperty("javax.sip.STACK_NAME", stackName);
         properties.setProperty(SIP_PORT_BIND, String.valueOf(myPort));
         //properties.setProperty("javax.sip.OUTBOUND_PROXY", Integer
@@ -56,8 +57,11 @@ public class SimpleB2BUA implements SipListener {
         properties.setProperty("javax.sip.AUTOMATIC_DIALOG_SUPPORT", "off");
         properties.setProperty("gov.nist.javax.sip.REENTRANT_LISTENER", "true");
         properties.setProperty("org.mobicents.ha.javax.sip.REPLICATION_STRATEGY", "ConfirmedDialogNoApplicationData");
+        properties.setProperty(ManagedMobicentsSipCache.STANDALONE, "true");
         System.setProperty("jgroups.bind_addr", ipAddress);
-        System.setProperty("java.net.preferIPv4Stack", "true");
+        System.setProperty("jgroups.udp.mcast_addr", "FFFF::232.5.5.5");
+        System.setProperty("jboss.server.log.threshold", "DEBUG");
+        System.setProperty("jbosscache.config.validate", "false");
 		initStack(ipAddress);
 	}
 	

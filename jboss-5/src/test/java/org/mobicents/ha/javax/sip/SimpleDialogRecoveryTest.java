@@ -80,8 +80,8 @@ public class SimpleDialogRecoveryTest extends TestCase {
 		return p.getProperty("IP_ADDRESS","127.0.0.1");
 	}
 	
-	public static final String IP_ADDRESS = getIpAddressFromProperties();
-//	public static final String IP_ADDRESS = "192.168.0.11";
+//	public static final String IP_ADDRESS = getIpAddressFromProperties();
+	public static final String IP_ADDRESS = "192.168.0.11";
 	public static final String TRACE_LEVEL = "DEBUG";
 	
     public static final int BALANCER_PORT = 5050;
@@ -530,6 +530,7 @@ public class SimpleDialogRecoveryTest extends TestCase {
             Properties properties = new Properties();
             properties.setProperty("javax.sip.STACK_NAME", stackName);
             properties.setProperty(ManagedMobicentsSipCache.STANDALONE, "true");
+            properties.setProperty("org.mobicents.ha.javax.sip.REPLICATION_STRATEGY", "ConfirmedDialogNoApplicationData");
             //properties.setProperty("javax.sip.OUTBOUND_PROXY", Integer
             //                .toString(BALANCER_PORT));
             // You need 16 for logging traces. 32 for debug + traces.
@@ -1058,15 +1059,12 @@ public class SimpleDialogRecoveryTest extends TestCase {
     public void testDialogFailover() throws Exception {
 
         balancer = new Balancer(IP_ADDRESS, BALANCER_PORT);
-
         balancer.start();
 
         shootist = new Shootist(true);
-
+        
         shootme = new Shootme("shootme", 5070, true);
-
         shootmeRecoveryNode = new Shootme("shootme_recovery", 5080, true);
-
         shootme.init();
         shootmeRecoveryNode.init();        
 
@@ -1078,12 +1076,8 @@ public class SimpleDialogRecoveryTest extends TestCase {
         
         shootist.stop();
         shootmeRecoveryNode.stop();
-//      shootme.stop();
         stopSipStack(balancer.sipStack, balancer);
-        
         assertTrue(shootist.okToByeReceived);
-
-
     }
 
 //    public void testDialogIdentityCalleeSendsBye() throws Exception {

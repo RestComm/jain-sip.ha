@@ -35,6 +35,7 @@ import javax.management.ObjectName;
 import javax.sip.PeerUnavailableException;
 import javax.sip.SipFactory;
 import javax.sip.address.Address;
+import javax.sip.header.ContactHeader;
 import javax.transaction.TransactionManager;
 
 import org.jboss.cache.CacheException;
@@ -51,16 +52,9 @@ import org.mobicents.ha.javax.sip.SipStackImpl;
  * @author jean.deruelle@gmail.com
  *
  */
-public class JBossASSipCache implements SipCache {
-	private static final String APPDATA = "APPDATA";
-	private static final String METADATA = "METADATA";
-	
-	ClusteredSipStack clusteredSipStack = null;
-	Properties configProperties = null;	
-	
+public class JBossASSipCache extends AbstractJBossSipCache implements SipCache {
 	protected TransactionManager transactionManager;
 	protected PojoCacheMBean pojoCache;
-	protected JBossJainSipCacheListener treeCacheListener;
 	private boolean isLocal = false;
 
 	/* (non-Javadoc)
@@ -68,47 +62,30 @@ public class JBossASSipCache implements SipCache {
 	 */
 	public SIPDialog getDialog(String dialogId) throws SipCacheException {		
 		try {
-			Map<String, Object> dialogMetaData = (Map<String, Object>) pojoCache.get(SipStackImpl.DIALOG_ROOT + dialogId, METADATA);			
+			Map<String, Object> dialogMetaData = (Map<String, Object>) pojoCache.get(SipStackImpl.DIALOG_ROOT + dialogId, METADATA);
+			Object dialogAppData = pojoCache.get(SipStackImpl.DIALOG_ROOT + dialogId, APPDATA);
 			
-			AbstractHASipDialog haSipDialog = null; 
-			if(dialogMetaData != null) {
-				final String lastResponseStringified = (String) dialogMetaData.get(AbstractHASipDialog.LAST_RESPONSE);
-				final SIPResponse lastResponse = (SIPResponse) SipFactory.getInstance().createMessageFactory().createResponse(lastResponseStringified);
-				haSipDialog = HASipDialogFactory.createHASipDialog(clusteredSipStack.getReplicationStrategy(), (SipProviderImpl)clusteredSipStack.getSipProviders().next(), lastResponse);
-				haSipDialog.setDialogId(dialogId);
-				haSipDialog.setMetaDataToReplicate(dialogMetaData);
-				Object dialogAppData = pojoCache.get(SipStackImpl.DIALOG_ROOT + dialogId, APPDATA);
-				haSipDialog.setApplicationDataToReplicate(dialogAppData);
-				if(clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
-					clusteredSipStack.getStackLogger().logDebug("HA SIP Dialog " + dialogId + " is Server ? " + haSipDialog.isServer() );
-				}
-				if(haSipDialog.isServer()) {
-					String remoteTag = haSipDialog.getLocalTag();
-					Address remoteParty = haSipDialog.getLocalParty();
-					String localTag = haSipDialog.getRemoteTag();
-					Address localParty = haSipDialog.getRemoteParty();
-					haSipDialog.setLocalTagInternal(localTag);
-					haSipDialog.setLocalPartyInternal(localParty);
-					haSipDialog.setRemoteTagInternal(remoteTag);
-					haSipDialog.setRemotePartyInternal(remoteParty);
-				}
-				if(clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
-					clusteredSipStack.getStackLogger().logDebug("HA SIP Dialog " + dialogId + " localTag  = " + haSipDialog.getLocalTag());
-					clusteredSipStack.getStackLogger().logDebug("HA SIP Dialog " + dialogId + " remoteTag  = " + haSipDialog.getRemoteTag());
-					clusteredSipStack.getStackLogger().logDebug("HA SIP Dialog " + dialogId + " localParty = " + haSipDialog.getLocalParty());
-					clusteredSipStack.getStackLogger().logDebug("HA SIP Dialog " + dialogId + " remoteParty  = " + haSipDialog.getRemoteParty());
-				}
-			}			
-			
-			return haSipDialog;
+			return super.createDialog(dialogId, dialogMetaData, dialogAppData);
 		} catch (CacheException e) {
 			throw new SipCacheException("A problem occured while retrieving the following dialog " + dialogId + " from the TreeCache", e);
-		} catch (PeerUnavailableException e) {
-			throw new SipCacheException("A problem occured while retrieving the following dialog " + dialogId + " from the TreeCache", e);
-		} catch (ParseException e) {
+		} 
+	}
+
+	/*
+	 * (non-Javadoc)
+	 * @see org.mobicents.ha.javax.sip.cache.SipCache#updateDialog(gov.nist.javax.sip.stack.SIPDialog)
+	 */
+	public void updateDialog(SIPDialog sipDialog) throws SipCacheException {
+		final String dialogId = sipDialog.getDialogId();
+		try {			
+			Map<String, Object> dialogMetaData = (Map<String, Object>) pojoCache.get(SipStackImpl.DIALOG_ROOT + dialogId, METADATA);
+			Object dialogAppData = pojoCache.get(SipStackImpl.DIALOG_ROOT + dialogId, APPDATA);
+			final AbstractHASipDialog haSipDialog = (AbstractHASipDialog) sipDialog;
+			super.updateDialog(haSipDialog, dialogMetaData, dialogAppData);
+		} catch (CacheException e) {
 			throw new SipCacheException("A problem occured while retrieving the following dialog " + dialogId + " from the TreeCache", e);
 		}
-	}
+	}		
 
 	/* (non-Javadoc)
 	 * @see org.mobicents.ha.javax.sip.cache.SipCache#putDialog(gov.nist.javax.sip.stack.SIPDialog)
@@ -122,14 +99,18 @@ public class JBossASSipCache implements SipCache {
 //				transactionManager.begin();
 //				tx = transactionManager.getTransaction();				
 //			}
+			if(clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+				clusteredSipStack.getStackLogger().logStackTrace();
+			}
 			final AbstractHASipDialog haSipDialog = (AbstractHASipDialog) dialog;
+			final String dialogId = haSipDialog.getDialogIdToReplicate();
 			final Map<String, Object> dialogMetaData = haSipDialog.getMetaDataToReplicate();
 			if(dialogMetaData != null) {
-				pojoCache.put(SipStackImpl.DIALOG_ROOT + dialog.getDialogId(), METADATA, dialogMetaData);
+				pojoCache.put(SipStackImpl.DIALOG_ROOT + dialogId, METADATA, dialogMetaData);
 			}
 			final Object dialogAppData = haSipDialog.getApplicationDataToReplicate();
 			if(dialogAppData != null) {
-				pojoCache.put(SipStackImpl.DIALOG_ROOT + dialog.getDialogId(), APPDATA, dialogAppData);
+				pojoCache.put(SipStackImpl.DIALOG_ROOT + dialogId, APPDATA, dialogAppData);
 			}
 //			if(tx != null) {
 //				tx.commit();
@@ -209,8 +190,8 @@ public class JBossASSipCache implements SipCache {
 	public void init() throws SipCacheException {
 		try {
 			pojoCache = getPojoCacheMBean("jboss.cache:service=TomcatClusteringCache");
-			treeCacheListener = new JBossJainSipCacheListener(clusteredSipStack);
-			pojoCache.addTreeCacheListener(treeCacheListener);
+			cacheListener = new JBossJainSipCacheListener(clusteredSipStack);
+			pojoCache.addTreeCacheListener(cacheListener);
 		} catch (SipCacheException e) {
 			clusteredSipStack.getStackLogger().logError("Could not initialize the cache, defaulting to local mode");
 			isLocal = true;

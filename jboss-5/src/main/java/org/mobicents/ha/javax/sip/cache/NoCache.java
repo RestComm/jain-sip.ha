@@ -52,6 +52,10 @@ public class NoCache implements SipCache {
 		
 	}
 
+	public void updateDialog(SIPDialog sipDialog) throws SipCacheException {
+		
+	}
+	
 	public void removeDialog(String dialogId) throws SipCacheException {
 		
 	}

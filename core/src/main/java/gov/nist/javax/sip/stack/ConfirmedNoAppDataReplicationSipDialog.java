@@ -56,7 +56,7 @@ public class ConfirmedNoAppDataReplicationSipDialog extends AbstractHASipDialog 
 	 */
 	protected void replicateState() {
 		final DialogState dialogState = getState();
-		if (dialogState == DialogState.CONFIRMED) {
+		if (dialogState == DialogState.CONFIRMED && isCreated && super.dialogId != null && isRemoteTagSet() && isLocalTagSet() && getStack().getDialog(getDialogIdToReplicate()) != null) {
 			try {
 				((ClusteredSipStack)getStack()).getSipCache().putDialog(this);
 			} catch (SipCacheException e) {

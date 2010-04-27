@@ -22,14 +22,22 @@
 package org.mobicents.ha.javax.sip.cache;
 
 import gov.nist.core.StackLogger;
+import gov.nist.javax.sip.message.SIPResponse;
+import gov.nist.javax.sip.stack.AbstractHASipDialog;
 import gov.nist.javax.sip.stack.SIPClientTransaction;
 import gov.nist.javax.sip.stack.SIPDialog;
 import gov.nist.javax.sip.stack.SIPServerTransaction;
 
+import java.text.ParseException;
+import java.util.Map;
 import java.util.Properties;
 
 import javax.naming.Context;
 import javax.naming.InitialContext;
+import javax.sip.PeerUnavailableException;
+import javax.sip.SipFactory;
+import javax.sip.address.Address;
+import javax.sip.header.ContactHeader;
 import javax.transaction.UserTransaction;
 
 import org.jboss.cache.Cache;
@@ -39,6 +47,7 @@ import org.jboss.cache.Fqn;
 import org.jboss.cache.Node;
 import org.jboss.cache.config.Configuration.CacheMode;
 import org.mobicents.ha.javax.sip.ClusteredSipStack;
+import org.mobicents.ha.javax.sip.SipStackImpl;
 
 /**
  * Implementation of the SipCache interface, backed by a JBoss Cache 3.X Cache.
@@ -82,6 +91,19 @@ public class JBossSipCache implements SipCache {
 			throw new SipCacheException("A problem occured while retrieving the following dialog " + dialogId + " from JBoss Cache", e);
 		}
 	}
+	
+	/*
+	 * (non-Javadoc)
+	 * @see org.mobicents.ha.javax.sip.cache.SipCache#updateDialog(gov.nist.javax.sip.stack.SIPDialog)
+	 */
+	public void updateDialog(SIPDialog sipDialog) throws SipCacheException {
+		Node dialogNode = ((Node) dialogRootNode.getChild(Fqn.fromString(sipDialog.getDialogId())));
+		if(dialogNode != null) {
+			if(dialogNode != null) {
+				sipDialog = (SIPDialog) dialogNode.get(sipDialog.getDialogId());
+			}
+		}
+	}		
 
 	/* (non-Javadoc)
 	 * @see org.mobicents.ha.javax.sip.cache.SipCache#putDialog(gov.nist.javax.sip.stack.SIPDialog)
