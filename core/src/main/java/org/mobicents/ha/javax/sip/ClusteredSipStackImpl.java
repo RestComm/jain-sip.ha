@@ -284,6 +284,16 @@ public abstract class ClusteredSipStackImpl extends gov.nist.javax.sip.SipStackI
 		super.removeDialog(dialog);
 	}
 	
+	/*
+	 * (non-Javadoc)
+	 * @see org.mobicents.ha.javax.sip.ClusteredSipStack#remoteDialogRemoval(java.lang.String)
+	 */
+	public void remoteDialogRemoval(String dialogId) {
+		// note we don't want a dialog terminated event, thus we need to go directly to map removal
+		// assuming it's a confirmed dialog there is no chance it is on early dialogs too
+		super.dialogTable.remove(dialogId);
+	}
+	
 	/**
 	 * Retrieve the dialog from the distributed cache
 	 * @param dialogId the id of the dialog to fetch

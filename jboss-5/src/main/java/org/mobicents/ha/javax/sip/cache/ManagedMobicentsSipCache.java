@@ -30,6 +30,7 @@ import org.jboss.cache.CacheManager;
 import org.jboss.cache.Node;
 import org.jboss.ha.framework.server.CacheManagerLocator;
 import org.mobicents.cache.MobicentsCache;
+import org.mobicents.cluster.DefaultMobicentsCluster;
 
 /**
  * Implementation of the SipCache interface, backed by a Mobicents Cache (JBoss Cache 3.X Cache).
@@ -46,9 +47,7 @@ public class ManagedMobicentsSipCache extends MobicentsSipCache {
 	public static final String STANDALONE = "org.mobicents.ha.javax.sip.cache.MobicentsSipCache.standalone";
 	public static final String CACHE_NAME = "org.mobicents.ha.javax.sip.cache.MobicentsSipCache.cacheName";
 	public static final String DEFAULT_CACHE_NAME = "jain-sip-cache";
-	
-	protected JBossJainSipCacheListener cacheListener;
-	
+		
 	protected Node<String, SIPDialog> dialogRootNode = null;
 	protected Node<String, SIPClientTransaction> clientTxRootNode = null;
 	protected Node<String, SIPServerTransaction> serverTxRootNode = null;
@@ -77,7 +76,7 @@ public class ManagedMobicentsSipCache extends MobicentsSipCache {
 					clusteredSipStack.getStackLogger().logInfo(
 							"Mobicents JAIN SIP JBoss Cache Manager instance : " + cacheManager);
 				}
-				cache = new MobicentsCache(cacheManager, configProperties.getProperty(CACHE_NAME,DEFAULT_CACHE_NAME), false);
+				cluster = new DefaultMobicentsCluster(new MobicentsCache(cacheManager, configProperties.getProperty(CACHE_NAME,DEFAULT_CACHE_NAME), false), null, null);
 				Thread.currentThread().setContextClassLoader(previousClassLoader);
 			} else {
 				String pojoConfigurationPath = configProperties.getProperty(JBOSS_CACHE_CONFIG_PATH, DEFAULT_FILE_CONFIG_PATH);
@@ -85,10 +84,8 @@ public class ManagedMobicentsSipCache extends MobicentsSipCache {
 					clusteredSipStack.getStackLogger().logInfo(
 							"Mobicents JAIN SIP JBoss Cache Configuration path is : " + pojoConfigurationPath);
 				}
-				cache = new MobicentsCache(pojoConfigurationPath);
-			}									
-			cacheListener = new JBossJainSipCacheListener(clusteredSipStack);
-			cache.getJBossCache().addCacheListener(cacheListener);			
+				cluster = new DefaultMobicentsCluster(new MobicentsCache(pojoConfigurationPath), null, null);
+			}														
 		} catch (Exception e) {
 			throw new SipCacheException("Couldn't init Mobicents Cache", e);
 		}

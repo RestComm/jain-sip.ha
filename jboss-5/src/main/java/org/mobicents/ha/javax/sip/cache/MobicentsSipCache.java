@@ -28,6 +28,7 @@ import java.util.Properties;
 import org.jboss.cache.Fqn;
 import org.jboss.cache.Region;
 import org.mobicents.cache.MobicentsCache;
+import org.mobicents.cluster.MobicentsCluster;
 import org.mobicents.ha.javax.sip.ClusteredSipStack;
 
 /**
@@ -43,7 +44,7 @@ public abstract class MobicentsSipCache implements SipCache {
 	
 	ClusteredSipStack clusteredSipStack = null;
 	protected Properties configProperties;
-	protected MobicentsCache cache;
+	protected MobicentsCluster cluster;
 	
 	private final String name;
 	private final ClassLoader serializationClassLoader;
@@ -51,6 +52,7 @@ public abstract class MobicentsSipCache implements SipCache {
 	private static final String DEFAULT_NAME = "jain-sip-ha";
 	
 	private SIPDialogCacheData dialogsCacheData;
+	private DataRemovalListener dataRemovalListener;
 	
 	/**
 	 * 
@@ -131,10 +133,12 @@ public abstract class MobicentsSipCache implements SipCache {
 	 * @see org.mobicents.ha.javax.sip.cache.SipCache#start()
 	 */
 	public void start() throws SipCacheException {
-		dialogsCacheData = new SIPDialogCacheData(Fqn.fromElements(name,SipCache.DIALOG_PARENT_FQN_ELEMENT),cache, clusteredSipStack);
+		dialogsCacheData = new SIPDialogCacheData(Fqn.fromElements(name,SipCache.DIALOG_PARENT_FQN_ELEMENT),cluster.getMobicentsCache(), clusteredSipStack);
 		dialogsCacheData.create();
+		dataRemovalListener = new DataRemovalListener(dialogsCacheData.getNodeFqn(), clusteredSipStack);
+		cluster.addDataRemovalListener(dataRemovalListener);
 		if (serializationClassLoader != null) {
-			Region region = cache.getJBossCache().getRegion(dialogsCacheData.getNodeFqn(),true);
+			Region region = getMobicentsCache().getJBossCache().getRegion(dialogsCacheData.getNodeFqn(),true);
 			region.registerContextClassLoader(serializationClassLoader);
 			region.activate();
 		}
@@ -146,6 +150,7 @@ public abstract class MobicentsSipCache implements SipCache {
 	 */
 	public void stop() throws SipCacheException {
 		dialogsCacheData.remove();
+		cluster.removeDataRemovalListener(dataRemovalListener);
 	}
 
 	/*
@@ -153,7 +158,7 @@ public abstract class MobicentsSipCache implements SipCache {
 	 * @see org.mobicents.ha.javax.sip.cache.SipCache#inLocalMode()
 	 */
 	public boolean inLocalMode() {
-		return cache.isLocalMode();
+		return getMobicentsCache().isLocalMode();
 	}
 	
 	public String getName() {
@@ -165,6 +170,8 @@ public abstract class MobicentsSipCache implements SipCache {
 	}
 	
 	public MobicentsCache getMobicentsCache() {
-		return cache;
+		return cluster.getMobicentsCache();
 	}
+	
+	
 }
