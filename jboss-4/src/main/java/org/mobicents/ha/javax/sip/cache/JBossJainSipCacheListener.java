@@ -118,7 +118,9 @@ public class JBossJainSipCacheListener implements TreeCacheListener {
 		if (clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG) && fqn.toString().indexOf(SipStackImpl.DIALOG_ROOT) != -1) {
 			clusteredSipStack.getStackLogger().logDebug("sipStack " + clusteredSipStack + 
 					" Node removed : " + fqn);
-		}		
+		}
+		// Fix for Issue 1418 jain sip ha does not removes dialog in local stack
+		// http://code.google.com/p/mobicents/issues/detail?id=1418
 		if(fqn.size() > 1) {			
 			clusteredSipStack.remoteDialogRemoval(fqn.get(1).toString());
 		}
