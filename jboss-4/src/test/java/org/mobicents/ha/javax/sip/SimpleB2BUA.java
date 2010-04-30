@@ -154,5 +154,15 @@ public class SimpleB2BUA implements SipListener {
 
 	public void processDialogTerminated(DialogTerminatedEvent dte) {
 		dte.getDialog().setApplicationData(null);
+	}
+
+	public boolean checkDialogsRemoved() {
+		if(((SipStackImpl)sipStack).getDialog(b2buaHandler.getIncomingDialogId()) != null) {
+			return false;
+		}
+		if(((SipStackImpl)sipStack).getDialog(b2buaHandler.getOutgoingDialogId()) != null) {
+			return false;
+		}
+		return true;
 	}	
 }

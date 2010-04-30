@@ -291,6 +291,10 @@ public abstract class ClusteredSipStackImpl extends gov.nist.javax.sip.SipStackI
 	public void remoteDialogRemoval(String dialogId) {
 		// note we don't want a dialog terminated event, thus we need to go directly to map removal
 		// assuming it's a confirmed dialog there is no chance it is on early dialogs too
+		if (getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+			getStackLogger().logDebug("sipStack " + this + 
+					" remote Dialog Removal of dialogId : " + dialogId);
+		}
 		super.dialogTable.remove(dialogId);
 	}
 	

@@ -66,6 +66,34 @@ public class SimpleB2BUAHandler {
 	/**
 	 * @return the incomingDialog
 	 */
+	public String getIncomingDialogId() {
+		String incomingDialogId = null;
+		try {
+			incomingDialogId = (String) ((MobicentsSipCache)((ClusteredSipStack)sipProvider.getSipStack()).getSipCache()).getMobicentsCache().getJBossCache().get(Fqn.fromString("DIALOG_IDS"), "incomingDialogId");
+		} catch (CacheException e) {
+			// TODO Auto-generated catch block
+			((SipStackImpl)sipStack).getStackLogger().logError("unexpected exception", e);
+		}
+		return incomingDialogId;
+	}
+	
+	/**
+	 * @return the outgoingDialog
+	 */
+	public String getOutgoingDialogId() {
+		String outgoingDialogId = null;
+		try {
+			outgoingDialogId = (String) ((MobicentsSipCache)((ClusteredSipStack)sipProvider.getSipStack()).getSipCache()).getMobicentsCache().getJBossCache().get(Fqn.fromString("DIALOG_IDS"), "outgoingDialogId");
+		} catch (CacheException e) {
+			// TODO Auto-generated catch block
+			((SipStackImpl)sipStack).getStackLogger().logError("unexpected exception", e);
+		}
+		return outgoingDialogId;
+	}
+	
+	/**
+	 * @return the incomingDialog
+	 */
 	public Dialog getIncomingDialog() {
 		String incomingDialogId = null;
 		try {
@@ -268,9 +296,10 @@ public class SimpleB2BUAHandler {
 	public void processBye(RequestEvent requestEvent) {
 		try {
 			requestEvent.getServerTransaction().sendResponse(messageFactory.createResponse(200, requestEvent.getRequest()));
-			final Request request = createRequest(requestEvent.getRequest(), 5070);
+			Dialog dialog = getIncomingDialog();
+			Request request = dialog.createRequest(Request.BYE);
 			final ClientTransaction ct = sipProvider.getNewClientTransaction(request);
-			getOutgoingDialog().sendRequest(ct);
+			dialog.sendRequest(ct);						
 		}
 		catch (Exception e) {
 			((SipStackImpl)sipStack).getStackLogger().logError("unexpected exception", e);

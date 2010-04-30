@@ -57,25 +57,28 @@ import javax.sip.message.Response;
 import junit.framework.TestCase;
 /**
  * This test aims to test Mobicents Jain Sip failover recovery.
+ * Issue 1407 http://code.google.com/p/mobicents/issues/detail?id=1407
  * 
  * UA1			B2BUA (Engine1)			B2BUA (Engine2)			UA2
- * INVITE (CSeq 101)
+ * INVITE (CSeq 1)
  * ----------------------->
  * 		
  * 				INVITE (CSeq 1)
  * 				------------------------------------------------->
  * 	INVITE (CSeq 1)
  * <------------------------
- * 											INVITE (CSeq 101)
+ * 											INVITE (CSeq 1)
  * 								             <---------------------
- * 					INVITE (CSeq 102)
+ * 					INVITE (CSeq 2)
  * <------------------------------------------
- * 									INVITE (CSeq 102)
+ * 									INVITE (CSeq 2)
  *  				      <----------------------------------------
- *  	INVITE (CSeq 2)
+ *  	INVITE (CSeq 3)
  *  <---------------------
- *  500 (CSeq 2)
+ *  BYE (CSeq 2)
  *  ----------------------->
+ *  								BYE (CSeq 2)
+ *  						------------------------------------->
  *
  * @author <A HREF="mailto:jean.deruelle@gmail.com">Jean Deruelle</A>
  *
@@ -133,6 +136,7 @@ public class B2BUADialogRecoveryTest extends TestCase {
 		private boolean firstTxComplete;
 		private boolean firstReInviteComplete;
 		private boolean secondReInviteComplete;
+		private boolean byeReceived;
 
         public Shootme(String stackName, int myPort, boolean callerSendsBye) {
             this.stackName = stackName;
@@ -366,7 +370,7 @@ public class B2BUADialogRecoveryTest extends TestCase {
                 serverTransactionId.sendResponse(response);
                 System.out.println("Dialog State is "
                         + serverTransactionId.getDialog().getState());
-
+                byeReceived = true;
             } catch (Exception ex) {
                 ex.printStackTrace();
                 System.exit(0);
@@ -539,10 +543,10 @@ public class B2BUADialogRecoveryTest extends TestCase {
         }
 
 		public void checkState() {
-			if(firstTxComplete && firstReInviteComplete && secondReInviteComplete) {
+			if(firstTxComplete && firstReInviteComplete && secondReInviteComplete && byeReceived) {
 				System.out.println("shootme state OK " );
 			} else {
-				fail("firstTxComplete " + firstTxComplete + " && firstReInviteComplete  " + firstReInviteComplete + "&& secondReInviteComplete " + secondReInviteComplete);
+				fail("firstTxComplete " + firstTxComplete + " && firstReInviteComplete  " + firstReInviteComplete + "&& secondReInviteComplete " + secondReInviteComplete + " && byeReceived " + byeReceived);
 			}
 		}
 
@@ -573,6 +577,9 @@ public class B2BUADialogRecoveryTest extends TestCase {
 		private boolean firstReInviteComplete;
 		private boolean secondReInviteComplete;
 		private boolean thirdReInviteComplete;
+		private boolean okToByeReceived;
+		// Save the created ACK request, to respond to retransmitted 2xx
+        private Request ackRequest;
         
         class ByeTask  extends TimerTask {
             Dialog dialog;
@@ -715,12 +722,7 @@ public class B2BUADialogRecoveryTest extends TestCase {
             }
         }
 
-           // Save the created ACK request, to respond to retransmitted 2xx
-           private Request ackRequest;
-
-		public boolean okToByeReceived;
-
-        public void processResponse(ResponseEvent responseReceivedEvent) {
+        public void processResponse(ResponseEvent responseReceivedEvent) {        	
             System.out.println("Got a response");
             Response response = (Response) responseReceivedEvent.getResponse();
             ClientTransaction tid = responseReceivedEvent.getClientTransaction();
@@ -728,7 +730,6 @@ public class B2BUADialogRecoveryTest extends TestCase {
 
             System.out.println("Response received : Status Code = "
                     + response.getStatusCode() + " " + cseq);
-
 
             if (tid == null) {
 
@@ -747,7 +748,7 @@ public class B2BUADialogRecoveryTest extends TestCase {
             // If the caller is supposed to send the bye
             if ( callerSendsBye && !byeTaskRunning) {
                 byeTaskRunning = true;
-                new Timer().schedule(new ByeTask(dialog), 4000) ;
+                new Timer().schedule(new ByeTask(dialog), 30000) ;
             }
             System.out.println("transaction state is " + tid.getState());
             System.out.println("Dialog = " + tid.getDialog());
@@ -1014,10 +1015,10 @@ public class B2BUADialogRecoveryTest extends TestCase {
         }
 
 		public void checkState() {
-			if(firstTxComplete && firstReInviteComplete && secondReInviteComplete && thirdReInviteComplete) {
+			if(firstTxComplete && firstReInviteComplete && secondReInviteComplete && thirdReInviteComplete && okToByeReceived) {
 				System.out.println("shootist state OK " );
 			} else {
-				fail("firstTxComplete " + firstTxComplete + " && firstReInviteComplete  " + firstReInviteComplete + "&& secondReInviteComplete " + secondReInviteComplete + "&& thirdReInviteComplete " + thirdReInviteComplete);
+				fail("firstTxComplete " + firstTxComplete + " && firstReInviteComplete  " + firstReInviteComplete + "&& secondReInviteComplete " + secondReInviteComplete + "&& thirdReInviteComplete " + thirdReInviteComplete + " && okToByeReceived " + okToByeReceived);
 			}
 		}
     }
@@ -1047,7 +1048,7 @@ public class B2BUADialogRecoveryTest extends TestCase {
 
     public void testDialogFailover() throws Exception {
 
-        shootist = new Shootist(false);
+        shootist = new Shootist(true);
         shootme = new Shootme("shootme", 5070, true);
 
         b2buaNode1 = new SimpleB2BUA("b2buaNode1", 5080, IP_ADDRESS);
@@ -1057,12 +1058,17 @@ public class B2BUADialogRecoveryTest extends TestCase {
         shootme.init();
         shootist.init();
         
-        Thread.sleep(40000);
+        Thread.sleep(50000);
+        
+        shootme.checkState();
+        shootist.checkState();
+        // make sure dialogs are removed on both nodes
+        // non regression for Issue 1418
+        // http://code.google.com/p/mobicents/issues/detail?id=1418
+        assertTrue(b2buaNode1.checkDialogsRemoved());
+        assertTrue(b2buaNode2.checkDialogsRemoved());
         
         shootist.stop();
         shootme.stop();
-        
-        shootme.checkState();
-        shootist.checkState();        
     }
 }

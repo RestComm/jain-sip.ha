@@ -119,6 +119,9 @@ public class JBossJainSipCacheListener implements TreeCacheListener {
 			clusteredSipStack.getStackLogger().logDebug("sipStack " + clusteredSipStack + 
 					" Node removed : " + fqn);
 		}		
+		if(fqn.size() > 1) {			
+			clusteredSipStack.remoteDialogRemoval(fqn.get(1).toString());
+		}
 	}
 
 	/* (non-Javadoc)
