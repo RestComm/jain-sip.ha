@@ -234,7 +234,8 @@ public class B2BUADialogRecoveryTest extends TestCase {
 	                	port = 5081;
 	                	firstReinviteSent = false;
 	                	firstReInviteComplete = true;
-	                } else {
+	                }
+	                if(secondReinviteSent) {
 	                	secondReInviteComplete = true;
 	                }
 	        		System.out.println("Sending ACK");

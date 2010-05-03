@@ -82,6 +82,7 @@ public abstract class AbstractHASipDialog extends SIPDialog implements HASipDial
 	static HeaderFactory headerFactory = null;		
 	boolean isCreated = false;
 	private AtomicLong version = new AtomicLong(0);
+	private String lastResponseStringified = null;
 	
 	static {		
 		try {
@@ -110,7 +111,7 @@ public abstract class AbstractHASipDialog extends SIPDialog implements HASipDial
 	 * @param sipStackImpl the sip Stack Impl that reloaded this dialog from the distributed cache
 	 */
 	public void initAfterLoad(ClusteredSipStack sipStackImpl) {
-		String transport = getLastResponse().getTopmostViaHeader().getTransport();
+		String transport = getLastResponseTopMostVia().getTransport();
 		Iterator<SipProviderImpl> providers = sipStackImpl.getSipProviders();
 		boolean providerNotFound = true;
 		while(providers.hasNext()) {
@@ -126,11 +127,11 @@ public abstract class AbstractHASipDialog extends SIPDialog implements HASipDial
 		}
 		setStack((SIPTransactionStack)sipStackImpl);
 		setAssigned();
-		firstTransactionPort = getSipProvider().getListeningPoint(getLastResponse().getTopmostViaHeader().getTransport()).getPort();
+		firstTransactionPort = getSipProvider().getListeningPoint(getLastResponseTopMostVia().getTransport()).getPort();
 		ackProcessed = true;
 //		ackSeen = true;
-	}	
-	
+	}			
+
 	@SuppressWarnings("unchecked")
 	public Map<String,Object> getMetaDataToReplicate() {
 		Map<String,Object> dialogMetaData = new HashMap<String,Object>();
@@ -138,9 +139,9 @@ public abstract class AbstractHASipDialog extends SIPDialog implements HASipDial
 		if (getStack().getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
 			getStack().getStackLogger().logDebug(getDialogId() + " : version " + version);
 		}
-		dialogMetaData.put(LAST_RESPONSE, getLastResponse().toString());
+		dialogMetaData.put(LAST_RESPONSE, getLastResponseStringified());
 		if (getStack().getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
-			getStack().getStackLogger().logDebug(getDialogId() + " : lastResponse " + getLastResponse());
+			getStack().getStackLogger().logDebug(getDialogId() + " : lastResponse " + getLastResponseStringified());
 		}
 		dialogMetaData.put(IS_REINVITE, isReInvite());
 		if (getStack().getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
@@ -229,8 +230,9 @@ public abstract class AbstractHASipDialog extends SIPDialog implements HASipDial
 	public void setMetaDataToReplicate(Map<String, Object> metaData) {
 		// the call to super is very important otherwise it triggers replication on dialog recreation
 		super.setState(DialogState._CONFIRMED);		
+		lastResponseStringified = (String) metaData.get(LAST_RESPONSE);
 		if (getStack().getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
-			getStack().getStackLogger().logDebug(getDialogId() + " : lastResponse " + getLastResponse());
+			getStack().getStackLogger().logDebug(getDialogId() + " : lastResponse " + lastResponseStringified);
 		}
 		version = new AtomicLong((Long)metaData.get(VERSION));
 		if (getStack().getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
@@ -351,14 +353,17 @@ public abstract class AbstractHASipDialog extends SIPDialog implements HASipDial
 	@Override
 	public void setState(int state) {
 		DialogState oldState = getState();
-		long previousVersion = version.get();
+		long previousVersion = -1;
+		if(version != null) {
+			previousVersion= version.get();
+		}
 		super.setState(state);
 		DialogState newState = getState();
 		// we replicate only if the state has really changed
 		// the fact of setting the last response upon recreation will trigger setState to be called and so the replication
 		// so we make sure to replicate only if the dialog has been created
 		// also  we replicate only if the version is the same, otherwise it means setState already triggered a replication by putting the dialog in the stack and therefore in the cache
-		if(!newState.equals(oldState) && previousVersion == version.get()){
+		if(!newState.equals(oldState) && previousVersion != -1 && previousVersion == version.get()){
 			replicateState();
 		}
 	}
@@ -392,10 +397,12 @@ public abstract class AbstractHASipDialog extends SIPDialog implements HASipDial
 		// version can be null on dialog recreation
 		if(version != null) {
 			long previousVersion = version.get(); 
-			if(sipResponse != null && getLastResponse() != null && sipResponse.getStatusCode() >= 200 && !sipResponse.equals(this.getLastResponse())) {
+			String responseStringified = sipResponse.toString(); 
+			if(sipResponse != null && getLastResponseStringified() != null && sipResponse.getStatusCode() >= 200 && !responseStringified.equals(this.getLastResponseStringified())) {
 				lastResponseChanged = true;
 			}		
 			super.setLastResponse(transaction, sipResponse);
+			lastResponseStringified = responseStringified;
 			// we replicate only if the version is the same, otherwise it means lastResponse already triggered a replication by putting the dialog in the stack and therefore in the cache		
 			if(lastResponseChanged && previousVersion == version.get()) {
 				replicateState();
@@ -446,4 +453,8 @@ public abstract class AbstractHASipDialog extends SIPDialog implements HASipDial
         retval.append(hisTag);        
         return retval.toString().toLowerCase();
 	}
+	
+	public String getLastResponseStringified() {
+		return lastResponseStringified;
+	}		
 }
