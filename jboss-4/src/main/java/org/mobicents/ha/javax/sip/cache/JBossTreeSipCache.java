@@ -36,6 +36,7 @@ import org.jboss.cache.CacheException;
 import org.jboss.cache.PropertyConfigurator;
 import org.jboss.cache.TreeCache;
 import org.mobicents.ha.javax.sip.ClusteredSipStack;
+import org.mobicents.ha.javax.sip.HASipDialog;
 import org.mobicents.ha.javax.sip.SipStackImpl;
 
 /**
@@ -81,7 +82,7 @@ public class JBossTreeSipCache extends AbstractJBossSipCache implements SipCache
 		try {			
 			final Map<String, Object> dialogMetaData = (Map<String, Object>) treeCache.get(SipStackImpl.DIALOG_ROOT + dialogId, METADATA);
 			final Object dialogAppData = treeCache.get(SipStackImpl.DIALOG_ROOT + dialogId, APPDATA);
-			final AbstractHASipDialog haSipDialog = (AbstractHASipDialog) sipDialog;
+			final HASipDialog haSipDialog = (HASipDialog) sipDialog;
 			super.updateDialog(haSipDialog, dialogMetaData, dialogAppData);
 		} catch (CacheException e) {
 			throw new SipCacheException("A problem occured while retrieving the following dialog " + dialogId + " from the TreeCache", e);
@@ -103,7 +104,7 @@ public class JBossTreeSipCache extends AbstractJBossSipCache implements SipCache
 			if(clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
 				clusteredSipStack.getStackLogger().logStackTrace();
 			}
-			final AbstractHASipDialog haSipDialog = (AbstractHASipDialog) dialog;
+			final HASipDialog haSipDialog = (HASipDialog) dialog;
 			final String dialogId = haSipDialog.getDialogIdToReplicate();
 			if(clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
 				clusteredSipStack.getStackLogger().logDebug("put HA SIP Dialog " + dialog + " with dialogId " + dialogId + " in the cache");				

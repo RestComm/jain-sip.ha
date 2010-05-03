@@ -42,6 +42,7 @@ import org.jboss.cache.Node;
 import org.mobicents.cache.CacheData;
 import org.mobicents.cache.MobicentsCache;
 import org.mobicents.ha.javax.sip.ClusteredSipStack;
+import org.mobicents.ha.javax.sip.HASipDialog;
 import org.mobicents.ha.javax.sip.HASipDialogFactory;
 
 /**
@@ -60,7 +61,7 @@ public class SIPDialogCacheData extends CacheData {
 	
 	public SIPDialog getSIPDialog(String dialogId) throws SipCacheException {
 		final Node<String,Object> childNode = getNode().getChild(dialogId);
-		AbstractHASipDialog haSipDialog = null;
+		HASipDialog haSipDialog = null;
 		if(childNode != null) {
 			try {
 				final Map<String, Object> dialogMetaData = childNode.getData();				
@@ -72,7 +73,7 @@ public class SIPDialogCacheData extends CacheData {
 				throw new SipCacheException("A problem occured while retrieving the following dialog " + dialogId + " from the TreeCache", e);
 			} 
 		}
-		return haSipDialog;
+		return (SIPDialog) haSipDialog;
 	}
 	
 	/*
@@ -86,7 +87,7 @@ public class SIPDialogCacheData extends CacheData {
 			try {
 				final Map<String, Object> dialogMetaData = childNode.getData();
 				
-				final AbstractHASipDialog haSipDialog = (AbstractHASipDialog) sipDialog;
+				final HASipDialog haSipDialog = (HASipDialog) sipDialog;
 				final Object dialogAppData = childNode.get(APPDATA);
 				updateDialog(haSipDialog, dialogMetaData, dialogAppData);				
 			} catch (CacheException e) {
@@ -95,8 +96,8 @@ public class SIPDialogCacheData extends CacheData {
 		}
 	}
 	
-	public AbstractHASipDialog createDialog(String dialogId, Map<String, Object> dialogMetaData, Object dialogAppData) throws SipCacheException {
-		AbstractHASipDialog haSipDialog = null; 
+	public HASipDialog createDialog(String dialogId, Map<String, Object> dialogMetaData, Object dialogAppData) throws SipCacheException {
+		HASipDialog haSipDialog = null; 
 		if(dialogMetaData != null) {
 			if(clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
 				clusteredSipStack.getStackLogger().logDebug("sipStack " + this + " dialog " + dialogId + " is present in the distributed cache, recreating it locally");
@@ -117,14 +118,14 @@ public class SIPDialogCacheData extends CacheData {
 		return haSipDialog;
 	}
 	
-	public void updateDialog(AbstractHASipDialog haSipDialog, Map<String, Object> dialogMetaData,
+	public void updateDialog(HASipDialog haSipDialog, Map<String, Object> dialogMetaData,
 			Object dialogAppData) throws SipCacheException {
 		if(dialogMetaData != null) {			
 			final long currentVersion = haSipDialog.getVersion();
 			final long cacheVersion = ((Long)dialogMetaData.get(AbstractHASipDialog.VERSION)).longValue(); 
 			if(currentVersion < cacheVersion) {
 				if(clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
-					clusteredSipStack.getStackLogger().logDebug("HA SIP Dialog " + haSipDialog + " with dialogId " + haSipDialog.getDialogId() + " is older " + currentVersion + " than the one in the cache " + cacheVersion + " updating it");
+					clusteredSipStack.getStackLogger().logDebug("HA SIP Dialog " + haSipDialog + " with dialogId " + haSipDialog.getDialogIdToReplicate() + " is older " + currentVersion + " than the one in the cache " + cacheVersion + " updating it");
 				}
 				try {
 					final String lastResponseStringified = (String) dialogMetaData.get(AbstractHASipDialog.LAST_RESPONSE);				
@@ -132,13 +133,13 @@ public class SIPDialogCacheData extends CacheData {
 					haSipDialog.setLastResponse(lastResponse);
 					updateDialogMetaData(dialogMetaData, dialogAppData, haSipDialog);
 				}  catch (PeerUnavailableException e) {
-					throw new SipCacheException("A problem occured while retrieving the following dialog " + haSipDialog.getDialogId() + " from the TreeCache", e);
+					throw new SipCacheException("A problem occured while retrieving the following dialog " + haSipDialog.getDialogIdToReplicate() + " from the TreeCache", e);
 				} catch (ParseException e) {
-					throw new SipCacheException("A problem occured while retrieving the following dialog " + haSipDialog.getDialogId() + " from the TreeCache", e);
+					throw new SipCacheException("A problem occured while retrieving the following dialog " + haSipDialog.getDialogIdToReplicate() + " from the TreeCache", e);
 				}
 			} else {
 				if(clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
-					clusteredSipStack.getStackLogger().logDebug("HA SIP Dialog " + haSipDialog + " with dialogId " + haSipDialog.getDialogId() + " is not older " + currentVersion + " than the one in the cache " + cacheVersion + ", not updating it");
+					clusteredSipStack.getStackLogger().logDebug("HA SIP Dialog " + haSipDialog + " with dialogId " + haSipDialog.getDialogIdToReplicate() + " is not older " + currentVersion + " than the one in the cache " + cacheVersion + ", not updating it");
 				}
 			}
 		}
@@ -152,7 +153,7 @@ public class SIPDialogCacheData extends CacheData {
 	 * @throws ParseException
 	 * @throws PeerUnavailableException
 	 */
-	private void updateDialogMetaData(Map<String, Object> dialogMetaData, Object dialogAppData, AbstractHASipDialog haSipDialog) throws ParseException,
+	private void updateDialogMetaData(Map<String, Object> dialogMetaData, Object dialogAppData, HASipDialog haSipDialog) throws ParseException,
 			PeerUnavailableException {
 		haSipDialog.setMetaDataToReplicate(dialogMetaData);
 		haSipDialog.setApplicationDataToReplicate(dialogAppData);
@@ -168,7 +169,7 @@ public class SIPDialogCacheData extends CacheData {
 		if(clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
 			clusteredSipStack.getStackLogger().logStackTrace();
 		}
-		final AbstractHASipDialog haSipDialog = (AbstractHASipDialog) dialog;
+		final HASipDialog haSipDialog = (HASipDialog) dialog;
 		final String dialogId = haSipDialog.getDialogIdToReplicate();
 		if(clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
 			clusteredSipStack.getStackLogger().logDebug("put HA SIP Dialog " + dialog + " with dialog " + dialogId);

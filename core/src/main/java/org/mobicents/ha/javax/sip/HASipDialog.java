@@ -21,10 +21,31 @@
  */
 package org.mobicents.ha.javax.sip;
 
+import gov.nist.javax.sip.message.SIPResponse;
+
+import java.util.Map;
+
+import javax.sip.header.ContactHeader;
+
 /**
  * @author jean.deruelle@gmail.com
  *
  */
 public interface HASipDialog {
 	void initAfterLoad(ClusteredSipStack clusteredSipStack);
+
+	String getDialogIdToReplicate();
+	void setDialogId(String dialogId);
+	
+	Map<String, Object> getMetaDataToReplicate();
+	Object getApplicationDataToReplicate();
+
+	void setMetaDataToReplicate(Map<String, Object> dialogMetaData);
+	void setApplicationDataToReplicate(Object dialogAppData);
+
+	void setContactHeader(ContactHeader contactHeader);
+
+	long getVersion();
+
+	void setLastResponse(SIPResponse lastResponse);	
 }

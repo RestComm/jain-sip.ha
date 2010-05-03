@@ -164,11 +164,11 @@ public abstract class ClusteredSipStackImpl extends gov.nist.javax.sip.SipStackI
 				final String dialogId = ((SIPRequest) transaction.getRequest()).getDialogId(false);
 				retval = this.earlyDialogTable.get(dialogId);
 				if (retval == null || (retval.getState() != null && retval.getState() != DialogState.EARLY)) {
-					retval = HASipDialogFactory.createHASipDialog(replicationStrategy, transaction);
+					retval = (SIPDialog) HASipDialogFactory.createHASipDialog(replicationStrategy, transaction);
 					this.earlyDialogTable.put(dialogId, retval);
 				}
 			} else {
-				retval = HASipDialogFactory.createHASipDialog(replicationStrategy, transaction);
+				retval = (SIPDialog) HASipDialogFactory.createHASipDialog(replicationStrategy, transaction);
 			}
 			return retval;
 		}
@@ -189,7 +189,7 @@ public abstract class ClusteredSipStackImpl extends gov.nist.javax.sip.SipStackI
 			if (retval != null && sipResponse.isFinalResponse()) {
 				this.earlyDialogTable.remove(dialogId);
 			} else {
-				retval = HASipDialogFactory.createHASipDialog(replicationStrategy, transaction, sipResponse);
+				retval = (SIPDialog) HASipDialogFactory.createHASipDialog(replicationStrategy, transaction, sipResponse);
 			}
 			return retval;
 		}
@@ -206,7 +206,7 @@ public abstract class ClusteredSipStackImpl extends gov.nist.javax.sip.SipStackI
 			return super.createDialog(sipProvider, sipResponse);
 		}
 		else {
-			return HASipDialogFactory.createHASipDialog(replicationStrategy, sipProvider, sipResponse);
+			return (SIPDialog) HASipDialogFactory.createHASipDialog(replicationStrategy, sipProvider, sipResponse);
 		}
 	}
 

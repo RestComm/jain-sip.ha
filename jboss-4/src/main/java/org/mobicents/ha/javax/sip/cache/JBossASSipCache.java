@@ -22,27 +22,19 @@
 package org.mobicents.ha.javax.sip.cache;
 
 import gov.nist.core.StackLogger;
-import gov.nist.javax.sip.SipProviderImpl;
-import gov.nist.javax.sip.message.SIPResponse;
-import gov.nist.javax.sip.stack.AbstractHASipDialog;
 import gov.nist.javax.sip.stack.SIPDialog;
 
-import java.text.ParseException;
 import java.util.Map;
 import java.util.Properties;
 
 import javax.management.ObjectName;
-import javax.sip.PeerUnavailableException;
-import javax.sip.SipFactory;
-import javax.sip.address.Address;
-import javax.sip.header.ContactHeader;
 import javax.transaction.TransactionManager;
 
 import org.jboss.cache.CacheException;
 import org.jboss.cache.aop.PojoCacheMBean;
 import org.jboss.mx.util.MBeanProxyExt;
 import org.mobicents.ha.javax.sip.ClusteredSipStack;
-import org.mobicents.ha.javax.sip.HASipDialogFactory;
+import org.mobicents.ha.javax.sip.HASipDialog;
 import org.mobicents.ha.javax.sip.SipStackImpl;
 
 /**
@@ -80,7 +72,7 @@ public class JBossASSipCache extends AbstractJBossSipCache implements SipCache {
 		try {			
 			Map<String, Object> dialogMetaData = (Map<String, Object>) pojoCache.get(SipStackImpl.DIALOG_ROOT + dialogId, METADATA);
 			Object dialogAppData = pojoCache.get(SipStackImpl.DIALOG_ROOT + dialogId, APPDATA);
-			final AbstractHASipDialog haSipDialog = (AbstractHASipDialog) sipDialog;
+			final HASipDialog haSipDialog = (HASipDialog) sipDialog;
 			super.updateDialog(haSipDialog, dialogMetaData, dialogAppData);
 		} catch (CacheException e) {
 			throw new SipCacheException("A problem occured while retrieving the following dialog " + dialogId + " from the TreeCache", e);
@@ -102,7 +94,7 @@ public class JBossASSipCache extends AbstractJBossSipCache implements SipCache {
 			if(clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
 				clusteredSipStack.getStackLogger().logStackTrace();
 			}
-			final AbstractHASipDialog haSipDialog = (AbstractHASipDialog) dialog;
+			final HASipDialog haSipDialog = (HASipDialog) dialog;
 			final String dialogId = haSipDialog.getDialogIdToReplicate();
 			final Map<String, Object> dialogMetaData = haSipDialog.getMetaDataToReplicate();
 			if(dialogMetaData != null) {
