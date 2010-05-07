@@ -41,10 +41,13 @@ import javax.sip.header.CSeqHeader;
 import javax.sip.header.CallIdHeader;
 import javax.sip.header.ContactHeader;
 import javax.sip.header.ContentTypeHeader;
+import javax.sip.header.EventHeader;
+import javax.sip.header.ExpiresHeader;
 import javax.sip.header.FromHeader;
 import javax.sip.header.Header;
 import javax.sip.header.HeaderFactory;
 import javax.sip.header.MaxForwardsHeader;
+import javax.sip.header.SubscriptionStateHeader;
 import javax.sip.header.ToHeader;
 import javax.sip.header.ViaHeader;
 import javax.sip.message.MessageFactory;
@@ -64,17 +67,29 @@ import junit.framework.TestCase;
  * 				------------------------------------------------->
  * 	INVITE (CSeq 1)
  * <------------------------
- * 											INVITE (CSeq 1)
+ * 
+ * SUBSCRIBE(CSeq 2)
+ * ----------------------->
+ * 		
+ * 				SUBSCRIBE (CSeq 2)
+ * 				------------------------------------------------->
+ * 
+ * 									NOTIFY (CSeq 1)
+ *				<-------------------------------------------------
+ * 		NOTIFY (CSeq 2)
+ * <------------------------
+ * 
+ * 											INVITE (CSeq 2)
  * 								             <---------------------
- * 					INVITE (CSeq 2)
+ * 					INVITE (CSeq 3)
  * <------------------------------------------
- * 									INVITE (CSeq 2)
+ * 									INVITE (CSeq 3)
  *  				      <----------------------------------------
- *  	INVITE (CSeq 3)
+ *  	INVITE (CSeq 4)
  *  <---------------------
- *  BYE (CSeq 2)
+ *  BYE (CSeq 3)
  *  ----------------------->
- *  								BYE (CSeq 2)
+ *  								BYE (CSeq 3)
  *  						------------------------------------->
  *
  * @author <A HREF="mailto:jean.deruelle@gmail.com">Jean Deruelle</A>
@@ -134,6 +149,8 @@ public class B2BUADialogRecoveryTest extends TestCase {
 		private boolean firstReInviteComplete;
 		private boolean secondReInviteComplete;
 		private boolean byeReceived;
+		private boolean subscribeTxComplete;
+		private boolean notifyTxComplete;
 
         public Shootme(String stackName, int myPort, boolean callerSendsBye) {
             this.stackName = stackName;
@@ -199,6 +216,8 @@ public class B2BUADialogRecoveryTest extends TestCase {
                 processAck(requestEvent, serverTransactionId);
             } else if (request.getMethod().equals(Request.BYE)) {
                 processBye(requestEvent, serverTransactionId);
+            } else if (request.getMethod().equals(Request.SUBSCRIBE)) {
+                processSubscribe(requestEvent, serverTransactionId);
             } else if (request.getMethod().equals(Request.CANCEL)) {
                 processCancel(requestEvent, serverTransactionId);
             } else {
@@ -226,9 +245,10 @@ public class B2BUADialogRecoveryTest extends TestCase {
 
         public void processResponse(ResponseEvent responseEvent) {
         	Dialog dialog = responseEvent.getDialog();
+        	CSeqHeader cSeqHeader = (CSeqHeader)responseEvent.getResponse().getHeader(CSeqHeader.NAME);
         	try {
-        		if(responseEvent.getResponse().getStatusCode() >= 200) {
-	        		Request ackRequest = dialog.createAck(((CSeqHeader)responseEvent.getResponse().getHeader(CSeqHeader.NAME)).getSeqNumber());
+        		if(responseEvent.getResponse().getStatusCode() >= 200 && cSeqHeader.getMethod().equalsIgnoreCase(Request.INVITE)) {
+	        		Request ackRequest = dialog.createAck(cSeqHeader.getSeqNumber());
 	        		int port = 5080;
 	                if(firstReinviteSent) {
 	                	port = 5081;
@@ -251,6 +271,14 @@ public class B2BUADialogRecoveryTest extends TestCase {
 		                dialog.sendRequest(ct);
 		                secondReinviteSent = true;
 					}
+        		} else if(responseEvent.getResponse().getStatusCode() >= 200 && cSeqHeader.getMethod().equalsIgnoreCase(Request.NOTIFY)) {
+        			notifyTxComplete = true;
+        			Thread.sleep(5000);
+        			 Request request = dialog.createRequest("INVITE");                
+                     ((SipURI)request.getRequestURI()).setPort(5081);                
+                     final ClientTransaction ct = sipProvider.getNewClientTransaction(request);
+                     firstReinviteSent = true;
+                     dialog.sendRequest(ct); 
         		}
 			} catch (SipException e) {
 				// TODO Auto-generated catch block
@@ -274,15 +302,7 @@ public class B2BUADialogRecoveryTest extends TestCase {
             	Dialog dialog = serverTransaction.getDialog();
                 System.out.println("shootme: got an ACK! ");
                 System.out.println("Dialog State = " + dialog.getState());
-                firstTxComplete = true;
-                
-                Thread.sleep(TIMEOUT);
-                
-                Request request = dialog.createRequest("INVITE");                
-                ((SipURI)request.getRequestURI()).setPort(5081);                
-                final ClientTransaction ct = sipProvider.getNewClientTransaction(request);
-                firstReinviteSent = true;
-                dialog.sendRequest(ct);                       
+                firstTxComplete = true;                                                                                   
             } catch (Exception ex) {
                 ex.printStackTrace();
             }
@@ -369,6 +389,45 @@ public class B2BUADialogRecoveryTest extends TestCase {
                 System.out.println("Dialog State is "
                         + serverTransactionId.getDialog().getState());
                 byeReceived = true;
+            } catch (Exception ex) {
+                ex.printStackTrace();
+                System.exit(0);
+
+            }
+        }
+        
+        /**
+         * Process the bye request.
+         */
+        public void processSubscribe(RequestEvent requestEvent,
+                ServerTransaction serverTransactionId) {
+            SipProvider sipProvider = (SipProvider) requestEvent.getSource();
+            Request request = requestEvent.getRequest();
+            Dialog dialog = requestEvent.getDialog();   
+            
+            try {
+                ServerTransaction st = requestEvent.getServerTransaction();
+
+                if (st == null) {
+                    st = sipProvider.getNewServerTransaction(request);
+                }
+                System.out.println("shootme:  got a subscribe sending OK.");
+                Response response = messageFactory.createResponse(200, request);
+    			response.addHeader(headerFactory.createHeader(ExpiresHeader.NAME, "3600"));
+                st.sendResponse(response);
+                System.out.println("Dialog State is "
+                        + st.getDialog().getState());
+                subscribeTxComplete = true;
+                
+                Thread.sleep(5000);
+                
+                Request notify = st.getDialog().createRequest(Request.NOTIFY);
+                notify.addHeader(headerFactory.createHeader(SubscriptionStateHeader.NAME, SubscriptionStateHeader.ACTIVE));
+                notify.addHeader(headerFactory.createHeader(EventHeader.NAME, "presence"));
+                ((SipURI)notify.getRequestURI()).setUser(null);
+                ((SipURI)notify.getRequestURI()).setHost(IP_ADDRESS);
+                ((SipURI)notify.getRequestURI()).setPort(5080);
+                st.getDialog().sendRequest(sipProvider.getNewClientTransaction(notify));
             } catch (Exception ex) {
                 ex.printStackTrace();
                 System.exit(0);
@@ -541,10 +600,10 @@ public class B2BUADialogRecoveryTest extends TestCase {
         }
 
 		public void checkState() {
-			if(firstTxComplete && firstReInviteComplete && secondReInviteComplete && byeReceived) {
+			if(firstTxComplete && subscribeTxComplete && notifyTxComplete  && firstReInviteComplete && secondReInviteComplete && byeReceived) {
 				System.out.println("shootme state OK " );
 			} else {
-				fail("firstTxComplete " + firstTxComplete + " && firstReInviteComplete  " + firstReInviteComplete + "&& secondReInviteComplete " + secondReInviteComplete + " && byeReceived " + byeReceived);
+				fail("firstTxComplete " + firstTxComplete + " && subscribeTxComplete " + subscribeTxComplete + " && notifyComplete " + notifyTxComplete + " && firstReInviteComplete " + firstReInviteComplete + "&& secondReInviteComplete " + secondReInviteComplete + " && byeReceived " + byeReceived);
 			}
 		}
 
@@ -578,6 +637,9 @@ public class B2BUADialogRecoveryTest extends TestCase {
 		private boolean okToByeReceived;
 		// Save the created ACK request, to respond to retransmitted 2xx
         private Request ackRequest;
+
+		private boolean notifyTxComplete;
+		private boolean subscribeTxComplete;
         
         class ByeTask  extends TimerTask {
             Dialog dialog;
@@ -614,7 +676,15 @@ public class B2BUADialogRecoveryTest extends TestCase {
             // We are the UAC so the only request we get is the BYE.
             if (request.getMethod().equals(Request.BYE))
                 processBye(request, serverTransactionId);
-            else {
+            else if(request.getMethod().equals(Request.NOTIFY)) {
+            	try {
+					serverTransactionId.sendResponse( messageFactory.createResponse(200,request) );
+					notifyTxComplete = true;
+				} catch (Exception e) {					
+					e.printStackTrace();
+					fail("Unxepcted exception ");
+				}
+            } else {
             	if(!request.getMethod().equals(Request.ACK)) {
             		if(((CSeqHeader) request.getHeader(CSeqHeader.NAME)).getSeqNumber() == 1) {
 		                try {
@@ -632,13 +702,22 @@ public class B2BUADialogRecoveryTest extends TestCase {
 	            		switch ((int) cseq) {
 						case 1:
 							firstReInviteComplete = true;
-							break;
+							try {
+								Request subscribe = requestReceivedEvent.getDialog().createRequest(Request.SUBSCRIBE);
+								requestReceivedEvent.getDialog().sendRequest(sipProvider.getNewClientTransaction(subscribe));
+							} catch (SipException e) {
+								// TODO Auto-generated catch block
+								e.printStackTrace();
+								fail("Unxepcted exception ");
+							}
 							
-						case 2:
-							secondReInviteComplete = true;
 							break;
 							
 						case 3:
+							secondReInviteComplete = true;
+							break;
+							
+						case 4:
 							thirdReInviteComplete = true;
 							break;
 	
@@ -729,6 +808,11 @@ public class B2BUADialogRecoveryTest extends TestCase {
             System.out.println("Response received : Status Code = "
                     + response.getStatusCode() + " " + cseq);
 
+            if(cseq.getMethod().equalsIgnoreCase(Request.SUBSCRIBE)) {
+            	subscribeTxComplete = true;
+            	return;
+            }
+            
             if (tid == null) {
 
                 // RFC3261: MUST respond to every 2xx
@@ -746,7 +830,7 @@ public class B2BUADialogRecoveryTest extends TestCase {
             // If the caller is supposed to send the bye
             if ( callerSendsBye && !byeTaskRunning) {
                 byeTaskRunning = true;
-                new Timer().schedule(new ByeTask(dialog), 30000) ;
+                new Timer().schedule(new ByeTask(dialog), 50000) ;
             }
             System.out.println("transaction state is " + tid.getState());
             System.out.println("Dialog = " + tid.getDialog());
@@ -1013,10 +1097,10 @@ public class B2BUADialogRecoveryTest extends TestCase {
         }
 
 		public void checkState() {
-			if(firstTxComplete && firstReInviteComplete && secondReInviteComplete && thirdReInviteComplete && okToByeReceived) {
+			if(firstTxComplete && firstReInviteComplete && subscribeTxComplete && notifyTxComplete && secondReInviteComplete && thirdReInviteComplete && okToByeReceived) {
 				System.out.println("shootist state OK " );
 			} else {
-				fail("firstTxComplete " + firstTxComplete + " && firstReInviteComplete  " + firstReInviteComplete + "&& secondReInviteComplete " + secondReInviteComplete + "&& thirdReInviteComplete " + thirdReInviteComplete + " && okToByeReceived " + okToByeReceived);
+				fail("firstTxComplete " + firstTxComplete + " && firstReInviteComplete  " + firstReInviteComplete + " && subscribeTxComplete " + subscribeTxComplete + " && notifyComplete " + notifyTxComplete + "&& secondReInviteComplete " + secondReInviteComplete + "&& thirdReInviteComplete " + thirdReInviteComplete + " && okToByeReceived " + okToByeReceived);
 			}
 		}
     }
@@ -1056,7 +1140,7 @@ public class B2BUADialogRecoveryTest extends TestCase {
         shootme.init();
         shootist.init();
         
-        Thread.sleep(50000);
+        Thread.sleep(60000);
         
         shootme.checkState();
         shootist.checkState();

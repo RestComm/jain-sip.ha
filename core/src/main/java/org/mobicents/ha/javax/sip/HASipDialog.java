@@ -46,6 +46,6 @@ public interface HASipDialog {
 	void setContactHeader(ContactHeader contactHeader);
 
 	long getVersion();
-
-	void setLastResponse(SIPResponse lastResponse);	
+	
+	void setLastResponse(SIPResponse lastResponse);
 }

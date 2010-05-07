@@ -30,6 +30,7 @@ import gov.nist.javax.sip.stack.SIPDialog;
 import java.text.ParseException;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.concurrent.atomic.AtomicLong;
 
 import javax.sip.PeerUnavailableException;
 import javax.sip.SipFactory;
@@ -107,6 +108,8 @@ public class SIPDialogCacheData extends CacheData {
 				final SIPResponse lastResponse = (SIPResponse) SipFactory.getInstance().createMessageFactory().createResponse(lastResponseStringified);
 				haSipDialog = HASipDialogFactory.createHASipDialog(clusteredSipStack.getReplicationStrategy(), (SipProviderImpl)clusteredSipStack.getSipProviders().next(), lastResponse);
 				haSipDialog.setDialogId(dialogId);
+				// setLastResponse won't be called on recreation since version will be null on recreation			
+				haSipDialog.setLastResponse(lastResponse);
 				updateDialogMetaData(dialogMetaData, dialogAppData, haSipDialog);
 			} catch (PeerUnavailableException e) {
 				throw new SipCacheException("A problem occured while retrieving the following dialog " + dialogId + " from the TreeCache", e);
@@ -122,8 +125,8 @@ public class SIPDialogCacheData extends CacheData {
 			Object dialogAppData) throws SipCacheException {
 		if(dialogMetaData != null) {			
 			final long currentVersion = haSipDialog.getVersion();
-			final long cacheVersion = ((Long)dialogMetaData.get(AbstractHASipDialog.VERSION)).longValue(); 
-			if(currentVersion < cacheVersion) {
+			final Long cacheVersion = ((Long)dialogMetaData.get(AbstractHASipDialog.VERSION)); 
+			if(cacheVersion != null && currentVersion < cacheVersion.longValue()) {
 				if(clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
 					clusteredSipStack.getStackLogger().logDebug("HA SIP Dialog " + haSipDialog + " with dialogId " + haSipDialog.getDialogIdToReplicate() + " is older " + currentVersion + " than the one in the cache " + cacheVersion + " updating it");
 				}

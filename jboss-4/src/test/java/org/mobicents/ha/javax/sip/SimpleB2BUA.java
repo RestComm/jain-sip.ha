@@ -76,7 +76,7 @@ public class SimpleB2BUA implements SipListener {
 		this.provider.addSipListener(this);
 		this.headerFactory = sipFactory.createHeaderFactory();
 		this.messageFactory = sipFactory.createMessageFactory();
-		b2buaHandler = new SimpleB2BUAHandler(provider,headerFactory,messageFactory);
+		b2buaHandler = new SimpleB2BUAHandler(provider,headerFactory,messageFactory, Integer.parseInt(properties.getProperty(SIP_PORT_BIND)));
 	}
 
 	private AtomicLong counter = new AtomicLong();
@@ -94,6 +94,12 @@ public class SimpleB2BUA implements SipListener {
 
 		if (requestEvent.getRequest().getMethod().equals(Request.INVITE)) {
 			b2buaHandler.processInvite(requestEvent);
+		}
+		else if (requestEvent.getRequest().getMethod().equals(Request.SUBSCRIBE)) {
+			b2buaHandler.processSubscribe(requestEvent);
+		}
+		else if (requestEvent.getRequest().getMethod().equals(Request.NOTIFY)) {
+			b2buaHandler.processNotify(requestEvent);
 		}
 		else if (requestEvent.getRequest().getMethod().equals(Request.BYE)) {
 			b2buaHandler.processBye(requestEvent);

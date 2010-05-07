@@ -31,11 +31,14 @@ import javax.sip.header.CallIdHeader;
 import javax.sip.header.ContactHeader;
 import javax.sip.header.ContentLengthHeader;
 import javax.sip.header.ContentTypeHeader;
+import javax.sip.header.EventHeader;
+import javax.sip.header.ExpiresHeader;
 import javax.sip.header.FromHeader;
 import javax.sip.header.Header;
 import javax.sip.header.HeaderFactory;
 import javax.sip.header.RecordRouteHeader;
 import javax.sip.header.RouteHeader;
+import javax.sip.header.SubscriptionStateHeader;
 import javax.sip.header.ToHeader;
 import javax.sip.header.ViaHeader;
 import javax.sip.message.MessageFactory;
@@ -54,13 +57,15 @@ public class SimpleB2BUAHandler {
 	private ServerTransaction serverTransaction;
 	private boolean createInviteOnAck = false;
 	private SipStack sipStack;
+	int myPort;
 	
-	public SimpleB2BUAHandler(SipProvider sipProvider, HeaderFactory headerFactory, MessageFactory messageFactory) {
+	public SimpleB2BUAHandler(SipProvider sipProvider, HeaderFactory headerFactory, MessageFactory messageFactory, int port) {
 //		this.localTag = localTag;
 		this.sipProvider = sipProvider;
 		this.sipStack = sipProvider.getSipStack();
 		this.messageFactory = messageFactory;
 		this.headerFactory = headerFactory;
+		myPort = port;
 	}
 	
 	/**
@@ -161,9 +166,9 @@ public class SimpleB2BUAHandler {
 				setupIncomingDialog();
 				forwardInvite(5070);
 			} else {	
-				Request request = getOutgoingDialog().createRequest(Request.INVITE);
+				Request request = getIncomingDialog().createRequest(Request.INVITE);
 				final ClientTransaction ct = sipProvider.getNewClientTransaction(request);
-				getOutgoingDialog().sendRequest(ct);
+				getIncomingDialog().sendRequest(ct);
 			}
 			if(((FromHeader)serverTransaction.getRequest().getHeader(FromHeader.NAME)).getAddress().getURI().toString().contains("BigGuy")) {
 				createInviteOnAck =  true;
@@ -283,6 +288,9 @@ public class SimpleB2BUAHandler {
 		try {
 			if(createInviteOnAck) {
 				createInviteOnAck = false;
+				if(myPort == 5080 && getIncomingDialogId() == null) {
+					storeIncomingDialogId(requestEvent.getDialog().getDialogId());
+				}
 				Request request = getIncomingDialog().createRequest("INVITE");			
 				final ClientTransaction ct = sipProvider.getNewClientTransaction(request);
 				getIncomingDialog().sendRequest(ct);
@@ -296,8 +304,42 @@ public class SimpleB2BUAHandler {
 	public void processBye(RequestEvent requestEvent) {
 		try {
 			requestEvent.getServerTransaction().sendResponse(messageFactory.createResponse(200, requestEvent.getRequest()));
-			Dialog dialog = getIncomingDialog();
+			Dialog dialog = getOutgoingDialog();
 			Request request = dialog.createRequest(Request.BYE);
+			final ClientTransaction ct = sipProvider.getNewClientTransaction(request);
+			dialog.sendRequest(ct);						
+		}
+		catch (Exception e) {
+			((SipStackImpl)sipStack).getStackLogger().logError("unexpected exception", e);
+		}
+	}
+	
+	public void processSubscribe(RequestEvent requestEvent) {
+		try {
+			Response response = messageFactory.createResponse(200, requestEvent.getRequest());
+			response.addHeader(headerFactory.createHeader(ExpiresHeader.NAME, "3600"));
+			requestEvent.getServerTransaction().sendResponse(response);
+			Dialog dialog = getOutgoingDialog();
+			Request request = dialog.createRequest(Request.SUBSCRIBE);
+			((SipURI)request.getRequestURI()).setPort(5070);
+			final ClientTransaction ct = sipProvider.getNewClientTransaction(request);
+			dialog.sendRequest(ct);						
+		}
+		catch (Exception e) {
+			((SipStackImpl)sipStack).getStackLogger().logError("unexpected exception", e);
+		}
+	}
+	
+	public void processNotify(RequestEvent requestEvent) {
+		try {
+			requestEvent.getServerTransaction().sendResponse(messageFactory.createResponse(200, requestEvent.getRequest()));
+			Dialog dialog = getIncomingDialog();
+			Request request = dialog.createRequest(Request.NOTIFY);
+			request.addHeader(headerFactory.createHeader(SubscriptionStateHeader.NAME, SubscriptionStateHeader.ACTIVE));
+			request.addHeader(headerFactory.createHeader(EventHeader.NAME, "presence"));
+            ((SipURI)request.getRequestURI()).setUser(null);
+//            ((SipURI)request.getRequestURI()).setHost(IP_ADDRESS);
+			((SipURI)request.getRequestURI()).setPort(5060);
 			final ClientTransaction ct = sipProvider.getNewClientTransaction(request);
 			dialog.sendRequest(ct);						
 		}
@@ -379,8 +421,7 @@ public class SimpleB2BUAHandler {
 			forgedResponse.setHeader(((ListeningPointImpl)sipProvider.getListeningPoint(transport)).createContactHeader());
 		}
 		
-		origServerTransaction.sendResponse(forgedResponse);
-		storeIncomingDialogId(origServerTransaction.getDialog().getDialogId());
+		origServerTransaction.sendResponse(forgedResponse);		
 	}
 
 	public void process200(ResponseEvent responseEvent) {
@@ -389,7 +430,7 @@ public class SimpleB2BUAHandler {
 			if (cSeqHeader.getMethod().equals(Request.INVITE)) {
 				processInvite200(responseEvent,cSeqHeader);
 			}
-			else if (cSeqHeader.getMethod().equals(Request.BYE)) {
+			else if (cSeqHeader.getMethod().equals(Request.BYE) || cSeqHeader.getMethod().equals(Request.SUBSCRIBE) || cSeqHeader.getMethod().equals(Request.NOTIFY)) {
 				processBye200(responseEvent);
 			}
 			else {
@@ -412,7 +453,9 @@ public class SimpleB2BUAHandler {
 		System.out.println("Generating ACK to 200");
 		final Request ack = responseEvent.getDialog().createAck(cseq.getSeqNumber());
 		String outgoingDialogId = responseEvent.getDialog().getDialogId();
-		storeOutgoingDialogId(outgoingDialogId);
+		if(myPort == 5080 && getOutgoingDialogId() == null) {
+			storeOutgoingDialogId(outgoingDialogId);
+		}
 		responseEvent.getDialog().sendAck(ack);		
 		forwardResponse(responseEvent.getResponse());			
 	}		

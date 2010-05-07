@@ -60,6 +60,8 @@ public abstract class AbstractJBossSipCache {
 				final SIPResponse lastResponse = (SIPResponse) SipFactory.getInstance().createMessageFactory().createResponse(lastResponseStringified);
 				haSipDialog = HASipDialogFactory.createHASipDialog(clusteredSipStack.getReplicationStrategy(), (SipProviderImpl)clusteredSipStack.getSipProviders().next(), lastResponse);
 				haSipDialog.setDialogId(dialogId);
+				// setLastResponse won't be called on recreation since version will be null on recreation				
+				haSipDialog.setLastResponse(lastResponse);				
 				updateDialogMetaData(dialogMetaData, dialogAppData, haSipDialog);
 			} catch (PeerUnavailableException e) {
 				throw new SipCacheException("A problem occured while retrieving the following dialog " + dialogId + " from the TreeCache", e);

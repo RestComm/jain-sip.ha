@@ -77,6 +77,7 @@ public abstract class AbstractHASipDialog extends SIPDialog implements HASipDial
 	public static final String REMOTE_TAG = "rtag";
 	public static final String VERSION = "v";
 	public static final String REMOTE_CSEQ = "rc";
+	public static final String DIALOG_METHOD = "dm";
 
 	static AddressFactory addressFactory = null;
 	static HeaderFactory headerFactory = null;		
@@ -106,7 +107,7 @@ public abstract class AbstractHASipDialog extends SIPDialog implements HASipDial
 		isCreated = true;
 	}	
 
-    /**
+	/**
 	 * Updates the local dialog transient attributes that were not serialized during the replication 
 	 * @param sipStackImpl the sip Stack Impl that reloaded this dialog from the distributed cache
 	 */
@@ -138,6 +139,10 @@ public abstract class AbstractHASipDialog extends SIPDialog implements HASipDial
 		dialogMetaData.put(VERSION, Long.valueOf(version.incrementAndGet()));
 		if (getStack().getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
 			getStack().getStackLogger().logDebug(getDialogId() + " : version " + version);
+		}
+		dialogMetaData.put(DIALOG_METHOD, getMethod());
+		if (getStack().getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+			getStack().getStackLogger().logDebug(getDialogId() + " : dialog method " + getMethod());
 		}
 		dialogMetaData.put(LAST_RESPONSE, getLastResponseStringified());
 		if (getStack().getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
@@ -233,6 +238,10 @@ public abstract class AbstractHASipDialog extends SIPDialog implements HASipDial
 		lastResponseStringified = (String) metaData.get(LAST_RESPONSE);
 		if (getStack().getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
 			getStack().getStackLogger().logDebug(getDialogId() + " : lastResponse " + lastResponseStringified);
+		}
+		method = (String) metaData.get(DIALOG_METHOD);
+		if (getStack().getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+			getStack().getStackLogger().logDebug(getDialogId() + " : dialog method " + method);
 		}
 		version = new AtomicLong((Long)metaData.get(VERSION));
 		if (getStack().getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
@@ -392,10 +401,10 @@ public abstract class AbstractHASipDialog extends SIPDialog implements HASipDial
 		
 	@Override
 	public void setLastResponse(SIPTransaction transaction,
-			SIPResponse sipResponse) {
-		boolean lastResponseChanged = false;
+			SIPResponse sipResponse) {		
 		// version can be null on dialog recreation
 		if(version != null) {
+			boolean lastResponseChanged = false;
 			long previousVersion = version.get(); 
 			String responseStringified = sipResponse.toString(); 
 			if(sipResponse != null && getLastResponseStringified() != null && sipResponse.getStatusCode() >= 200 && !responseStringified.equals(this.getLastResponseStringified())) {
@@ -407,9 +416,11 @@ public abstract class AbstractHASipDialog extends SIPDialog implements HASipDial
 			if(lastResponseChanged && previousVersion == version.get()) {
 				replicateState();
 			}
-		} else {
-			super.setLastResponse(transaction, sipResponse);
 		}
+		// causes REINVITE after NOTIFY on failover to fail with NPE since method attribute is not yet initialized
+//		else {
+//			super.setLastResponse(transaction, sipResponse);
+//		}
 	}
 
 	public void setLastResponse(SIPResponse lastResponse) {
@@ -418,7 +429,7 @@ public abstract class AbstractHASipDialog extends SIPDialog implements HASipDial
 		// local sequence number is not reset, so we need to do it
 		this.localSequenceNumber = lastResponse.getCSeq().getSeqNumber();
 		if(getStack().getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
-			getStack().getStackLogger().logDebug("update HA SIP Dialog " + this + " and dialogId " + getDialogId() + " with lastResponse " + lastResponse);				
+			getStack().getStackLogger().logDebug("update HA SIP Dialog " + this + " and dialogId " + getDialogIdToReplicate() + " with lastResponse " + lastResponse);				
 		}
         this.originalLocalSequenceNumber = localSequenceNumber;
 	}	
@@ -442,11 +453,11 @@ public abstract class AbstractHASipDialog extends SIPDialog implements HASipDial
 	 */
 	public long getVersion() {
 		return version.get();
-	}
+	}		
 
 	public String getDialogIdToReplicate() {
-		CallID cid = (CallID) this.getCallId();
-		StringBuilder retval = new StringBuilder(cid.getCallId());
+		String cid = this.getCallId().getCallId();
+		StringBuilder retval = new StringBuilder(cid);
         retval.append(Separators.COLON);
         retval.append(myTag);
         retval.append(Separators.COLON);
