@@ -201,6 +201,7 @@ public class JBossTreeSipCache extends AbstractJBossSipCache implements SipCache
 	}
 
 	public void stop() throws SipCacheException {
+		treeCache.stop();
 		treeCache.stopService();
 		if (clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_INFO)) {
 			clusteredSipStack.getStackLogger().logInfo(

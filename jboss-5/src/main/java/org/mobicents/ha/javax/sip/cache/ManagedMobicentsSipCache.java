@@ -97,8 +97,9 @@ public class ManagedMobicentsSipCache extends MobicentsSipCache {
 	 */
 	@Override
 	public void stop() throws SipCacheException {
-//		super.stop();
-//		cache.stop();		
+		if(configProperties.getProperty(ManagedMobicentsSipCache.STANDALONE) != null || "true".equals(configProperties.getProperty(ManagedMobicentsSipCache.STANDALONE))) {
+			super.stop();			
+		}
 	}
 
 }

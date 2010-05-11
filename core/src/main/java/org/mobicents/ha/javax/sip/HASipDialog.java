@@ -25,6 +25,7 @@ import gov.nist.javax.sip.message.SIPResponse;
 
 import java.util.Map;
 
+import javax.sip.address.Address;
 import javax.sip.header.ContactHeader;
 
 /**
@@ -48,4 +49,18 @@ public interface HASipDialog {
 	long getVersion();
 	
 	void setLastResponse(SIPResponse lastResponse);
+
+	boolean isServer();
+
+	String getLocalTag();
+	void setLocalTagInternal(String localTag);
+
+	Address getLocalParty();
+	void setLocalPartyInternal(Address localParty);
+
+	String getRemoteTag();
+	void setRemoteTagInternal(String remoteTag);
+	
+	Address getRemoteParty();
+	void setRemotePartyInternal(Address remoteParty);
 }

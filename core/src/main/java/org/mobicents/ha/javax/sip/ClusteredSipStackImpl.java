@@ -266,10 +266,11 @@ public abstract class ClusteredSipStackImpl extends gov.nist.javax.sip.SipStackI
 	@Override
 	public void putDialog(SIPDialog dialog) {
 		super.putDialog(dialog);
-		if (!sipCache.inLocalMode() && DialogState.CONFIRMED == dialog.getState()) {
-			// only replicate dialogs in confirmed state
-			putDialogIntoDistributedCache(dialog);
-		}			
+		// not needed it was causing the dialog to be put in the cache even for 1xx with a to tag
+//		if (!sipCache.inLocalMode() && DialogState.CONFIRMED == dialog.getState()) {
+//			// only replicate dialogs in confirmed state
+//			putDialogIntoDistributedCache(dialog);
+//		}			
 	}
 	
 	/*

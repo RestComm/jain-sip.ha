@@ -1,6 +1,7 @@
 package org.mobicents.ha.javax.sip;
 
 import java.text.ParseException;
+import java.util.Iterator;
 import java.util.Properties;
 import java.util.TooManyListenersException;
 import java.util.concurrent.atomic.AtomicLong;
@@ -174,5 +175,36 @@ public class SimpleB2BUA implements SipListener {
 			return false;
 		}
 		return true;
+	}
+	
+	public void stop() {
+		Iterator<SipProvider> sipProviderIterator = sipStack.getSipProviders();
+        try{
+            while (sipProviderIterator.hasNext()) {
+                SipProvider sipProvider = sipProviderIterator.next();
+                ListeningPoint[] listeningPoints = sipProvider.getListeningPoints();
+                for (ListeningPoint listeningPoint : listeningPoints) {
+                    sipProvider.removeListeningPoint(listeningPoint);
+                    sipStack.deleteListeningPoint(listeningPoint);
+                    listeningPoints = sipProvider.getListeningPoints();
+                }
+                sipProvider.removeSipListener(this);
+                sipStack.deleteSipProvider(sipProvider);
+                sipProviderIterator = sipStack.getSipProviders();
+            }
+        } catch (Exception e) {
+            throw new IllegalStateException("Cant remove the listening points or sip providers", e);
+        }
+
+        listeningPoint = null;
+        provider = null;
+        sipFactory.resetFactory();
+        sipFactory = null;
+        sipStack.stop();
+        sipStack = null;
+        b2buaHandler = null;
+        properties = null;
+        headerFactory = null;
+        messageFactory = null;
 	}	
 }

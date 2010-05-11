@@ -170,7 +170,8 @@ public class SimpleB2BUAHandler {
 				final ClientTransaction ct = sipProvider.getNewClientTransaction(request);
 				getIncomingDialog().sendRequest(ct);
 			}
-			if(((FromHeader)serverTransaction.getRequest().getHeader(FromHeader.NAME)).getAddress().getURI().toString().contains("BigGuy")) {
+			// not used in basic reinvite
+			if(((FromHeader)serverTransaction.getRequest().getHeader(FromHeader.NAME)).getAddress().getURI().toString().contains("ReInviteSubsNotify")) {
 				createInviteOnAck =  true;
 			}
 		} catch (Exception ex) {
@@ -286,11 +287,11 @@ public class SimpleB2BUAHandler {
 	public void processAck(RequestEvent requestEvent) {
 		// ignore
 		try {
+			if(myPort == 5080 && getIncomingDialogId() == null) {
+				storeIncomingDialogId(requestEvent.getDialog().getDialogId());
+			}
 			if(createInviteOnAck) {
-				createInviteOnAck = false;
-				if(myPort == 5080 && getIncomingDialogId() == null) {
-					storeIncomingDialogId(requestEvent.getDialog().getDialogId());
-				}
+				createInviteOnAck = false;				
 				Request request = getIncomingDialog().createRequest("INVITE");			
 				final ClientTransaction ct = sipProvider.getNewClientTransaction(request);
 				getIncomingDialog().sendRequest(ct);
