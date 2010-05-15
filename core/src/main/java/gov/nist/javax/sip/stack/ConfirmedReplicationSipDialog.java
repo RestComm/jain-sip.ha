@@ -33,8 +33,6 @@ import gov.nist.javax.sip.message.SIPResponse;
 public class ConfirmedReplicationSipDialog extends ConfirmedNoAppDataReplicationSipDialog {	
 	
 	private static final long serialVersionUID = -779892668482217624L;
-
-	private Object appData;
 	
 	public ConfirmedReplicationSipDialog(SIPTransaction transaction) {
 		super(transaction);
@@ -50,16 +48,11 @@ public class ConfirmedReplicationSipDialog extends ConfirmedNoAppDataReplication
 
 	@Override
 	public void setApplicationData(Object applicationData) {
-		this.appData = applicationData;
+		super.setApplicationData(applicationData);
 		replicateState();
 	}
 	
 	public Object getApplicationDataToReplicate() {
-		return appData;
-	}
-	
-	@Override
-	public Object getApplicationData() {
-		return appData;
+		return getApplicationData();
 	}
 }
