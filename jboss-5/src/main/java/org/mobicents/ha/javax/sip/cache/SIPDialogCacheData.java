@@ -56,7 +56,7 @@ import org.mobicents.ha.javax.sip.HASipDialogFactory;
  */
 public class SIPDialogCacheData extends CacheData {
 	private static final String APPDATA = "APPDATA";
-	private ClusteredSipStack clusteredSipStack;
+	private ClusteredSipStack clusteredSipStack;	
 	
 	public SIPDialogCacheData(Fqn nodeFqn, MobicentsCache mobicentsCache, ClusteredSipStack clusteredSipStack) {
 		super(nodeFqn, mobicentsCache);
@@ -66,7 +66,11 @@ public class SIPDialogCacheData extends CacheData {
 	public SIPDialog getSIPDialog(String dialogId) throws SipCacheException {
 		HASipDialog haSipDialog = null;
 		final Cache jbossCache = getMobicentsCache().getJBossCache();
-		TransactionManager transactionManager = jbossCache.getConfiguration().getRuntimeConfig().getTransactionManager();		
+		final boolean isBuddyReplicationEnabled = jbossCache.getConfiguration().getBuddyReplicationConfig().isEnabled();
+		TransactionManager transactionManager = null;
+		if(isBuddyReplicationEnabled) {
+			transactionManager = jbossCache.getConfiguration().getRuntimeConfig().getTransactionManager();
+		}
 		boolean doTx = false;
 		try {
 			if(clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
@@ -79,8 +83,12 @@ public class SIPDialogCacheData extends CacheData {
 				transactionManager.begin();				
 				doTx = true;				
 	        }
-			          
-            jbossCache.getInvocationContext().getOptionOverrides().setForceDataGravitation(true);
+			if(isBuddyReplicationEnabled) {     
+				if(clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+					clusteredSipStack.getStackLogger().logDebug("forcing data gravitation since buddy replication is enabled");
+				}
+				jbossCache.getInvocationContext().getOptionOverrides().setForceDataGravitation(true);
+			}
 
             final Node<String,Object> childNode = getNode().getChild(dialogId);
 			if(childNode != null) {
