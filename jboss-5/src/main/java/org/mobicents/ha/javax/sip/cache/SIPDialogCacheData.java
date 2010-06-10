@@ -83,6 +83,8 @@ public class SIPDialogCacheData extends CacheData {
 				transactionManager.begin();				
 				doTx = true;				
 	        }
+			// Issue 1517 : http://code.google.com/p/mobicents/issues/detail?id=1517
+			// Adding code to handle Buddy replication to force data gravitation   
 			if(isBuddyReplicationEnabled) {     
 				if(clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
 					clusteredSipStack.getStackLogger().logDebug("forcing data gravitation since buddy replication is enabled");
