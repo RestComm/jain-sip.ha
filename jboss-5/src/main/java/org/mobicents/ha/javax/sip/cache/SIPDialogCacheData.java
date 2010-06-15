@@ -43,6 +43,7 @@ import org.jboss.cache.Cache;
 import org.jboss.cache.CacheException;
 import org.jboss.cache.Fqn;
 import org.jboss.cache.Node;
+import org.jboss.cache.config.Configuration;
 import org.mobicents.cache.CacheData;
 import org.mobicents.cache.MobicentsCache;
 import org.mobicents.ha.javax.sip.ClusteredSipStack;
@@ -66,11 +67,9 @@ public class SIPDialogCacheData extends CacheData {
 	public SIPDialog getSIPDialog(String dialogId) throws SipCacheException {
 		HASipDialog haSipDialog = null;
 		final Cache jbossCache = getMobicentsCache().getJBossCache();
-		final boolean isBuddyReplicationEnabled = jbossCache.getConfiguration().getBuddyReplicationConfig().isEnabled();
-		TransactionManager transactionManager = null;
-		if(isBuddyReplicationEnabled) {
-			transactionManager = jbossCache.getConfiguration().getRuntimeConfig().getTransactionManager();
-		}
+		Configuration config = jbossCache.getConfiguration();
+		final boolean isBuddyReplicationEnabled = config.getBuddyReplicationConfig() != null && config.getBuddyReplicationConfig().isEnabled();
+		TransactionManager transactionManager = config.getRuntimeConfig().getTransactionManager();		
 		boolean doTx = false;
 		try {
 			if(clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
@@ -106,8 +105,10 @@ public class SIPDialogCacheData extends CacheData {
 			}			
 		} catch (Exception ex) {
 			try {
-				// Let's set it no matter what.
-				transactionManager.setRollbackOnly();
+				if(transactionManager != null) {
+					// Let's set it no matter what.
+					transactionManager.setRollbackOnly();
+				}
 			} catch (Exception exn) {
 				clusteredSipStack.getStackLogger().logError("Problem rolling back session mgmt transaction",
 						exn);
@@ -148,16 +149,77 @@ public class SIPDialogCacheData extends CacheData {
 	 */
 	public void updateSIPDialog(SIPDialog sipDialog) throws SipCacheException {
 		final String dialogId = sipDialog.getDialogId();
-		final Node<String,Object> childNode = getNode().getChild(dialogId);
-		if(childNode != null) {
+		final Cache jbossCache = getMobicentsCache().getJBossCache();
+		Configuration config = jbossCache.getConfiguration();
+		final boolean isBuddyReplicationEnabled = config.getBuddyReplicationConfig() != null && config.getBuddyReplicationConfig().isEnabled();
+		TransactionManager transactionManager = config.getRuntimeConfig().getTransactionManager();		
+		boolean doTx = false;
+		try {
+			if(clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+				clusteredSipStack.getStackLogger().logDebug("transaction manager :" + transactionManager);
+			}
+			if(transactionManager != null && transactionManager.getTransaction() == null) {
+				if(clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+					clusteredSipStack.getStackLogger().logDebug("transaction manager begin transaction");
+				}
+				transactionManager.begin();				
+				doTx = true;				
+	        }
+			// Issue 1517 : http://code.google.com/p/mobicents/issues/detail?id=1517
+			// Adding code to handle Buddy replication to force data gravitation   
+			if(isBuddyReplicationEnabled) {     
+				if(clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+					clusteredSipStack.getStackLogger().logDebug("forcing data gravitation since buddy replication is enabled");
+				}
+				jbossCache.getInvocationContext().getOptionOverrides().setForceDataGravitation(true);
+			}
+			final Node<String,Object> childNode = getNode().getChild(dialogId);
+			if(childNode != null) {
+				try {
+					final Map<String, Object> dialogMetaData = childNode.getData();
+					
+					final HASipDialog haSipDialog = (HASipDialog) sipDialog;
+					final Object dialogAppData = childNode.get(APPDATA);
+					updateDialog(haSipDialog, dialogMetaData, dialogAppData);				
+				} catch (CacheException e) {
+					throw new SipCacheException("A problem occured while retrieving the following dialog " + dialogId + " from the TreeCache", e);
+				}
+			}
+		} catch (Exception ex) {
 			try {
-				final Map<String, Object> dialogMetaData = childNode.getData();
-				
-				final HASipDialog haSipDialog = (HASipDialog) sipDialog;
-				final Object dialogAppData = childNode.get(APPDATA);
-				updateDialog(haSipDialog, dialogMetaData, dialogAppData);				
-			} catch (CacheException e) {
-				throw new SipCacheException("A problem occured while retrieving the following dialog " + dialogId + " from the TreeCache", e);
+				if(transactionManager != null) {
+					// Let's set it no matter what.
+					transactionManager.setRollbackOnly();
+				}
+			} catch (Exception exn) {
+				clusteredSipStack.getStackLogger().logError("Problem rolling back session mgmt transaction",
+						exn);
+			}			
+		} finally {
+			if (doTx) {
+				try {
+					if (transactionManager.getTransaction().getStatus() != Status.STATUS_MARKED_ROLLBACK) {
+						if(clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+							clusteredSipStack.getStackLogger().logDebug("transaction manager committing transaction");
+						}
+						transactionManager.commit();
+					} else {
+						if(clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+							clusteredSipStack.getStackLogger().logDebug("endBatch(): rolling back batch");
+						}
+						transactionManager.rollback();
+					}
+				} catch (RollbackException re) {
+					// Do nothing here since cache may rollback automatically.
+					clusteredSipStack.getStackLogger().logWarning("endBatch(): rolling back transaction with exception: "
+									+ re);
+				} catch (RuntimeException re) {
+					throw re;
+				} catch (Exception e) {
+					throw new RuntimeException(
+							"endTransaction(): Caught Exception ending batch: ",
+							e);
+				}
 			}
 		}
 	}
@@ -257,17 +319,124 @@ public class SIPDialogCacheData extends CacheData {
 		if(clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
 			clusteredSipStack.getStackLogger().logDebug("put HA SIP Dialog " + dialog + " with dialog " + dialogId);
 		}
-		final Node childNode = getNode().addChild(Fqn.fromElements(dialogId));
-		for (Entry<String, Object> metaData : haSipDialog.getMetaDataToReplicate().entrySet()) {
-			childNode.put(metaData.getKey(), metaData.getValue());
+		final Cache jbossCache = getMobicentsCache().getJBossCache();
+		TransactionManager transactionManager = jbossCache.getConfiguration().getRuntimeConfig().getTransactionManager();		
+		boolean doTx = false;
+		try {
+			if(clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+				clusteredSipStack.getStackLogger().logDebug("transaction manager :" + transactionManager);
+			}
+			if(transactionManager != null && transactionManager.getTransaction() == null) {
+				if(clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+					clusteredSipStack.getStackLogger().logDebug("transaction manager begin transaction");
+				}
+				transactionManager.begin();				
+				doTx = true;				
+	        }			
+			final Node childNode = getNode().addChild(Fqn.fromElements(dialogId));
+			for (Entry<String, Object> metaData : haSipDialog.getMetaDataToReplicate().entrySet()) {
+				childNode.put(metaData.getKey(), metaData.getValue());
+			}
+			final Object dialogAppData = haSipDialog.getApplicationDataToReplicate();
+			if(dialogAppData != null) {
+				childNode.put(APPDATA, dialogAppData);
+			}
+		} catch (Exception ex) {
+			try {
+				if(transactionManager != null) {
+					// Let's set it no matter what.
+					transactionManager.setRollbackOnly();
+				}
+			} catch (Exception exn) {
+				clusteredSipStack.getStackLogger().logError("Problem rolling back session mgmt transaction",
+						exn);
+			}			
+		} finally {
+			if (doTx) {
+				try {
+					if (transactionManager.getTransaction().getStatus() != Status.STATUS_MARKED_ROLLBACK) {
+						if(clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+							clusteredSipStack.getStackLogger().logDebug("transaction manager committing transaction");
+						}
+						transactionManager.commit();
+					} else {
+						if(clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+							clusteredSipStack.getStackLogger().logDebug("endBatch(): rolling back batch");
+						}
+						transactionManager.rollback();
+					}
+				} catch (RollbackException re) {
+					// Do nothing here since cache may rollback automatically.
+					clusteredSipStack.getStackLogger().logWarning("endBatch(): rolling back transaction with exception: "
+									+ re);
+				} catch (RuntimeException re) {
+					throw re;
+				} catch (Exception e) {
+					throw new RuntimeException(
+							"endTransaction(): Caught Exception ending batch: ",
+							e);
+				}
+			}
 		}
-		final Object dialogAppData = haSipDialog.getApplicationDataToReplicate();
-		if(dialogAppData != null) {
-			childNode.put(APPDATA, dialogAppData);
-		}		
 	}
 
 	public boolean removeSIPDialog(String dialogId) {
-		return getNode().removeChild(dialogId);
+		if(clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+			clusteredSipStack.getStackLogger().logDebug("remove HA SIP Dialog " + dialogId);
+		}
+		boolean succeeded = false;
+		final Cache jbossCache = getMobicentsCache().getJBossCache();
+		TransactionManager transactionManager = jbossCache.getConfiguration().getRuntimeConfig().getTransactionManager();		
+		boolean doTx = false;
+		try {
+			if(clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+				clusteredSipStack.getStackLogger().logDebug("transaction manager :" + transactionManager);
+			}
+			if(transactionManager != null && transactionManager.getTransaction() == null) {
+				if(clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+					clusteredSipStack.getStackLogger().logDebug("transaction manager begin transaction");
+				}
+				transactionManager.begin();				
+				doTx = true;				
+	        }			
+			succeeded = getNode().removeChild(dialogId);
+		} catch (Exception ex) {
+			try {
+				if(transactionManager != null) {
+					// Let's set it no matter what.
+					transactionManager.setRollbackOnly();
+				}
+			} catch (Exception exn) {
+				clusteredSipStack.getStackLogger().logError("Problem rolling back session mgmt transaction",
+						exn);
+			}			
+		} finally {
+			if (doTx) {
+				try {
+					if (transactionManager.getTransaction().getStatus() != Status.STATUS_MARKED_ROLLBACK) {
+						if(clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+							clusteredSipStack.getStackLogger().logDebug("transaction manager committing transaction");
+						}
+						transactionManager.commit();
+					} else {
+						if(clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+							clusteredSipStack.getStackLogger().logDebug("endBatch(): rolling back batch");
+						}
+						transactionManager.rollback();
+					}
+				} catch (RollbackException re) {
+					// Do nothing here since cache may rollback automatically.
+					clusteredSipStack.getStackLogger().logWarning("endBatch(): rolling back transaction with exception: "
+									+ re);
+				} catch (RuntimeException re) {
+					throw re;
+				} catch (Exception e) {
+					throw new RuntimeException(
+							"endTransaction(): Caught Exception ending batch: ",
+							e);
+				}
+			}
+		}
+		return succeeded;
 	}
 }

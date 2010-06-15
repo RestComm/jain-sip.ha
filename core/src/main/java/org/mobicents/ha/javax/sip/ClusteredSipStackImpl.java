@@ -245,14 +245,17 @@ public abstract class ClusteredSipStackImpl extends gov.nist.javax.sip.SipStackI
 						}
 					}
 				} else {
-					if(getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
-						getStackLogger().logDebug("local dialog " + dialogId + " is present locally " + sipDialog + " checking if it needs to be updated from the cache");
+					// we check for updates only if the dialog is confirmed
+					if(sipDialog.getState() == DialogState.CONFIRMED) {
+						if(getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+							getStackLogger().logDebug("local dialog " + dialogId + " is present locally " + sipDialog + " checking if it needs to be updated from the cache");
+						}
+						try {
+							sipCache.updateDialog(sipDialog);
+						} catch (SipCacheException e) {
+							getStackLogger().logError("sipStack " + this + " problem updating dialog " + dialogId + " from the distributed cache", e);
+						}	
 					}
-					try {
-						sipCache.updateDialog(sipDialog);
-					} catch (SipCacheException e) {
-						getStackLogger().logError("sipStack " + this + " problem updating dialog " + dialogId + " from the distributed cache", e);
-					}					
 				}
 			}
 			return sipDialog;
