@@ -26,11 +26,14 @@ import gov.nist.javax.sip.stack.SIPDialog;
 
 import java.util.Map;
 import java.util.Properties;
+import java.util.Map.Entry;
 
 import javax.management.ObjectName;
 import javax.transaction.TransactionManager;
 
 import org.jboss.cache.CacheException;
+import org.jboss.cache.Fqn;
+import org.jboss.cache.Node;
 import org.jboss.cache.aop.PojoCacheMBean;
 import org.jboss.mx.util.MBeanProxyExt;
 import org.mobicents.ha.javax.sip.ClusteredSipStack;
@@ -54,10 +57,18 @@ public class JBossASSipCache extends AbstractJBossSipCache implements SipCache {
 	 */
 	public SIPDialog getDialog(String dialogId) throws SipCacheException {		
 		try {
-			Map<String, Object> dialogMetaData = (Map<String, Object>) pojoCache.get(SipStackImpl.DIALOG_ROOT + dialogId, METADATA);
-			Object dialogAppData = pojoCache.get(SipStackImpl.DIALOG_ROOT + dialogId, APPDATA);
-			
-			return super.createDialog(dialogId, dialogMetaData, dialogAppData);
+			Node node = pojoCache.get(SipStackImpl.DIALOG_ROOT + dialogId + CACHE_SEPARATOR + METADATA);
+			if(node != null) {
+				final Map<String, Object> dialogMetaData = node.getData();
+				final Object dialogAppData = pojoCache.get(SipStackImpl.DIALOG_ROOT + dialogId, APPDATA);
+				
+				return super.createDialog(dialogId, dialogMetaData, dialogAppData);
+			} else {
+				if(clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+					clusteredSipStack.getStackLogger().logDebug("key " + SipStackImpl.DIALOG_ROOT + dialogId + CACHE_SEPARATOR + METADATA + " not found in cache.");
+				}
+				return null;
+			}
 		} catch (CacheException e) {
 			throw new SipCacheException("A problem occured while retrieving the following dialog " + dialogId + " from the TreeCache", e);
 		} 
@@ -70,14 +81,21 @@ public class JBossASSipCache extends AbstractJBossSipCache implements SipCache {
 	public void updateDialog(SIPDialog sipDialog) throws SipCacheException {
 		final String dialogId = sipDialog.getDialogId();
 		try {			
-			Map<String, Object> dialogMetaData = (Map<String, Object>) pojoCache.get(SipStackImpl.DIALOG_ROOT + dialogId, METADATA);
-			Object dialogAppData = pojoCache.get(SipStackImpl.DIALOG_ROOT + dialogId, APPDATA);
-			final HASipDialog haSipDialog = (HASipDialog) sipDialog;
-			super.updateDialog(haSipDialog, dialogMetaData, dialogAppData);
+			Node node = pojoCache.get(SipStackImpl.DIALOG_ROOT + dialogId + CACHE_SEPARATOR + METADATA);
+			if(node != null) {
+				final Map<String, Object> dialogMetaData = node.getData();
+				final Object dialogAppData = pojoCache.get(SipStackImpl.DIALOG_ROOT + dialogId, APPDATA);
+				final HASipDialog haSipDialog = (HASipDialog) sipDialog;
+				super.updateDialog(haSipDialog, dialogMetaData, dialogAppData);
+			} else {
+				if(clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+					clusteredSipStack.getStackLogger().logDebug("key " + SipStackImpl.DIALOG_ROOT + dialogId + CACHE_SEPARATOR + METADATA + " not found in cache.");
+				}
+			}
 		} catch (CacheException e) {
 			throw new SipCacheException("A problem occured while retrieving the following dialog " + dialogId + " from the TreeCache", e);
 		}
-	}		
+	}
 
 	/* (non-Javadoc)
 	 * @see org.mobicents.ha.javax.sip.cache.SipCache#putDialog(gov.nist.javax.sip.stack.SIPDialog)
@@ -96,9 +114,14 @@ public class JBossASSipCache extends AbstractJBossSipCache implements SipCache {
 			}
 			final HASipDialog haSipDialog = (HASipDialog) dialog;
 			final String dialogId = haSipDialog.getDialogIdToReplicate();
+			if(clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+				clusteredSipStack.getStackLogger().logDebug("put HA SIP Dialog " + dialog + " with dialogId " + dialogId + " in the cache");				
+			}
 			final Map<String, Object> dialogMetaData = haSipDialog.getMetaDataToReplicate();
 			if(dialogMetaData != null) {
-				pojoCache.put(SipStackImpl.DIALOG_ROOT + dialogId, METADATA, dialogMetaData);
+				for (Entry<String, Object> metaData : dialogMetaData.entrySet()) {
+					pojoCache.put(SipStackImpl.DIALOG_ROOT + dialogId + CACHE_SEPARATOR + METADATA, metaData.getKey(), metaData.getValue());
+				}								
 			}
 			final Object dialogAppData = haSipDialog.getApplicationDataToReplicate();
 			if(dialogAppData != null) {

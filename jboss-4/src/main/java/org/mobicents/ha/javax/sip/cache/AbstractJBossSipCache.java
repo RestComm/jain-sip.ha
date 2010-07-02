@@ -45,6 +45,7 @@ import org.mobicents.ha.javax.sip.HASipDialogFactory;
  *
  */
 public abstract class AbstractJBossSipCache {
+	protected static final String CACHE_SEPARATOR = "/";
 	protected static final String APPDATA = "APPDATA";
 	protected static final String METADATA = "METADATA";
 	
@@ -83,6 +84,10 @@ public abstract class AbstractJBossSipCache {
 			} catch (ParseException e) {
 				throw new SipCacheException("A problem occured while retrieving the following dialog " + dialogId + " from the TreeCache", e);
 			}
+		} else {
+			if(clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+				clusteredSipStack.getStackLogger().logDebug("HA SIP Dialog " + haSipDialog + " with dialogId " + haSipDialog.getDialogIdToReplicate() + " has null metadata in the cache, not creating it correctly");
+			}
 		}
 		
 		return (SIPDialog) haSipDialog;
@@ -111,6 +116,10 @@ public abstract class AbstractJBossSipCache {
 				if(clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
 					clusteredSipStack.getStackLogger().logDebug("HA SIP Dialog " + haSipDialog + " with dialogId " + haSipDialog.getDialogIdToReplicate() + " is not older " + currentVersion + " than the one in the cache " + cacheVersion + ", not updating it");
 				}
+			}
+		} else {
+			if(clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+				clusteredSipStack.getStackLogger().logDebug("HA SIP Dialog " + haSipDialog + " with dialogId " + haSipDialog.getDialogIdToReplicate() + " has null metadata in the cache, not updating it");
 			}
 		}
 	}
