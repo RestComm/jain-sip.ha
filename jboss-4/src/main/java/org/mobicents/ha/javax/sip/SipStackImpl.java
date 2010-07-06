@@ -21,9 +21,18 @@
  */
 package org.mobicents.ha.javax.sip;
 
+import gov.nist.core.StackLogger;
+
 import java.util.Properties;
 
+import javax.management.MBeanServer;
+import javax.management.MBeanServerFactory;
+import javax.management.Notification;
+import javax.management.NotificationListener;
+import javax.management.ObjectName;
 import javax.sip.PeerUnavailableException;
+import javax.sip.ProviderDoesNotExistException;
+import javax.sip.SipException;
 
 /**
  * This class extends the ClusteredSipStack to provide an implementation backed by JBoss Cache 1.4.X
@@ -31,7 +40,13 @@ import javax.sip.PeerUnavailableException;
  * @author jean.deruelle@gmail.com
  *
  */
-public class SipStackImpl extends ClusteredSipStackImpl {
+public class SipStackImpl extends ClusteredSipStackImpl implements NotificationListener, SipStackImplMBean {
+	public static String JAIN_SIP_MBEAN_NAME = "org.mobicents.jain.sip:type=sip-stack,name=";
+	public static String LOG4J_SERVICE_MBEAN_NAME = "jboss.system:service=Logging,type=Log4jService";
+	
+	ObjectName oname = null;
+	MBeanServer mbeanServer = null;
+	boolean isMBeanServerNotAvailable = false;
 	
 	public static final String SIP_DEFAULT_CACHE_CLASS_NAME = "org.mobicents.ha.javax.sip.cache.JBossASSipCache";
 	
@@ -48,5 +63,84 @@ public class SipStackImpl extends ClusteredSipStackImpl {
 			configurationProperties.setProperty(ClusteredSipStack.CACHE_CLASS_NAME_PROPERTY, SIP_DEFAULT_CACHE_CLASS_NAME);
 		}
 		return configurationProperties;
+	}
+	
+	public int getNumberOfClientTransactions() {		
+		return getClientTransactionTableSize();
+	}
+
+	public int getNumberOfDialogs() {
+		return dialogTable.size();	
+	}
+	
+	public int getNumberOfEarlyDialogs() {
+		return earlyDialogTable.size();	
+	}
+
+	public int getNumberOfServerTransactions() {
+		return getServerTransactionTableSize();
+	}
+	
+	@Override
+	public void start() throws ProviderDoesNotExistException, SipException {
+		super.start();
+		String mBeanName=JAIN_SIP_MBEAN_NAME + stackName;
+		try {
+			oname = new ObjectName(mBeanName);
+			if (getMBeanServer() != null && !getMBeanServer().isRegistered(oname)) {
+				getMBeanServer().registerMBean(this, oname);
+				if(getStackLogger().isLoggingEnabled(StackLogger.TRACE_INFO)) {
+					getStackLogger().logInfo("Adding notification listener for logging mbean \"" + LOG4J_SERVICE_MBEAN_NAME + "\" to server " + getMBeanServer());
+				}
+				getMBeanServer().addNotificationListener(new ObjectName(LOG4J_SERVICE_MBEAN_NAME), this, null, null);
+			}
+		} catch (Exception e) {
+			getStackLogger().logError("Could not register the stack as an MBean under the following name", e);
+			throw new SipException("Could not register the stack as an MBean under the following name " + mBeanName + ", cause: " + e.getMessage(), e);
+		}
+	}
+	
+	@Override
+	public void stop() {
+		String mBeanName=JAIN_SIP_MBEAN_NAME + stackName;
+		try {
+			if (oname != null && getMBeanServer() != null && getMBeanServer().isRegistered(oname)) {
+				getMBeanServer().unregisterMBean(oname);
+			}
+		} catch (Exception e) {
+			getStackLogger().logError("Could not unregister the stack as an MBean under the following name" + mBeanName);
+		}
+		super.stop();
+	}
+	
+	/**
+	 * Get the current MBean Server.
+	 * 
+	 * @return
+	 * @throws Exception
+	 */
+	protected MBeanServer getMBeanServer() throws Exception {
+		if (mbeanServer == null && !isMBeanServerNotAvailable) {
+			try {
+				mbeanServer = (MBeanServer) MBeanServerFactory.findMBeanServer(null).get(0);				
+			} catch (Exception e) {
+				getStackLogger().logStackTrace(StackLogger.TRACE_DEBUG);
+				getStackLogger().logWarning("No Mbean Server available, so JMX statistics won't be available");
+				isMBeanServerNotAvailable = true;
+			}
+		}
+		return mbeanServer;
+	}
+
+	public boolean isLocalMode() {
+		return getSipCache().inLocalMode();
+	}
+	
+	/*
+	 * (non-Javadoc)
+	 * @see javax.management.NotificationListener#handleNotification(javax.management.Notification, java.lang.Object)
+	 */
+	public void handleNotification(Notification notification, Object handback) {
+		getStackLogger().setStackProperties(super.getConfigurationProperties());
 	}
 }
