@@ -88,11 +88,18 @@ public class SipStackImpl extends ClusteredSipStackImpl implements SipStackImplM
 				if(getStackLogger().isLoggingEnabled(StackLogger.TRACE_INFO)) {
 					getStackLogger().logInfo("Adding notification listener for logging mbean \"" + LOG4J_SERVICE_MBEAN_NAME + "\" to server " + getMBeanServer());
 				}
-				getMBeanServer().addNotificationListener(new ObjectName(LOG4J_SERVICE_MBEAN_NAME), this, null, null);
 			}
 		} catch (Exception e) {
 			getStackLogger().logError("Could not register the stack as an MBean under the following name", e);
 			throw new SipException("Could not register the stack as an MBean under the following name " + mBeanName + ", cause: " + e.getMessage(), e);
+		}
+		try {
+			if(getStackLogger().isLoggingEnabled(StackLogger.TRACE_INFO)) {
+				getStackLogger().logInfo("Adding notification listener for logging mbean \"" + LOG4J_SERVICE_MBEAN_NAME + "\" to server " + getMBeanServer());
+			}
+			getMBeanServer().addNotificationListener(new ObjectName(LOG4J_SERVICE_MBEAN_NAME), this, null, null);
+		} catch (Exception e) {
+			getStackLogger().logWarning("Could not register the stack as a Notification Listener of " + LOG4J_SERVICE_MBEAN_NAME + " runtime changes to log4j.xml won't affect SIP Stack Logging");
 		}
 	}
 	
