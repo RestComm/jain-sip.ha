@@ -22,8 +22,8 @@
 	<classpathentry kind="var" path="M2_REPO/org/jboss/logging/jboss-logging-spi/2.0.5.GA/jboss-logging-spi-2.0.5.GA.jar"/>
 	<classpathentry kind="var" path="M2_REPO/org/jboss/metadata/jboss-metadata/1.0.0.CR5/jboss-metadata-1.0.0.CR5.jar"/>
 	<classpathentry kind="var" path="M2_REPO/org/jboss/naming/jnp-client/5.0.2.GA/jnp-client-5.0.2.GA.jar"/>
-	<classpathentry kind="var" path="M2_REPO/org/mobicents/cluster/cache/1.3-SNAPSHOT/cache-1.3-SNAPSHOT.jar"/>
-	<classpathentry kind="var" path="M2_REPO/org/mobicents/cluster/core/1.3-SNAPSHOT/core-1.3-SNAPSHOT.jar"/>
+	<classpathentry kind="var" path="M2_REPO/org/mobicents/cluster/cache/1.6-SNAPSHOT/cache-1.6-SNAPSHOT.jar"/>
+	<classpathentry kind="var" path="M2_REPO/org/mobicents/cluster/core/1.6-SNAPSHOT/core-1.6-SNAPSHOT.jar"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/jain-sip-ha-core"/>
 	<classpathentry kind="output" path="target/classes"/>
