@@ -2,8 +2,7 @@
 <classpath>
 	<classpathentry kind="src" path="src/main/java"/>
 	<classpathentry kind="var" path="M2_REPO/javax/sip/jain-sip-api/1.2/jain-sip-api-1.2.jar"/>
-	<!--classpathentry kind="var" path="M2_REPO/javax/sip/jain-sip-ri/1.2.X-SNAPSHOT/jain-sip-ri-1.2.X-SNAPSHOT.jar"/-->
-	<classpathentry kind="var" path="M2_REPO/javax/sip/jain-sip-ri/1.2.148.3/jain-sip-ri-1.2.148.3.jar"/>
+	<classpathentry kind="var" path="M2_REPO/javax/sip/jain-sip-ri/1.2.148.4-SNAPSHOT/jain-sip-ri-1.2.148.4-SNAPSHOT.jar"/>
 	<classpathentry kind="var" path="M2_REPO/org/mobicents/tools/sip-balancer-jar/1.0.0.FINAL/sip-balancer-jar-1.0.0.FINAL.jar"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
 	<classpathentry kind="output" path="target/classes"/>
