@@ -26,8 +26,10 @@ import gov.nist.core.StackLogger;
 import gov.nist.javax.sip.SipProviderImpl;
 import gov.nist.javax.sip.message.SIPRequest;
 import gov.nist.javax.sip.message.SIPResponse;
+import gov.nist.javax.sip.stack.MessageChannel;
 import gov.nist.javax.sip.stack.SIPClientTransaction;
 import gov.nist.javax.sip.stack.SIPDialog;
+import gov.nist.javax.sip.stack.SIPServerTransaction;
 import gov.nist.javax.sip.stack.SIPTransaction;
 
 import java.util.Properties;
@@ -39,6 +41,9 @@ import javax.sip.ProviderDoesNotExistException;
 import javax.sip.SipException;
 import javax.sip.SipFactory;
 
+import org.mobicents.ext.javax.sip.SipProviderFactory;
+import org.mobicents.ext.javax.sip.SipStackExtension;
+import org.mobicents.ext.javax.sip.TransactionFactory;
 import org.mobicents.ha.javax.sip.cache.SipCache;
 import org.mobicents.ha.javax.sip.cache.SipCacheException;
 import org.mobicents.ha.javax.sip.cache.SipCacheFactory;
@@ -58,12 +63,15 @@ import org.mobicents.ha.javax.sip.cache.SipCacheFactory;
  * @author martins
  *
  */
-public abstract class ClusteredSipStackImpl extends gov.nist.javax.sip.SipStackImpl implements ClusteredSipStack {	
+public abstract class ClusteredSipStackImpl extends gov.nist.javax.sip.SipStackImpl implements ClusteredSipStack, SipStackExtension {	
 	
-	private SipCache sipCache = null;
-	private LoadBalancerHeartBeatingService loadBalancerHeartBeatingService = null;
-	private ReplicationStrategy replicationStrategy = ReplicationStrategy.ConfirmedDialog;
-	private LoadBalancerElector loadBalancerElector = null;
+	protected SipCache sipCache = null;
+	protected LoadBalancerHeartBeatingService loadBalancerHeartBeatingService = null;
+	protected ReplicationStrategy replicationStrategy = ReplicationStrategy.ConfirmedDialog;
+	protected LoadBalancerElector loadBalancerElector = null;
+	protected TransactionFactory transactionFactory = null;
+	protected SipProviderFactory sipProviderFactory = null;
+	private boolean sendTryingRightAway;
 	
 	public ClusteredSipStackImpl(Properties configurationProperties) throws PeerUnavailableException {
 		
@@ -76,7 +84,7 @@ public abstract class ClusteredSipStackImpl extends gov.nist.javax.sip.SipStackI
 	        } catch (Exception e) {
 	            String errmsg = "The loadBalancerHeartBeatingService class name: "
 	                    + lbHbServiceClassName
-	                    + " could not be instantiated. Ensure the org.mobicents.ha.javax.sip.LoadBalancerHeartBeatingServiceClassName property has been set correctly and that the class is on the classpath.";
+	                    + " could not be instantiated. Ensure the " + LoadBalancerHeartBeatingService.LB_HB_SERVICE_CLASS_NAME + " property has been set correctly and that the class is on the classpath.";
 	            throw new PeerUnavailableException(errmsg, e);
 	        }
 	        // create the load balancer elector if specified
@@ -87,7 +95,7 @@ public abstract class ClusteredSipStackImpl extends gov.nist.javax.sip.SipStackI
 		        } catch (Exception e) {
 		            String errmsg = "The loadBalancerElector class name: "
 		                    + lbElectorClassName
-		                    + " could not be instantiated. Ensure the "+LoadBalancerElector.IMPLEMENTATION_CLASS_NAME_PROPERTY+" property has been set correctly and that the class is on the classpath.";
+		                    + " could not be instantiated. Ensure the " + LoadBalancerElector.IMPLEMENTATION_CLASS_NAME_PROPERTY + " property has been set correctly and that the class is on the classpath.";
 		            throw new PeerUnavailableException(errmsg, e);
 		        }
 		        loadBalancerElector.setAddressFactory(SipFactory.getInstance().createAddressFactory());
@@ -95,6 +103,36 @@ public abstract class ClusteredSipStackImpl extends gov.nist.javax.sip.SipStackI
 		        loadBalancerElector.setService(loadBalancerHeartBeatingService);
 			}
 		}
+		
+		// allow the stack to provide its own SIPServerTransaction/SIPClientTransaction extension instances
+		String transactionFactoryClassName = configurationProperties.getProperty(TRANSACTION_FACTORY_CLASS_NAME);
+		if(transactionFactoryClassName != null) {
+			try {
+	            transactionFactory = (TransactionFactory) Class.forName(transactionFactoryClassName).newInstance();
+	            transactionFactory.setSipStack(this);	            
+	        } catch (Exception e) {
+	            String errmsg = "The TransactionFactory class name: "
+	                    + transactionFactoryClassName
+	                    + " could not be instantiated. Ensure the " + TRANSACTION_FACTORY_CLASS_NAME + " property has been set correctly and that the class is on the classpath.";
+	            throw new PeerUnavailableException(errmsg, e);
+	        }
+	    }
+		// allow the stack to provide its own SipProviderImpl extension instances
+	    String sipProviderFactoryClassName = configurationProperties.getProperty(SIP_PROVIDER_FACTORY_CLASS_NAME);
+		if(sipProviderFactoryClassName != null) {
+			try {
+	            sipProviderFactory = (SipProviderFactory) Class.forName(sipProviderFactoryClassName).newInstance();
+	            sipProviderFactory.setSipStack(this);	            
+	        } catch (Exception e) {
+	            String errmsg = "The SipProviderFactory class name: "
+	                    + sipProviderFactoryClassName
+	                    + " could not be instantiated. Ensure the " + SIP_PROVIDER_FACTORY_CLASS_NAME + " property has been set correctly and that the class is on the classpath.";
+	            throw new PeerUnavailableException(errmsg, e);
+	        }
+	    }
+		
+		this.sendTryingRightAway = Boolean.valueOf(
+			configurationProperties.getProperty(SEND_TRYING_RIGHT_AWAY,"false")).booleanValue();
 		
 		// get/create the jboss cache instance to store all sip stack related data into it
 		sipCache = SipCacheFactory.createSipCache(this, configurationProperties);
@@ -404,4 +442,44 @@ public abstract class ClusteredSipStackImpl extends gov.nist.javax.sip.SipStackI
 	public LoadBalancerElector getLoadBalancerElector() {
 		return loadBalancerElector;
 	}
-}
+	
+	@Override
+	public SIPClientTransaction createClientTransaction(SIPRequest sipRequest,
+			MessageChannel encapsulatedMessageChannel) {
+		
+		if(transactionFactory == null) {
+			return super.createClientTransaction(sipRequest, encapsulatedMessageChannel);
+		}
+		return transactionFactory.createClientTransaction(sipRequest, encapsulatedMessageChannel);
+	}
+	
+	@Override
+	public SIPServerTransaction createServerTransaction(MessageChannel encapsulatedMessageChannel) {
+		if(transactionFactory == null) {
+			return super.createServerTransaction(encapsulatedMessageChannel);
+		}
+		return transactionFactory.createServerTransaction(encapsulatedMessageChannel);
+	}
+
+	/**
+	 * @param sendTryingRightAway the sendTryingRightAway to set
+	 */
+	public void setSendTryingRightAway(boolean sendTryingRightAway) {
+		this.sendTryingRightAway = sendTryingRightAway;
+	}
+
+	/**
+	 * @return the sendTryingRightAway
+	 */
+	public boolean isSendTryingRightAway() {
+		return sendTryingRightAway;
+	}
+	
+	public void addSipProvider(SipProviderImpl sipProvider) {
+		sipProviders.add(sipProvider);
+	}
+	
+	public void removeSipProvider(SipProviderImpl sipProvider) {
+		sipProviders.remove(sipProvider);
+	}  
+}	

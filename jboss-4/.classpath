@@ -23,5 +23,6 @@
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/jain-sip-ha-core"/>
 	<classpathentry kind="var" path="M2_REPO/javassist/javassist/3.6.0.GA/javassist-3.6.0.GA.jar"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/jain-sip-ext"/>
 	<classpathentry kind="output" path="target/classes"/>
 </classpath>

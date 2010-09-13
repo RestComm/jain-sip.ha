@@ -26,5 +26,6 @@
 	<classpathentry kind="var" path="M2_REPO/org/mobicents/cluster/core/1.6-SNAPSHOT/core-1.6-SNAPSHOT.jar"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/jain-sip-ha-core"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/jain-sip-ext"/>
 	<classpathentry kind="output" path="target/classes"/>
 </classpath>

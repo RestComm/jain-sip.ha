@@ -9,7 +9,7 @@
 
 	<artifactId>mobicents-jain-sip-ha-core</artifactId>
 
-	<dependencies>
+	<dependencies>		
 		<dependency>
 			<groupId>javax.sip</groupId>
 			<artifactId>jain-sip-ri</artifactId>
@@ -18,7 +18,7 @@
 		<dependency>
 			<groupId>org.mobicents.tools</groupId>
 			<artifactId>sip-balancer-jar</artifactId>
-			<version>1.0.1</version>
+			<version>1.0.2</version>
 			<scope>provided</scope>
 		</dependency>
 	</dependencies>
