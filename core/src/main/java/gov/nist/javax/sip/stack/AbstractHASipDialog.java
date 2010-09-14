@@ -77,6 +77,7 @@ public abstract class AbstractHASipDialog extends SIPDialog implements HASipDial
 	public static final String REMOTE_CSEQ = "rc";
 	public static final String LOCAL_CSEQ = "lc";
 	public static final String DIALOG_METHOD = "dm";
+	public static final String ENABLE_CSEQ_VALIDATION = "dc";
 
 	public boolean b2buaChanged;
 	public boolean eventChanged;	
@@ -228,6 +229,10 @@ public abstract class AbstractHASipDialog extends SIPDialog implements HASipDial
 			if (getStack().getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
 				getStack().getStackLogger().logDebug(getDialogIdToReplicate() + " : firstTransactionId " + firstTransactionId);
 			}
+		dialogMetaData.put(ENABLE_CSEQ_VALIDATION, isSequnceNumberValidation());
+		if (getStack().getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+			getStack().getStackLogger().logDebug(getDialogIdToReplicate() + " : CSeq validation is " + isSequnceNumberValidation());
+		}
 			dialogMetaData.put(FIRST_TX_METHOD, firstTransactionMethod);
 			if (getStack().getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
 				getStack().getStackLogger().logDebug(getDialogIdToReplicate() + " : firstTransactionMethod " + firstTransactionMethod);
@@ -399,7 +404,14 @@ public abstract class AbstractHASipDialog extends SIPDialog implements HASipDial
 			if (getStack().getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
 				getStack().getStackLogger().logDebug(getDialogIdToReplicate() + " : localCSeq " + getLocalSeqNumber());
 			}
-		}			
+		}		
+		final Boolean enableCSeqValidation = (Boolean) metaData.get(ENABLE_CSEQ_VALIDATION);
+		if(enableCSeqValidation != null) {
+			if(!enableCSeqValidation) disableSequenceNumberValidation();
+			if (getStack().getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+				getStack().getStackLogger().logDebug(getDialogIdToReplicate() + " : CSeq validation is " + enableCSeqValidation);
+			}
+		}
 	}
 	
 	public void setApplicationDataToReplicate(Object appData) {
