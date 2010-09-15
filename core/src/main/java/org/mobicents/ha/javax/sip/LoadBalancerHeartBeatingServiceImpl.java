@@ -24,12 +24,16 @@ package org.mobicents.ha.javax.sip;
 import gov.nist.core.StackLogger;
 
 import java.net.InetAddress;
+import java.net.NetworkInterface;
+import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.util.ArrayList;
+import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
@@ -74,7 +78,7 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 	private long heartBeatInterval = 5000;
 	private Timer heartBeatTimer = new Timer();
 	private TimerTask hearBeatTaskToRun = null;
-
+	private List<String> cachedAnyLocalAddresses = new ArrayList<String>();
     private boolean started = false;
   
     private Set<LoadBalancerHeartBeatingListener> loadBalancerHeartBeatingListeners;
@@ -349,7 +353,6 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 				sipUdpPort = port;
 			}
 			
-			
 			try {
 				InetAddress[] aArray = InetAddress
 						.getAllByName(address);
@@ -361,10 +364,44 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 				logger.logError("An exception occurred while trying to retrieve the hostname of a sip connector", e);
 			}
 		}
-			
-			String httpPortString = System.getProperty("org.mobicents.properties.httpPort");
-			String sslPortString = System.getProperty("org.mobicents.properties.sslPort");
-			SIPNode node = new SIPNode(hostName, address);
+		
+		List<String> ipAddresses = new ArrayList<String>();
+		boolean isAnyLocalAddress = false;
+		try {
+			isAnyLocalAddress = InetAddress.getByName(address).isAnyLocalAddress();						
+		} catch (UnknownHostException e) {
+			logger.logWarning("Unable to enumerate mapped interfaces. Binding to 0.0.0.0 may not work.");
+			isAnyLocalAddress = false;			
+		}	
+		if(isAnyLocalAddress) {
+			if(cachedAnyLocalAddresses.isEmpty()) {
+				try{
+					Enumeration<NetworkInterface> networkInterfaces = NetworkInterface.getNetworkInterfaces();
+					while(networkInterfaces.hasMoreElements()) {
+						NetworkInterface networkInterface = networkInterfaces.nextElement();
+						Enumeration<InetAddress> bindings = networkInterface.getInetAddresses();
+						while(bindings.hasMoreElements()) {
+							InetAddress addr = bindings.nextElement();
+							String networkInterfaceIpAddress = addr.getHostAddress();
+							// we cache the look up to speed up the next time
+							cachedAnyLocalAddresses.add(networkInterfaceIpAddress);
+						}
+					}
+				} catch (SocketException e) {
+					logger.logWarning("Unable to enumerate network interfaces. Binding to 0.0.0.0 may not work.");
+				}
+			} else {
+				ipAddresses.addAll(cachedAnyLocalAddresses);
+			}
+		} else {
+			ipAddresses.add(address);
+		}		 
+		
+		String httpPortString = System.getProperty("org.mobicents.properties.httpPort");
+		String sslPortString = System.getProperty("org.mobicents.properties.sslPort");
+		
+		for (String ipAddress : ipAddresses) {
+			SIPNode node = new SIPNode(hostName, ipAddress);
 			
 			int httpPort = 0;
 			int sslPort = 0;
@@ -386,6 +423,7 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 			//		transports, jvmRoute, httpPort, sslPort, null);
 
 			info.add(node);
+		}		
 		
 		return info;
 	}
