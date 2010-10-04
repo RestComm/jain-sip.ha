@@ -70,19 +70,19 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 	//the logger
     StackLogger logger = null;
     //the balancers to send heartbeat to and our health info
-	private String balancers;
+	protected String balancers;
 	//the jvmRoute for this node
-	private String jvmRoute;
+	protected String jvmRoute;
     //the balancers names to send heartbeat to and our health info
-	private Map<String, SipLoadBalancer> register = new ConcurrentHashMap<String, SipLoadBalancer>();
+	protected Map<String, SipLoadBalancer> register = new ConcurrentHashMap<String, SipLoadBalancer>();
 	//heartbeat interval, can be modified through JMX
-	private long heartBeatInterval = 5000;
-	private Timer heartBeatTimer = new Timer();
-	private TimerTask hearBeatTaskToRun = null;
-	private List<String> cachedAnyLocalAddresses = new ArrayList<String>();
-    private boolean started = false;
+	protected long heartBeatInterval = 5000;
+	protected Timer heartBeatTimer = new Timer();
+	protected TimerTask hearBeatTaskToRun = null;
+	protected List<String> cachedAnyLocalAddresses = new ArrayList<String>();
+	protected boolean started = false;
   
-    private Set<LoadBalancerHeartBeatingListener> loadBalancerHeartBeatingListeners;
+	protected Set<LoadBalancerHeartBeatingListener> loadBalancerHeartBeatingListeners;
     
     public LoadBalancerHeartBeatingServiceImpl() {
 		loadBalancerHeartBeatingListeners = new CopyOnWriteArraySet<LoadBalancerHeartBeatingListener>();
@@ -332,7 +332,7 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 		return this.removeBalancer(address.getHostAddress(), sipPort, rmiPort);
 	}
 
-	private ArrayList<SIPNode> getConnectorsAsSIPNode() {
+	protected ArrayList<SIPNode> getConnectorsAsSIPNode() {
 		ArrayList<SIPNode> info = new ArrayList<SIPNode>();
 		Integer sipTcpPort = null;
 		Integer sipUdpPort = null;
@@ -432,7 +432,7 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 	/**
 	 * @param info
 	 */
-	private void sendKeepAliveToBalancers(ArrayList<SIPNode> info) {
+	protected void sendKeepAliveToBalancers(ArrayList<SIPNode> info) {
 		Thread.currentThread().setContextClassLoader(NodeRegisterRMIStub.class.getClassLoader());
 		for(SipLoadBalancer  balancerDescription:new HashSet<SipLoadBalancer>(register.values())) {
 			try {
@@ -493,7 +493,7 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 	/**
 	 * @param info
 	 */
-	private void removeNodesFromBalancers(ArrayList<SIPNode> info) {
+	protected void removeNodesFromBalancers(ArrayList<SIPNode> info) {
 		Thread.currentThread().setContextClassLoader(NodeRegisterRMIStub.class.getClassLoader());
 		for(SipLoadBalancer balancerDescription:new HashSet<SipLoadBalancer>(register.values())) {
 			try {
@@ -525,7 +525,7 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 	 * @author <A HREF="mailto:jean.deruelle@gmail.com">Jean Deruelle</A> 
 	 *
 	 */
-	class BalancerPingTimerTask extends TimerTask {
+	protected class BalancerPingTimerTask extends TimerTask {
 
 		@SuppressWarnings("unchecked")
 		@Override
