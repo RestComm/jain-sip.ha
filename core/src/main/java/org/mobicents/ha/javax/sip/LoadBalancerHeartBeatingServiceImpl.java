@@ -23,6 +23,7 @@ package org.mobicents.ha.javax.sip;
 
 import gov.nist.core.StackLogger;
 
+import java.io.IOException;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.net.SocketException;
@@ -437,7 +438,9 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 			try {
 				Registry registry = LocateRegistry.getRegistry(balancerDescription.getAddress().getHostAddress(), balancerDescription.getRmiPort());
 				NodeRegisterRMIStub reg=(NodeRegisterRMIStub) registry.lookup("SIPBalancer");
-				reg.handlePing(info);
+				ArrayList<SIPNode> reachableInfo = getReachableSIPNodeInfo(balancerDescription.getAddress(), info);
+				
+				reg.handlePing(reachableInfo);
 				balancerDescription.setDisplayWarning(true);
 				if(!balancerDescription.isAvailable()) {
 					logger.logInfo("Keepalive: SIP Load Balancer Found! " + balancerDescription);
@@ -455,7 +458,37 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 		if(logger.isLoggingEnabled(StackLogger.TRACE_TRACE)) {
 			logger.logTrace("Finished gathering, Gathered info[" + info + "]");
 		}
-	}		
+	}
+	
+	/**
+	 * Contribution from Naoki Nishihara from OKI for Issue 1806 (SIP LB can not forward when node is listening on 0.0.0.0) 
+	 * Useful for a multi homed address, tries to reach a given load balancer from the list of ip addresses given in param
+	 * @param balancerAddr the load balancer to try to reach 
+	 * @param info the list of node info from which we try to access the load balancer
+	 * @return the list stripped from the nodes not able to reach the load balancer
+	 */
+	protected ArrayList<SIPNode> getReachableSIPNodeInfo(InetAddress balancerAddr, ArrayList<SIPNode> info) {
+		ArrayList<SIPNode> rv = new ArrayList<SIPNode>();
+		for(SIPNode node: info) {
+			try {
+				NetworkInterface ni = NetworkInterface.getByInetAddress(InetAddress.getByName(node.getIp()));
+				// FIXME How can I determine the ttl?
+				boolean b = balancerAddr.isReachable(ni, 5, 100);
+				
+				if(b) {
+					rv.add(node);
+				}
+			} catch (IOException e) {
+				logger.logError("IOException", e);
+			}
+		}
+		
+		if(logger.isLoggingEnabled(StackLogger.TRACE_TRACE)) {
+			logger.logTrace("Reachable SIP Node:[balancer=" + balancerAddr + "],[node info=" + rv + "]");
+		}
+		
+		return rv;
+	}
 
 	/**
 	 * @param info
