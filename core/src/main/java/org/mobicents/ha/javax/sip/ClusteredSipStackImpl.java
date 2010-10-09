@@ -342,7 +342,13 @@ public abstract class ClusteredSipStackImpl extends gov.nist.javax.sip.SipStackI
 			getStackLogger().logDebug("sipStack " + this + 
 					" remote Dialog Removal of dialogId : " + dialogId);
 		}
-		super.dialogTable.remove(dialogId);
+		SIPDialog sipDialog = super.dialogTable.remove(dialogId);
+		if (sipDialog != null) {
+			String mergeId = sipDialog.getMergeId();
+			if (mergeId != null) {
+				super.serverDialogMergeTestTable.remove(mergeId);
+			}			
+		}
 	}
 	
 	/**
