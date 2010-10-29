@@ -393,14 +393,36 @@ public abstract class AbstractHASipDialog extends SIPDialog implements HASipDial
 		}
 		Long remoteCSeq = (Long) metaData.get(REMOTE_CSEQ);
 		if(remoteCSeq != null) {
-			setRemoteSequenceNumber(remoteCSeq.longValue());
+			long cseq = remoteCSeq.longValue();
+			if(getRemoteSeqNumber()>cseq) {
+				if (getStack().getStackLogger().isLoggingEnabled(StackLogger.TRACE_INFO)) {
+					getStack().getStackLogger().logInfo("Concurrency problem. Nodes are out" +
+							" of sync. We will assume the local CSeq is the valid one. Enable request affinity to avoid this problem, remoteSequenceNumber=" + 
+							getRemoteSeqNumber() + " while other node's remote CSeq" +
+									" number=" + cseq);
+				}
+				// No need to update the number, it is greater, http://code.google.com/p/mobicents/issues/detail?id=2051
+			} else {
+				setRemoteSequenceNumber(cseq);
+			}
 			if (getStack().getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
 				getStack().getStackLogger().logDebug(getDialogIdToReplicate() + " : remoteCSeq " + getRemoteSeqNumber());
 			}
 		}
 		Long localCSeq = (Long) metaData.get(LOCAL_CSEQ);
 		if(localCSeq != null) {
-			localSequenceNumber = localCSeq.longValue();
+			long cseq = localCSeq.longValue();
+			if(localSequenceNumber>cseq) {
+				if (getStack().getStackLogger().isLoggingEnabled(StackLogger.TRACE_INFO)) {
+					getStack().getStackLogger().logInfo("Concurrency problem. Nodes are out" +
+							" of sync. We will assume the local CSeq is the valid one. Enable request affinity to avoid this problem, localSequenceNumber=" 
+							+ localSequenceNumber+ " while other node's local CSeq" +
+									" number=" + cseq);
+				}
+				// No need to update the number, it is greater, http://code.google.com/p/mobicents/issues/detail?id=2051
+			} else {
+				localSequenceNumber = cseq;
+			}
 			if (getStack().getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
 				getStack().getStackLogger().logDebug(getDialogIdToReplicate() + " : localCSeq " + getLocalSeqNumber());
 			}
