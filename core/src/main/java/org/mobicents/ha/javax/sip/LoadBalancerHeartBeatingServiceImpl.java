@@ -43,6 +43,7 @@ import java.util.TimerTask;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
 
+import javax.management.ObjectName;
 import javax.sip.ListeningPoint;
 
 import org.mobicents.ha.javax.sip.util.Inet6Util;
@@ -59,7 +60,9 @@ import org.mobicents.tools.sip.balancer.SIPNode;
  * @author <A HREF="mailto:jean.deruelle@gmail.com">Jean Deruelle</A> 
  *
  */
-public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBeatingService {
+public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBeatingService, LoadBalancerHeartBeatingServiceImplMBean {
+
+	public static String LB_HB_SERVICE_MBEAN_NAME = "org.mobicents.jain.sip:type=load-balancer-heartbeat-service,name=";
 	
 	public static final int DEFAULT_RMI_PORT = 2000;
 	public static final String BALANCER_SIP_PORT_CHAR_SEPARATOR = ":";
@@ -84,6 +87,8 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
   
 	protected Set<LoadBalancerHeartBeatingListener> loadBalancerHeartBeatingListeners;
     
+	ObjectName oname = null;
+	
     public LoadBalancerHeartBeatingServiceImpl() {
 		loadBalancerHeartBeatingListeners = new CopyOnWriteArraySet<LoadBalancerHeartBeatingListener>();
 	}
@@ -148,6 +153,12 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 		if(logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
 			logger.logDebug("Created and scheduled tasks for sending heartbeats to the sip balancer.");
 		}
+		
+		registerMBean();
+		
+		if(logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+			logger.logDebug("Load Balancer Heart Beating Service has been started");
+		}
     }
     
     public void stop() {
@@ -164,7 +175,36 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 		this.hearBeatTaskToRun = null;
 		loadBalancerHeartBeatingListeners.clear();
 		started = false;
+		
+		unRegisterMBean();
+		
+		if(logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+			logger.logDebug("Load Balancer Heart Beating Service has been stopped");
+		}
     }
+    
+    protected void registerMBean() {
+    	String mBeanName = LB_HB_SERVICE_MBEAN_NAME + sipStack.getStackName();
+		try {
+			oname = new ObjectName(mBeanName);
+			if (sipStack.getMBeanServer() != null && !sipStack.getMBeanServer().isRegistered(oname)) {
+				sipStack.getMBeanServer().registerMBean(this, oname);				
+			}
+		} catch (Exception e) {
+			logger.logError("Could not register the Load Balancer Service as an MBean under the following name " + mBeanName, e);			
+		}		
+	}
+	
+	protected void unRegisterMBean() {
+		String mBeanName = LB_HB_SERVICE_MBEAN_NAME + sipStack.getStackName();
+		try {
+			if (oname != null && sipStack.getMBeanServer() != null && sipStack.getMBeanServer().isRegistered(oname)) {
+				sipStack.getMBeanServer().unregisterMBean(oname);
+			}
+		} catch (Exception e) {
+			logger.logError("Could not unregister the stack as an MBean under the following name" + mBeanName);
+		}		
+	}	
 	
     /**
      * {@inheritDoc}
@@ -178,6 +218,11 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 	public void setHeartBeatInterval(long heartBeatInterval) {
 		if (heartBeatInterval < 100)
 			return;
+		
+		if(logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+			logger.logDebug("Setting HeartBeatInterval from " + this.heartBeatInterval + " to " + heartBeatInterval);
+		}
+		
 		this.heartBeatInterval = heartBeatInterval;
 		this.hearBeatTaskToRun.cancel();
 		this.hearBeatTaskToRun = new BalancerPingTimerTask();
@@ -241,11 +286,7 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 		if (register.get(balancerName) != null) {
 			logger.logInfo("Sip balancer " + balancerName + " already present, not added");
 			return false;
-		}
-
-		if(logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
-			logger.logDebug("Adding following balancer name : " + balancerName +"/address:"+ addr);
-		}
+		}		
 
 		SipLoadBalancer sipLoadBalancer = new SipLoadBalancer(this, address, sipPort, rmiPort);
 		register.put(balancerName, sipLoadBalancer);
@@ -253,6 +294,10 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 		// notify the listeners
 		for (LoadBalancerHeartBeatingListener loadBalancerHeartBeatingListener : loadBalancerHeartBeatingListeners) {
 			loadBalancerHeartBeatingListener.loadBalancerAdded(sipLoadBalancer);
+		}
+
+		if(logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+			logger.logDebug("following balancer name : " + balancerName +"/address:"+ addr + " added");
 		}
 		
 		return true;
@@ -292,16 +337,18 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 			}
 		}
 		
-		if(keyToRemove !=null ) {
-			if(logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
-				logger.logDebug("Removing following balancer name : " + keyToRemove +"/address:"+ addr);
-			}
+		if(keyToRemove !=null ) {			
 			register.remove(keyToRemove);
 			
 			// notify the listeners
 			for (LoadBalancerHeartBeatingListener loadBalancerHeartBeatingListener : loadBalancerHeartBeatingListeners) {
 				loadBalancerHeartBeatingListener.loadBalancerRemoved(sipLoadBalancer);
 			}
+			
+			if(logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+				logger.logDebug("following balancer name : " + keyToRemove +"/address:"+ addr + " removed");
+			}
+			
 			return true;
 		}
 

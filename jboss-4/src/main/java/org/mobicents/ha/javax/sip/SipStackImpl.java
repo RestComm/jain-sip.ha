@@ -124,7 +124,7 @@ public class SipStackImpl extends ClusteredSipStackImpl implements NotificationL
 	 * @return
 	 * @throws Exception
 	 */
-	protected MBeanServer getMBeanServer() throws Exception {
+	public MBeanServer getMBeanServer() throws Exception {
 		if (mbeanServer == null && !isMBeanServerNotAvailable) {
 			try {
 				mbeanServer = (MBeanServer) MBeanServerFactory.findMBeanServer(null).get(0);				

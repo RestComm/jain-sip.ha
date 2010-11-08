@@ -24,6 +24,7 @@ package org.mobicents.ha.javax.sip;
 import gov.nist.core.StackLogger;
 import gov.nist.javax.sip.stack.SIPDialog;
 
+import javax.management.MBeanServer;
 import javax.sip.SipStack;
 import javax.sip.address.Address;
 import javax.sip.address.SipURI;
@@ -76,4 +77,6 @@ public interface ClusteredSipStack extends SipStack {
 	LoadBalancerElector getLoadBalancerElector();
 
 	void closeAllTcpSockets();
+	
+	MBeanServer getMBeanServer() throws Exception;
 }
