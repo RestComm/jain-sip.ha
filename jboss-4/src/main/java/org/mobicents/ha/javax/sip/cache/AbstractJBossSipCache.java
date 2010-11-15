@@ -143,4 +143,8 @@ public abstract class AbstractJBossSipCache {
 			haSipDialog.setContactHeader(contactHeader);
 		}
 	}
+	
+	public void evictDialog(String dialogId) {
+		throw new UnsupportedOperationException("The dialog eviction feature is not available on JBoss AS 4.2.X");
+	}
 }

@@ -208,4 +208,8 @@ public class JBossSipCache implements SipCache {
 	public boolean inLocalMode() {
 		return cache.getConfiguration().getCacheMode() == CacheMode.LOCAL;
 	}
+
+	public void evictDialog(String dialogId) {
+		cache.evict(Fqn.fromElements(dialogRootNode.getFqn(), Fqn.fromString(dialogId)));
+	}
 }

@@ -86,6 +86,14 @@ public abstract class MobicentsSipCache implements SipCache {
 	
 	/*
 	 * (non-Javadoc)
+	 * @see org.mobicents.ha.javax.sip.cache.SipCache#evictDialog(java.lang.String)
+	 */
+	public void evictDialog(String dialogId) {
+		dialogsCacheData.evictSIPDialog(dialogId);
+	}
+	
+	/*
+	 * (non-Javadoc)
 	 * @see org.mobicents.ha.javax.sip.cache.SipCache#updateDialog(gov.nist.javax.sip.stack.SIPDialog)
 	 */
 	public void updateDialog(SIPDialog dialog) throws SipCacheException {

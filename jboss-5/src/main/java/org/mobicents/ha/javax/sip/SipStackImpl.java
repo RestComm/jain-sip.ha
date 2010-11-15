@@ -146,4 +146,13 @@ public class SipStackImpl extends ClusteredSipStackImpl implements SipStackImplM
 	public void handleNotification(Notification notification, Object handback) {
 		getStackLogger().setStackProperties(super.getConfigurationProperties());
 	}
+	
+	/*
+	 * (non-Javadoc)
+	 * @see org.mobicents.ha.javax.sip.ClusteredSipStack#passivateDialog(java.lang.String)
+	 */
+	public void passivateDialog(String dialogId) {
+		sipCache.evictDialog(dialogId);
+		dialogTable.remove(dialogId);
+	}
 }

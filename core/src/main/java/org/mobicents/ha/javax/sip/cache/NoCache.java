@@ -76,4 +76,8 @@ public class NoCache implements SipCache {
 		
 	}
 
+	public void evictDialog(String dialogId) {
+		
+	}
+
 }

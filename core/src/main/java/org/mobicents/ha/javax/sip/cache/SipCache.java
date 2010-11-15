@@ -93,9 +93,15 @@ public interface SipCache {
 	void removeDialog(String dialogId) throws SipCacheException;
 
 	/**
+	 * Evict the dialog from the cache memory
+	 * @param dialogId the id of the dialog to evict
+	 */
+	void evictDialog(String dialogId);
+	
+	/**
 	 * Indicates if the cache is running in local or clustered mode.
 	 * @return
 	 */
-	boolean inLocalMode();
+	boolean inLocalMode();	
 	
 }

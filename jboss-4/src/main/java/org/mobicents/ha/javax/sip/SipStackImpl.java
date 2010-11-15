@@ -148,4 +148,12 @@ public class SipStackImpl extends ClusteredSipStackImpl implements NotificationL
 	public void handleNotification(Notification notification, Object handback) {
 		getStackLogger().setStackProperties(super.getConfigurationProperties());
 	}
+
+	/*
+	 * (non-Javadoc)
+	 * @see org.mobicents.ha.javax.sip.ClusteredSipStack#passivateDialog(java.lang.String)
+	 */
+	public void passivateDialog(String dialogId) {
+		throw new UnsupportedOperationException("The dialog eviction feature is not available on JBoss AS 4.2.X");
+	}
 }

@@ -248,6 +248,6 @@ public class JBossASSipCache extends AbstractJBossSipCache implements SipCache {
 
 	public boolean inLocalMode() {		
 		return isLocal;
-	}
+	}	
 
 }

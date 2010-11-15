@@ -439,4 +439,11 @@ public class SIPDialogCacheData extends CacheData {
 		}
 		return succeeded;
 	}
+
+	public void evictSIPDialog(String dialogId) {
+		getMobicentsCache().getJBossCache().evict(Fqn.fromElements(getNodeFqn(), Fqn.fromString(dialogId)));
+		if(clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+			clusteredSipStack.getStackLogger().logDebug("HA SIP Dialog " + dialogId + " evicted");
+		}
+	}
 }
