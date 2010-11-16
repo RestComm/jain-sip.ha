@@ -235,18 +235,9 @@ public class SIPDialogCacheData extends CacheData {
 				final SIPResponse lastResponse = (SIPResponse) SipFactory.getInstance().createMessageFactory().createResponse(lastResponseStringified);
 				haSipDialog = HASipDialogFactory.createHASipDialog(clusteredSipStack.getReplicationStrategy(), (SipProviderImpl)clusteredSipStack.getSipProviders().next(), lastResponse);
 				haSipDialog.setDialogId(dialogId);
-				updateDialogMetaData(dialogMetaData, dialogAppData, haSipDialog);
+				updateDialogMetaData(dialogMetaData, dialogAppData, haSipDialog, true);
 				// setLastResponse won't be called on recreation since version will be null on recreation			
-				haSipDialog.setLastResponse(lastResponse);
-				if(haSipDialog.isServer()) {
-					if(clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
-						clusteredSipStack.getStackLogger().logDebug("HA SIP Dialog " + haSipDialog.isServer() + " switching parties on recreation");
-					}
-					Address remoteParty = haSipDialog.getLocalParty();
-					Address localParty = haSipDialog.getRemoteParty();
-					haSipDialog.setLocalPartyInternal(localParty);
-					haSipDialog.setRemotePartyInternal(remoteParty);
-				}					
+				haSipDialog.setLastResponse(lastResponse);				
 				if(clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
 					clusteredSipStack.getStackLogger().logDebug("HA SIP Dialog " + dialogId + " localTag  = " + haSipDialog.getLocalTag());
 					clusteredSipStack.getStackLogger().logDebug("HA SIP Dialog " + dialogId + " remoteTag  = " + haSipDialog.getRemoteTag());
@@ -276,7 +267,7 @@ public class SIPDialogCacheData extends CacheData {
 					final String lastResponseStringified = (String) dialogMetaData.get(AbstractHASipDialog.LAST_RESPONSE);				
 					final SIPResponse lastResponse = (SIPResponse) SipFactory.getInstance().createMessageFactory().createResponse(lastResponseStringified);
 					haSipDialog.setLastResponse(lastResponse);
-					updateDialogMetaData(dialogMetaData, dialogAppData, haSipDialog);
+					updateDialogMetaData(dialogMetaData, dialogAppData, haSipDialog, false);
 				}  catch (PeerUnavailableException e) {
 					throw new SipCacheException("A problem occured while retrieving the following dialog " + haSipDialog.getDialogIdToReplicate() + " from the TreeCache", e);
 				} catch (ParseException e) {
@@ -298,9 +289,9 @@ public class SIPDialogCacheData extends CacheData {
 	 * @throws ParseException
 	 * @throws PeerUnavailableException
 	 */
-	private void updateDialogMetaData(Map<String, Object> dialogMetaData, Object dialogAppData, HASipDialog haSipDialog) throws ParseException,
+	private void updateDialogMetaData(Map<String, Object> dialogMetaData, Object dialogAppData, HASipDialog haSipDialog, boolean recreation) throws ParseException,
 			PeerUnavailableException {
-		haSipDialog.setMetaDataToReplicate(dialogMetaData);
+		haSipDialog.setMetaDataToReplicate(dialogMetaData, recreation);
 		haSipDialog.setApplicationDataToReplicate(dialogAppData);
 		final String contactStringified = (String) dialogMetaData.get(AbstractHASipDialog.CONTACT_HEADER);
 		if(contactStringified != null) {

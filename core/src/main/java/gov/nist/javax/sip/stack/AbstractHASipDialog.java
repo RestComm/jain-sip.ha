@@ -269,7 +269,7 @@ public abstract class AbstractHASipDialog extends SIPDialog implements HASipDial
 		return getApplicationData();
 	}
 	
-	public void setMetaDataToReplicate(Map<String, Object> metaData) {
+	public void setMetaDataToReplicate(Map<String, Object> metaData, boolean recreation) {
 		// the call to super is very important otherwise it triggers replication on dialog recreation
 		super.setState(DialogState._CONFIRMED);		
 		lastResponseStringified = (String) metaData.get(LAST_RESPONSE);
@@ -381,6 +381,19 @@ public abstract class AbstractHASipDialog extends SIPDialog implements HASipDial
 				getStack().getStackLogger().logDebug(getDialogIdToReplicate() + " : firstTransactionMethod " + firstTransactionMethod);
 			}
 		}
+		if(recreation && isServer()) {
+			if(getStack().getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+				getStack().getStackLogger().logDebug("HA SIP Dialog is Server ? " + isServer() + ", thus switching parties on recreation");
+			}
+			Address remoteParty = getLocalParty();
+			Address localParty = getRemoteParty();
+			setLocalPartyInternal(localParty);
+			setRemotePartyInternal(remoteParty);
+			long remoteCSeq = getLocalSeqNumber();
+			long localCSeq = getRemoteSeqNumber();
+			localSequenceNumber = localCSeq;
+			remoteSequenceNumber = remoteCSeq;
+		}					
 		String remoteTag = (String) metaData.get(REMOTE_TAG);
 		setRemoteTagInternal(remoteTag);
 		if (getStack().getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {

@@ -41,7 +41,7 @@ public interface HASipDialog {
 	Map<String, Object> getMetaDataToReplicate();
 	Object getApplicationDataToReplicate();
 
-	void setMetaDataToReplicate(Map<String, Object> dialogMetaData);
+	void setMetaDataToReplicate(Map<String, Object> dialogMetaData, boolean recreation);
 	void setApplicationDataToReplicate(Object dialogAppData);
 
 	void setContactHeader(ContactHeader contactHeader);
