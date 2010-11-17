@@ -22,6 +22,7 @@
 package org.mobicents.ha.javax.sip;
 
 import gov.nist.core.StackLogger;
+import gov.nist.javax.sip.stack.AbstractHASipDialog;
 
 import java.util.Properties;
 
@@ -149,10 +150,15 @@ public class SipStackImpl extends ClusteredSipStackImpl implements SipStackImplM
 	
 	/*
 	 * (non-Javadoc)
-	 * @see org.mobicents.ha.javax.sip.ClusteredSipStack#passivateDialog(java.lang.String)
+	 * @see org.mobicents.ha.javax.sip.ClusteredSipStack#passivateDialog(org.mobicents.ha.javax.sip.HASipDialog)
 	 */
-	public void passivateDialog(String dialogId) {
-		sipCache.evictDialog(dialogId);
+	public void passivateDialog(HASipDialog dialog) {
+		String dialogId = dialog.getDialogIdToReplicate();
+		sipCache.evictDialog(dialogId);		
+		String mergeId = dialog.getMergeId();
+        if (mergeId != null) {
+            serverDialogMergeTestTable.remove(mergeId);
+        }
 		dialogTable.remove(dialogId);
 	}
 }

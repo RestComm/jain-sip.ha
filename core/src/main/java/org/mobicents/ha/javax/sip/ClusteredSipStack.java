@@ -48,7 +48,7 @@ public interface ClusteredSipStack extends SipStack {
 	void removeDialog(SIPDialog dialog);		
 	void remoteDialogRemoval(String dialogId);
 
-	void passivateDialog(String dialogId);
+	void passivateDialog(HASipDialog dialog);
 	/**
 	 * @param sipCache the sipCache to set
 	 */
