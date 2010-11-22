@@ -56,13 +56,12 @@ import javax.sip.message.Response;
 
 import junit.framework.TestCase;
 /**
- * This test aims to test Mobicents Jain Sip failover recovery.
- * Issue 1407 http://code.google.com/p/mobicents/issues/detail?id=1407
+ * This test aims to test Mobicents Jain Sip Early Dialog failover recovery.
  * 
  * @author <A HREF="mailto:jean.deruelle@gmail.com">Jean Deruelle</A>
  *
  */
-public class B2BUADialogRecoveryTest extends TestCase {
+public class B2BUAEarlyDialogRecoveryTest extends TestCase {
 
 	public static final String IP_ADDRESS = "192.168.0.10";
 	
@@ -229,14 +228,14 @@ public class B2BUADialogRecoveryTest extends TestCase {
 	        		((SipURI)ackRequest.getRequestURI()).setPort(port);
 					dialog.sendAck(ackRequest);
 															
-					if(!secondReinviteSent) {
-						Thread.sleep(2000);
-						Request request = dialog.createRequest("INVITE");
-		                ((SipURI)request.getRequestURI()).setPort(5080);
-		                final ClientTransaction ct = sipProvider.getNewClientTransaction(request);
-		                dialog.sendRequest(ct);
-		                secondReinviteSent = true;
-					}
+//					if(!secondReinviteSent) {
+//						Thread.sleep(2000);
+//						Request request = dialog.createRequest("INVITE");
+//		                ((SipURI)request.getRequestURI()).setPort(5080);
+//		                final ClientTransaction ct = sipProvider.getNewClientTransaction(request);
+//		                dialog.sendRequest(ct);
+//		                secondReinviteSent = true;
+//					}
         		} else if(responseEvent.getResponse().getStatusCode() >= 200 && cSeqHeader.getMethod().equalsIgnoreCase(Request.NOTIFY)) {
         			notifyTxComplete = true;
         			Thread.sleep(5000);
@@ -268,7 +267,7 @@ public class B2BUADialogRecoveryTest extends TestCase {
             	Dialog dialog = serverTransaction.getDialog();
                 System.out.println("shootme: got an ACK! ");
                 System.out.println("Dialog State = " + dialog.getState());
-                firstTxComplete = true;     
+                firstTxComplete = true;                     
                 
                 // used in basic reinvite
                 if(!firstReinviteSent && !((FromHeader)requestEvent.getRequest().getHeader(FromHeader.NAME)).getAddress().getURI().toString().contains("ReInviteSubsNotify")) {
@@ -583,10 +582,10 @@ public class B2BUADialogRecoveryTest extends TestCase {
 					fail("firstTxComplete " + firstTxComplete + " && subscribeTxComplete " + subscribeTxComplete + " && notifyComplete " + notifyTxComplete + " && firstReInviteComplete " + firstReInviteComplete + "&& secondReInviteComplete " + secondReInviteComplete + " && byeReceived " + byeReceived);
 				}
 			} else {
-				if(firstTxComplete && firstReInviteComplete && secondReInviteComplete && byeReceived) {
+				if(firstTxComplete && firstReInviteComplete && byeReceived) {
 					System.out.println("shootme state OK " );
 				} else {
-					fail("firstTxComplete " + firstTxComplete + " && firstReInviteComplete " + firstReInviteComplete + "&& secondReInviteComplete " + secondReInviteComplete + " && byeReceived " + byeReceived);
+					fail("firstTxComplete " + firstTxComplete + " && firstReInviteComplete " + firstReInviteComplete + " && byeReceived " + byeReceived);
 				}
 			}
 		}
@@ -628,6 +627,8 @@ public class B2BUADialogRecoveryTest extends TestCase {
 		private boolean subscribeTxComplete;
 
 		private String stackName;
+
+		private boolean failoverOn2xx;
         
         class ByeTask  extends TimerTask {
             Dialog dialog;
@@ -692,6 +693,14 @@ public class B2BUADialogRecoveryTest extends TestCase {
 	            		switch ((int) cseq) {
 						case 1:
 							firstReInviteComplete = true;
+							if(failoverOn2xx) {
+								//restart the sip stack
+								try {
+									b2buaNode1.initStack(IP_ADDRESS);
+								} catch (Exception e) {
+									e.printStackTrace();
+								}
+							}
 							// not used in basic reinvite
 							if(sendSubscribe) {
 								try {
@@ -837,12 +846,21 @@ public class B2BUADialogRecoveryTest extends TestCase {
             assertSame("Checking dialog identity",tid.getDialog(), this.dialog);
 
             try {
+            	
+            	
+            	
                 if (response.getStatusCode() == Response.OK) {
                     if (cseq.getMethod().equals(Request.INVITE)) {
                         System.out.println("Dialog after 200 OK  " + dialog);
-                        System.out.println("Dialog State after 200 OK  " + dialog.getState());
-                        Request ackRequest = dialog.createAck(cseq.getSeqNumber());
-                        System.out.println("Sending ACK");
+                        System.out.println("Dialog State after 200 OK  " + dialog.getState());                                                
+                        
+                        Request ackRequest = dialog.createAck(cseq.getSeqNumber());        
+                        if (failoverOn2xx) {
+                        	// stop the sip stack w/o stopping the cache
+                            b2buaNode1.stop(false);
+                            ((SipURI)ackRequest.getRequestURI()).setPort(5081);
+                        }
+                        System.out.println("Sending " + ackRequest);                        
                         dialog.sendAck(ackRequest);
 
                         firstTxComplete = true;
@@ -1102,16 +1120,30 @@ public class B2BUADialogRecoveryTest extends TestCase {
 					fail("firstTxComplete " + firstTxComplete + " && firstReInviteComplete  " + firstReInviteComplete + " && subscribeTxComplete " + subscribeTxComplete + " && notifyComplete " + notifyTxComplete + "&& secondReInviteComplete " + secondReInviteComplete + "&& thirdReInviteComplete " + thirdReInviteComplete + " && okToByeReceived " + okToByeReceived);
 				}
 			} else {
-				if(firstTxComplete && firstReInviteComplete && secondReInviteComplete && okToByeReceived) {
+				if(firstTxComplete && firstReInviteComplete && okToByeReceived) {
 					System.out.println("shootist state OK " );
 				} else {
-					fail("firstTxComplete " + firstTxComplete + " && firstReInviteComplete  " + firstReInviteComplete + " && secondReInviteComplete " + secondReInviteComplete + " && okToByeReceived " + okToByeReceived);
+					fail("firstTxComplete " + firstTxComplete + " && firstReInviteComplete  " + firstReInviteComplete + " && okToByeReceived " + okToByeReceived);
 				}
 			}
 		}
 
 		public void setSendSubscribe(boolean b) {
 			sendSubscribe  = b;
+		}
+
+		/**
+		 * @param failoverOn2xx the failoverOn2xx to set
+		 */
+		public void setFailoverOn2xx(boolean failoverOn2xx) {
+			this.failoverOn2xx = failoverOn2xx;
+		}
+
+		/**
+		 * @return the failoverOn2xx
+		 */
+		public boolean isFailoverOn2xx() {
+			return failoverOn2xx;
 		}
     }
 
@@ -1172,42 +1204,42 @@ public class B2BUADialogRecoveryTest extends TestCase {
 	 *  								BYE (CSeq 3)
 	 *  						------------------------------------->
      */
-    public void testDialogFailoverReInviteSubsNotify() throws Exception {
-
-        shootist = new Shootist("shootist_subsnotify", true);
-        shootme = new Shootme("shootme_subsnotify", 5070, true);
-
-        b2buaNode1 = new SimpleB2BUA("b2buaNode1_subsnotify", 5080, IP_ADDRESS);
-        Thread.sleep(5000);
-        b2buaNode2 = new SimpleB2BUA("b2buaNode2_subsnotify", 5081, IP_ADDRESS);
-
-        shootme.init();
-        shootist.setSendSubscribe(true);
-        shootist.init("ReInviteSubsNotify");
-        
-        
-        Thread.sleep(60000);
-        
-        shootme.checkState(true);
-        shootist.checkState(true);
-        // make sure dialogs are removed on both nodes
-        // non regression for Issue 1418
-        // http://code.google.com/p/mobicents/issues/detail?id=1418
-        assertTrue(b2buaNode1.checkDialogsRemoved());
-        assertTrue(b2buaNode2.checkDialogsRemoved());
-        
-        b2buaNode1.stop();
-        b2buaNode2.stop();
-        
-        shootist.stop();
-        shootme.stop();
-        Thread.sleep(5000);
-    }
+//    public void testDialogFailoverReInviteSubsNotify() throws Exception {
+//
+//        shootist = new Shootist("shootist_subsnotify", true);
+//        shootme = new Shootme("shootme_subsnotify", 5070, true);
+//
+//        b2buaNode1 = new SimpleB2BUA("b2buaNode1_subsnotify", 5080, IP_ADDRESS);
+//        Thread.sleep(5000);
+//        b2buaNode2 = new SimpleB2BUA("b2buaNode2_subsnotify", 5081, IP_ADDRESS);
+//
+//        shootme.init();
+//        shootist.setSendSubscribe(true);
+//        shootist.init("ReInviteSubsNotify");
+//        
+//        
+//        Thread.sleep(60000);
+//        
+//        shootme.checkState(true);
+//        shootist.checkState(true);
+//        // make sure dialogs are removed on both nodes
+//        // non regression for Issue 1418
+//        // http://code.google.com/p/mobicents/issues/detail?id=1418
+//        assertTrue(b2buaNode1.checkDialogsRemoved());
+//        assertTrue(b2buaNode2.checkDialogsRemoved());
+//        
+//        b2buaNode1.stop();
+//        b2buaNode2.stop();
+//        
+//        shootist.stop();
+//        shootme.stop();
+//        Thread.sleep(5000);
+//    }
     
     /**
      * UA1			B2BUA (Engine1)			B2BUA (Engine2)			UA2
 	 * INVITE (CSeq 1)
-	 * ----------------------->
+	 * --------------------->
 	 * 		
 	 * 				INVITE (CSeq 1)
 	 * 				-------------------------------------------------> 	
@@ -1216,10 +1248,7 @@ public class B2BUADialogRecoveryTest extends TestCase {
 	 * 								             <---------------------
 	 * 					INVITE (CSeq 2)
 	 * <------------------------------------------
-	 * 									INVITE (CSeq 2)
-	 *  				      <----------------------------------------
-	 *  	INVITE (CSeq 3)
-	 *  <---------------------
+	 * 								
 	 *  BYE (CSeq 2)
 	 *  ----------------------->
 	 *  								BYE (CSeq 2)
@@ -1233,7 +1262,10 @@ public class B2BUADialogRecoveryTest extends TestCase {
         b2buaNode1 = new SimpleB2BUA("b2buaNode1_reinvite", 5080, IP_ADDRESS);
         Thread.sleep(5000);
         b2buaNode2 = new SimpleB2BUA("b2buaNode2_reinvite", 5081, IP_ADDRESS);
-
+        b2buaNode1.getB2buaHandler().setSendAckOn2xx(false);
+        b2buaNode2.getB2buaHandler().setSendAckOn2xx(false);
+        shootist.setFailoverOn2xx(true);
+        
         shootme.init();
         shootist.init("ReInvite");        
         Thread.sleep(60000);

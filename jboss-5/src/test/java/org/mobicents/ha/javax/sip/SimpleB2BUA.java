@@ -66,7 +66,7 @@ public class SimpleB2BUA implements SipListener {
 		initStack(ipAddress);
 	}
 	
-	private void initStack(String ipAddress) throws SipException, TooManyListenersException,
+	public void initStack(String ipAddress) throws SipException, TooManyListenersException,
 			NumberFormatException, InvalidArgumentException, ParseException {
 		this.sipFactory = SipFactory.getInstance();
 		this.sipFactory.setPathName("org.mobicents.ha");
@@ -178,6 +178,10 @@ public class SimpleB2BUA implements SipListener {
 	}
 	
 	public void stop() {
+		stop(true);
+	}
+	
+	public void stop(boolean stopSipStack) {
 		Iterator<SipProvider> sipProviderIterator = sipStack.getSipProviders();
         try{
             while (sipProviderIterator.hasNext()) {
@@ -199,12 +203,29 @@ public class SimpleB2BUA implements SipListener {
         listeningPoint = null;
         provider = null;
         sipFactory.resetFactory();
-        sipFactory = null;
-        sipStack.stop();
-        sipStack = null;
-        b2buaHandler = null;
-        properties = null;
-        headerFactory = null;
-        messageFactory = null;
+        
+        if(stopSipStack){
+        	sipStack.stop();
+        	sipStack = null;
+        	headerFactory = null;
+            messageFactory = null;
+            sipFactory = null;
+            b2buaHandler = null;
+            properties = null;
+        }                     
+	}
+
+	/**
+	 * @param b2buaHandler the b2buaHandler to set
+	 */
+	public void setB2buaHandler(SimpleB2BUAHandler b2buaHandler) {
+		this.b2buaHandler = b2buaHandler;
+	}
+
+	/**
+	 * @return the b2buaHandler
+	 */
+	public SimpleB2BUAHandler getB2buaHandler() {
+		return b2buaHandler;
 	}	
 }

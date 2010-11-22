@@ -85,6 +85,8 @@ public class ManagedMobicentsSipCache extends MobicentsSipCache {
 							"Mobicents JAIN SIP JBoss Cache Configuration path is : " + pojoConfigurationPath);
 				}
 				cluster = new DefaultMobicentsCluster(new MobicentsCache(pojoConfigurationPath), null, null);
+				JBossJainSipCacheListener listener = new JBossJainSipCacheListener(clusteredSipStack);
+				cluster.getMobicentsCache().getJBossCache().addCacheListener(listener);
 			}														
 		} catch (Exception e) {
 			throw new SipCacheException("Couldn't init Mobicents Cache", e);

@@ -1,10 +1,13 @@
 package org.mobicents.ha.javax.sip;
 
 import gov.nist.javax.sip.ListeningPointImpl;
+import gov.nist.javax.sip.RequestEventExt;
 import gov.nist.javax.sip.header.Route;
 import gov.nist.javax.sip.header.RouteList;
 import gov.nist.javax.sip.header.Via;
 import gov.nist.javax.sip.header.ViaList;
+import gov.nist.javax.sip.message.MessageExt;
+import gov.nist.javax.sip.message.RequestExt;
 import gov.nist.javax.sip.message.SIPRequest;
 
 import java.text.ParseException;
@@ -58,6 +61,7 @@ public class SimpleB2BUAHandler {
 	private boolean createInviteOnAck = false;
 	private SipStack sipStack;
 	int myPort;
+	private boolean sendAckOn2xx = true;
 	
 	public SimpleB2BUAHandler(SipProvider sipProvider, HeaderFactory headerFactory, MessageFactory messageFactory, int port) {
 //		this.localTag = localTag;
@@ -286,9 +290,22 @@ public class SimpleB2BUAHandler {
 
 	public void processAck(RequestEvent requestEvent) {
 		// ignore
-		try {
-			if(myPort == 5080 && getIncomingDialogId() == null) {
-				storeIncomingDialogId(requestEvent.getDialog().getDialogId());
+		try {			
+			if(!sendAckOn2xx) {
+				Dialog dialog = null; 
+				if(((RequestEventExt)requestEvent).getRemotePort() == 5070) {
+					dialog = getIncomingDialog();
+				}
+				if(((RequestEventExt)requestEvent).getRemotePort() == 5060) {
+					storeIncomingDialogId(requestEvent.getDialog().getDialogId());
+					dialog = getOutgoingDialog();
+				}	
+				final Request ack = dialog.createAck(((MessageExt)requestEvent.getRequest()).getCSeqHeader().getSeqNumber());
+				dialog.sendAck(ack);
+			} else {
+				if(myPort == 5080 && getIncomingDialogId() == null) {
+					storeIncomingDialogId(requestEvent.getDialog().getDialogId());
+				}
 			}
 			if(createInviteOnAck) {
 				createInviteOnAck = false;				
@@ -296,8 +313,7 @@ public class SimpleB2BUAHandler {
 				final ClientTransaction ct = sipProvider.getNewClientTransaction(request);
 				getIncomingDialog().sendRequest(ct);
 			}
-		} catch (SipException e) {
-			// TODO Auto-generated catch block
+		} catch (Exception e) {
 			((SipStackImpl)sipStack).getStackLogger().logError("unexpected exception", e);
 		} 
 	}
@@ -450,14 +466,16 @@ public class SimpleB2BUAHandler {
 	private void processInvite200(ResponseEvent responseEvent,CSeqHeader cseq) throws InvalidArgumentException, SipException {
 		// lets ack it ourselves to avoid UAS retransmissions due to
 		// forwarding of this response and further UAC Ack
-		// note that the app does not handles UAC ACKs
-		System.out.println("Generating ACK to 200");
-		final Request ack = responseEvent.getDialog().createAck(cseq.getSeqNumber());
+		// note that the app does not handles UAC ACKs		
 		String outgoingDialogId = responseEvent.getDialog().getDialogId();
 		if(myPort == 5080 && getOutgoingDialogId() == null) {
 			storeOutgoingDialogId(outgoingDialogId);
 		}
-		responseEvent.getDialog().sendAck(ack);		
+		if(sendAckOn2xx) {
+			System.out.println("Generating ACK to 200");
+			final Request ack = responseEvent.getDialog().createAck(cseq.getSeqNumber());
+			responseEvent.getDialog().sendAck(ack);
+		}
 		forwardResponse(responseEvent.getResponse());			
 	}		
 
@@ -490,6 +508,20 @@ public class SimpleB2BUAHandler {
 	public void checkState() {
 		// TODO Auto-generated method stub
 		
+	}
+
+	/**
+	 * @param sendAckOn2xx the sendAckOn2xx to set
+	 */
+	public void setSendAckOn2xx(boolean sendAckOn2xx) {
+		this.sendAckOn2xx = sendAckOn2xx;
+	}
+
+	/**
+	 * @return the sendAckOn2xx
+	 */
+	public boolean isSendAckOn2xx() {
+		return sendAckOn2xx;
 	}
 	
 }
