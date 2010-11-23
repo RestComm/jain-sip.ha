@@ -108,9 +108,9 @@ public class SimpleB2BUAHandler {
 		try {
 			incomingDialogId = (String) ((MobicentsSipCache)((ClusteredSipStack)sipProvider.getSipStack()).getSipCache()).getMobicentsCache().getJBossCache().get(Fqn.fromString("DIALOG_IDS"), "incomingDialogId");
 		} catch (CacheException e) {
-			// TODO Auto-generated catch block
 			((SipStackImpl)sipStack).getStackLogger().logError("unexpected exception", e);
 		}
+		((SipStackImpl)sipStack).getStackLogger().logInfo("Incoming Dialog Id " + incomingDialogId);
 		if(incomingDialogId == null) {
 			return null;
 		}
@@ -125,9 +125,9 @@ public class SimpleB2BUAHandler {
 		try {
 			outgoingDialogId = (String) ((MobicentsSipCache)((ClusteredSipStack)sipProvider.getSipStack()).getSipCache()).getMobicentsCache().getJBossCache().get(Fqn.fromString("DIALOG_IDS"), "outgoingDialogId");
 		} catch (CacheException e) {
-			// TODO Auto-generated catch block
 			((SipStackImpl)sipStack).getStackLogger().logError("unexpected exception", e);
 		}
+		((SipStackImpl)sipStack).getStackLogger().logInfo("Outgoing Dialog Id " + outgoingDialogId);
 		if(outgoingDialogId == null) {
 			return null;
 		}
@@ -303,7 +303,7 @@ public class SimpleB2BUAHandler {
 				final Request ack = dialog.createAck(((MessageExt)requestEvent.getRequest()).getCSeqHeader().getSeqNumber());
 				dialog.sendAck(ack);
 			} else {
-				if(myPort == 5080 && getIncomingDialogId() == null) {
+				if((((RequestEventExt)requestEvent).getRemotePort() == 5065 || myPort == 5080) && getIncomingDialogId() == null) {
 					storeIncomingDialogId(requestEvent.getDialog().getDialogId());
 				}
 			}

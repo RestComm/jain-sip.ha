@@ -1,8 +1,13 @@
 package org.mobicents.ha.javax.sip;
 
+import java.rmi.registry.LocateRegistry;
+import java.rmi.registry.Registry;
 import java.text.ParseException;
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.Properties;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.TooManyListenersException;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -25,6 +30,8 @@ import javax.sip.message.MessageFactory;
 import javax.sip.message.Request;
 
 import org.mobicents.ha.javax.sip.cache.ManagedMobicentsSipCache;
+import org.mobicents.tools.sip.balancer.NodeRegisterRMIStub;
+import org.mobicents.tools.sip.balancer.SIPNode;
 
 public class SimpleB2BUA implements SipListener {
  
@@ -41,11 +48,12 @@ public class SimpleB2BUA implements SipListener {
 	private MessageFactory messageFactory;
 	private Properties properties;
 	private SimpleB2BUAHandler b2buaHandler;
+	private TimerTask keepaliveTask;
 	
 	public SimpleB2BUA(String stackName, int myPort, String ipAddress) throws NumberFormatException, SipException, TooManyListenersException, InvalidArgumentException, ParseException {
 		properties = new Properties();        
         properties.setProperty("javax.sip.STACK_NAME", stackName);
-        properties.setProperty(SIP_PORT_BIND, String.valueOf(myPort));
+        properties.setProperty(SIP_PORT_BIND, String.valueOf(myPort));        
         //properties.setProperty("javax.sip.OUTBOUND_PROXY", Integer
         //                .toString(BALANCER_PORT));
         // You need 16 for logging traces. 32 for debug + traces.
@@ -82,6 +90,7 @@ public class SimpleB2BUA implements SipListener {
 		this.headerFactory = sipFactory.createHeaderFactory();
 		this.messageFactory = sipFactory.createMessageFactory();
 		b2buaHandler = new SimpleB2BUAHandler(provider,headerFactory,messageFactory, Integer.parseInt(properties.getProperty(SIP_PORT_BIND)));
+		properties.setProperty(SIP_BIND_ADDRESS, ipAddress);
 	}
 
 	private AtomicLong counter = new AtomicLong();
@@ -227,5 +236,36 @@ public class SimpleB2BUA implements SipListener {
 	 */
 	public SimpleB2BUAHandler getB2buaHandler() {
 		return b2buaHandler;
-	}	
+	}
+	
+	public void pingBalancer() {
+		final SIPNode appServerNode = new SIPNode(sipStack.getStackName(), properties.getProperty(SIP_BIND_ADDRESS));
+		appServerNode.getProperties().put("udpPort",  Integer.parseInt(properties.getProperty(SIP_PORT_BIND)));
+		keepaliveTask = new TimerTask() {
+			@Override
+			public void run() {
+				ArrayList<SIPNode> nodes = new ArrayList<SIPNode>();
+				nodes.add(appServerNode);
+				sendKeepAliveToBalancers(nodes);
+			}
+		};
+		new Timer().schedule(keepaliveTask, 0, 1000);
+	}
+	
+	 private void sendKeepAliveToBalancers(ArrayList<SIPNode> info) {
+ 		if(true) {
+ 			Thread.currentThread().setContextClassLoader(NodeRegisterRMIStub.class.getClassLoader());
+ 			try {
+ 				Registry registry = LocateRegistry.getRegistry(properties.getProperty(SIP_BIND_ADDRESS), 2000);
+ 				NodeRegisterRMIStub reg=(NodeRegisterRMIStub) registry.lookup("SIPBalancer");
+ 				reg.handlePing(info);
+ 			} catch (Exception e) {
+ 				if(sipStack != null) {
+ 					((ClusteredSipStack)sipStack).getStackLogger().logError("couldn't contact the LB, cancelling the keepalive task");
+ 				}
+ 				keepaliveTask.cancel();
+ 			}
+ 		}
+
+ 	}	
 }
