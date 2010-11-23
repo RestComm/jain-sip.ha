@@ -7,8 +7,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import java.rmi.registry.LocateRegistry;
-import java.rmi.registry.Registry;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -16,7 +14,6 @@ import java.util.Iterator;
 import java.util.Properties;
 import java.util.Timer;
 import java.util.TimerTask;
-import java.util.logging.ConsoleHandler;
 import java.util.logging.FileHandler;
 import java.util.logging.Handler;
 import java.util.logging.Level;
@@ -62,13 +59,9 @@ import javax.sip.message.MessageFactory;
 import javax.sip.message.Request;
 import javax.sip.message.Response;
 
-import org.mobicents.tools.sip.balancer.BalancerRunner;
-import org.mobicents.tools.sip.balancer.NodeRegisterRMIStub;
-import org.mobicents.tools.sip.balancer.SIPNode;
-import org.mobicents.tools.sip.balancer.WorstCaseUdpTestAffinityAlgorithm;
-import org.mobicents.tools.sip.balancer.operation.InviteTransactionFailover;
-
 import junit.framework.TestCase;
+
+import org.mobicents.tools.sip.balancer.BalancerRunner;
 /**
  * This test aims to test Mobicents Jain Sip Early Dialog failover recovery.
  * 
@@ -645,6 +638,7 @@ public class B2BUAEarlyDialogRecoveryOn1xxTest extends TestCase {
 
 		private String stackName;
 
+		private boolean failoverOn1xx;
 		private boolean failoverOn2xx;
 		
         class ByeTask  extends TimerTask {
@@ -710,7 +704,7 @@ public class B2BUAEarlyDialogRecoveryOn1xxTest extends TestCase {
 	            		switch ((int) cseq) {
 						case 1:
 							firstReInviteComplete = true;
-							if(failoverOn2xx) {
+							if(failoverOn2xx || failoverOn1xx) {
 								//restart the sip stack
 								try {
 									b2buaNode1.initStack(IP_ADDRESS);
@@ -866,6 +860,10 @@ public class B2BUAEarlyDialogRecoveryOn1xxTest extends TestCase {
             try {
             	
             	
+            	if(failoverOn1xx && response.getStatusCode() == Response.RINGING) {
+                	// stop the sip stack w/o stopping the cache
+                    b2buaNode1.stop(false);                   
+            	}
             	
                 if (response.getStatusCode() == Response.OK) {
                     if (cseq.getMethod().equals(Request.INVITE)) {
@@ -1161,6 +1159,20 @@ public class B2BUAEarlyDialogRecoveryOn1xxTest extends TestCase {
 		public boolean isFailoverOn2xx() {
 			return failoverOn2xx;
 		}
+
+		/**
+		 * @param failoverOn1xx the failoverOn1xx to set
+		 */
+		public void setFailoverOn1xx(boolean failoverOn1xx) {
+			this.failoverOn1xx = failoverOn1xx;
+		}
+
+		/**
+		 * @return the failoverOn1xx
+		 */
+		public boolean isFailoverOn1xx() {
+			return failoverOn1xx;
+		}
     }
 
     public static void stopSipStack(SipStack sipStack, SipListener listener) {
@@ -1184,6 +1196,86 @@ public class B2BUAEarlyDialogRecoveryOn1xxTest extends TestCase {
 
         sipStack.stop();
         sipStack = null;
+    }
+    
+    /**
+     * UA1			B2BUA (Engine1)			B2BUA (Engine2)			UA2
+	 * INVITE (CSeq 1)
+	 * --------------------->
+	 * 		
+	 * 				INVITE (CSeq 1)
+	 * 				-------------------------------------------------> 	
+	 * 
+	 * 											INVITE (CSeq 1)
+	 * 								             <---------------------
+	 * 					INVITE (CSeq 2)
+	 * <------------------------------------------
+	 * 								
+	 *  BYE (CSeq 2)
+	 *  ----------------------->
+	 *  								BYE (CSeq 2)
+	 *  						------------------------------------->
+     */
+    public void testEarlyDialogFailoverOn2xx() throws Exception {
+
+    	balancer = new BalancerRunner();
+    	Handler fh = new FileHandler("logs/sipbalancer_util.log");
+    	fh.setFormatter(new SimpleFormatter());
+    	Logger.getLogger("org.mobicents").addHandler(fh);
+    	Logger.getLogger("org.mobicents").setLevel(Level.FINEST);
+    	
+    	Properties properties = new Properties();
+    	properties.setProperty("javax.sip.STACK_NAME", "SipBalancerForwarder");
+    	properties.setProperty("javax.sip.AUTOMATIC_DIALOG_SUPPORT", "off");
+    	// You need 16 for logging traces. 32 for debug + traces.
+    	// Your code will limp at 32 but it is best for debugging.
+    	properties.setProperty("gov.nist.javax.sip.TRACE_LEVEL", "32");
+    	properties.setProperty("gov.nist.javax.sip.DEBUG_LOG",
+    			"logs/sipbalancerforwarderdebug.txt");
+    	properties.setProperty("gov.nist.javax.sip.SERVER_LOG",
+    			"logs/sipbalancerforwarder.xml");
+    	properties.setProperty("gov.nist.javax.sip.THREAD_POOL_SIZE", "8");
+    	properties.setProperty("gov.nist.javax.sip.REENTRANT_LISTENER", "true");
+    	properties.setProperty("gov.nist.javax.sip.CANCEL_CLIENT_TRANSACTION_CHECKED", "false");
+//    	properties.setProperty("algorithmClass", InviteTransactionFailover.class.getName());
+    	properties.setProperty("host", IP_ADDRESS);
+    	properties.setProperty("internalPort", "5065");
+    	properties.setProperty("externalPort", "5060");
+    	balancer.start(properties);
+    	
+        shootist = new Shootist("shootist_reinvite", true);
+        shootme = new Shootme("shootme_reinvite", 5070, true);
+
+        b2buaNode1 = new SimpleB2BUA("b2buaNode1_reinvite", 5080, IP_ADDRESS);
+        Thread.sleep(5000);
+        b2buaNode2 = new SimpleB2BUA("b2buaNode2_reinvite", 5081, IP_ADDRESS);
+        b2buaNode1.getB2buaHandler().setSendAckOn2xx(true);
+        b2buaNode2.getB2buaHandler().setSendAckOn2xx(true);
+        b2buaNode1.pingBalancer();
+        Thread.sleep(1000);
+        b2buaNode2.pingBalancer();
+        Thread.sleep(1000);
+        shootist.setFailoverOn2xx(true);
+        
+        shootme.init();
+        shootist.init("ReInvite");        
+        Thread.sleep(60000);
+        
+        shootme.checkState(false);
+        shootist.checkState(false);
+        // make sure dialogs are removed on both nodes
+        // non regression for Issue 1418
+        // http://code.google.com/p/mobicents/issues/detail?id=1418
+        assertTrue(b2buaNode1.checkDialogsRemoved());
+        assertTrue(b2buaNode2.checkDialogsRemoved());
+        
+        balancer.stop();
+        b2buaNode1.stop();
+        b2buaNode2.stop();
+        
+        shootist.stop();
+        shootme.stop();        
+        Thread.sleep(5000);
     }
     
     /**
@@ -1243,7 +1335,7 @@ public class B2BUAEarlyDialogRecoveryOn1xxTest extends TestCase {
         Thread.sleep(1000);
         b2buaNode2.pingBalancer();
         Thread.sleep(1000);
-        shootist.setFailoverOn2xx(true);
+        shootist.setFailoverOn1xx(true);
         
         shootme.init();
         shootist.init("ReInvite");        
