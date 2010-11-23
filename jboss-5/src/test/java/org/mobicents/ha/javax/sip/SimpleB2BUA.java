@@ -54,8 +54,7 @@ public class SimpleB2BUA implements SipListener {
 		properties = new Properties();        
         properties.setProperty("javax.sip.STACK_NAME", stackName);
         properties.setProperty(SIP_PORT_BIND, String.valueOf(myPort));        
-        //properties.setProperty("javax.sip.OUTBOUND_PROXY", Integer
-        //                .toString(BALANCER_PORT));
+        properties.setProperty("javax.sip.OUTBOUND_PROXY", ipAddress + ":" + Integer.toString(5065) + "/udp");
         // You need 16 for logging traces. 32 for debug + traces.
         // Your code will limp at 32 but it is best for debugging.
         properties.setProperty("gov.nist.javax.sip.TRACE_LEVEL", "32");
