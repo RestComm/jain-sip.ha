@@ -50,7 +50,7 @@ public class SimpleB2BUA implements SipListener {
 	private SimpleB2BUAHandler b2buaHandler;
 	private TimerTask keepaliveTask;
 	
-	public SimpleB2BUA(String stackName, int myPort, String ipAddress) throws NumberFormatException, SipException, TooManyListenersException, InvalidArgumentException, ParseException {
+	public SimpleB2BUA(String stackName, int myPort, String ipAddress, ReplicationStrategy replicationStrategy) throws NumberFormatException, SipException, TooManyListenersException, InvalidArgumentException, ParseException {
 		properties = new Properties();        
         properties.setProperty("javax.sip.STACK_NAME", stackName);
         properties.setProperty(SIP_PORT_BIND, String.valueOf(myPort));        
@@ -64,7 +64,7 @@ public class SimpleB2BUA implements SipListener {
                 stackName + "log.xml");
         properties.setProperty("javax.sip.AUTOMATIC_DIALOG_SUPPORT", "off");
         properties.setProperty("gov.nist.javax.sip.REENTRANT_LISTENER", "true");
-        properties.setProperty("org.mobicents.ha.javax.sip.REPLICATION_STRATEGY", "ConfirmedDialogNoApplicationData");
+        properties.setProperty("org.mobicents.ha.javax.sip.REPLICATION_STRATEGY", replicationStrategy.toString());
         properties.setProperty(ManagedMobicentsSipCache.STANDALONE, "true");
         System.setProperty("jgroups.bind_addr", ipAddress);
         System.setProperty("jgroups.udp.mcast_addr", "FFFF::232.5.5.5");
@@ -267,4 +267,20 @@ public class SimpleB2BUA implements SipListener {
  		}
 
  	}	
+	 
+	 public void stopPingBalancer() {
+		 keepaliveTask.cancel();
+		 Thread.currentThread().setContextClassLoader(NodeRegisterRMIStub.class.getClassLoader());
+		try {
+			Registry registry = LocateRegistry.getRegistry(properties.getProperty(SIP_BIND_ADDRESS), 2000);
+			NodeRegisterRMIStub reg=(NodeRegisterRMIStub) registry.lookup("SIPBalancer");
+			final SIPNode appServerNode = new SIPNode(sipStack.getStackName(), properties.getProperty(SIP_BIND_ADDRESS));
+			appServerNode.getProperties().put("udpPort",  Integer.parseInt(properties.getProperty(SIP_PORT_BIND)));
+			ArrayList<SIPNode> nodes = new ArrayList<SIPNode>();
+			nodes.add(appServerNode);
+			reg.forceRemoval(nodes);
+		} catch (Exception e) {
+			
+		}
+	 }
 }

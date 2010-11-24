@@ -316,7 +316,7 @@ public class B2BUAEarlyDialogRecoveryOn1xxTest extends TestCase {
 
                 st.sendResponse(response);
 
-                Thread.sleep(1000);
+                Thread.sleep(2000);
                 
                 this.okResponse = messageFactory.createResponse(Response.OK,
                         request);
@@ -862,7 +862,8 @@ public class B2BUAEarlyDialogRecoveryOn1xxTest extends TestCase {
             	
             	if(failoverOn1xx && response.getStatusCode() == Response.RINGING) {
                 	// stop the sip stack w/o stopping the cache
-                    b2buaNode1.stop(false);                   
+                    b2buaNode1.stop(false); 
+                    b2buaNode1.stopPingBalancer();
             	}
             	
                 if (response.getStatusCode() == Response.OK) {
@@ -874,6 +875,7 @@ public class B2BUAEarlyDialogRecoveryOn1xxTest extends TestCase {
                         if (failoverOn2xx) {
                         	// stop the sip stack w/o stopping the cache
                             b2buaNode1.stop(false);
+                            b2buaNode1.stopPingBalancer();
                             ((SipURI)ackRequest.getRequestURI()).setPort(5081);
                         }
                         System.out.println("Sending " + ackRequest);                        
@@ -1246,9 +1248,9 @@ public class B2BUAEarlyDialogRecoveryOn1xxTest extends TestCase {
         shootist = new Shootist("shootist_reinvite", true);
         shootme = new Shootme("shootme_reinvite", 5070, true);
 
-        b2buaNode1 = new SimpleB2BUA("b2buaNode1_reinvite", 5080, IP_ADDRESS);
+        b2buaNode1 = new SimpleB2BUA("b2buaNode1_reinvite", 5080, IP_ADDRESS, ReplicationStrategy.ConfirmedDialogNoApplicationData);
         Thread.sleep(5000);
-        b2buaNode2 = new SimpleB2BUA("b2buaNode2_reinvite", 5081, IP_ADDRESS);
+        b2buaNode2 = new SimpleB2BUA("b2buaNode2_reinvite", 5081, IP_ADDRESS, ReplicationStrategy.ConfirmedDialogNoApplicationData);
         b2buaNode1.getB2buaHandler().setSendAckOn2xx(true);
         b2buaNode2.getB2buaHandler().setSendAckOn2xx(true);
         b2buaNode1.pingBalancer();
@@ -1326,11 +1328,11 @@ public class B2BUAEarlyDialogRecoveryOn1xxTest extends TestCase {
         shootist = new Shootist("shootist_reinvite", true);
         shootme = new Shootme("shootme_reinvite", 5070, true);
 
-        b2buaNode1 = new SimpleB2BUA("b2buaNode1_reinvite", 5080, IP_ADDRESS);
+        b2buaNode1 = new SimpleB2BUA("b2buaNode1_reinvite", 5080, IP_ADDRESS, ReplicationStrategy.EarlyDialog);
         Thread.sleep(5000);
-        b2buaNode2 = new SimpleB2BUA("b2buaNode2_reinvite", 5081, IP_ADDRESS);
-        b2buaNode1.getB2buaHandler().setSendAckOn2xx(true);
-        b2buaNode2.getB2buaHandler().setSendAckOn2xx(true);
+        b2buaNode2 = new SimpleB2BUA("b2buaNode2_reinvite", 5081, IP_ADDRESS, ReplicationStrategy.EarlyDialog);
+//        b2buaNode1.getB2buaHandler().setSendAckOn2xx(true);
+//        b2buaNode2.getB2buaHandler().setSendAckOn2xx(true);
         b2buaNode1.pingBalancer();
         Thread.sleep(1000);
         b2buaNode2.pingBalancer();

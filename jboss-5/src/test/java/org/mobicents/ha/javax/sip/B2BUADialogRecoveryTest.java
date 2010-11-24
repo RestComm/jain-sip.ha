@@ -1177,9 +1177,9 @@ public class B2BUADialogRecoveryTest extends TestCase {
         shootist = new Shootist("shootist_subsnotify", true);
         shootme = new Shootme("shootme_subsnotify", 5070, true);
 
-        b2buaNode1 = new SimpleB2BUA("b2buaNode1_subsnotify", 5080, IP_ADDRESS);
+        b2buaNode1 = new SimpleB2BUA("b2buaNode1_subsnotify", 5080, IP_ADDRESS, ReplicationStrategy.ConfirmedDialogNoApplicationData);
         Thread.sleep(5000);
-        b2buaNode2 = new SimpleB2BUA("b2buaNode2_subsnotify", 5081, IP_ADDRESS);
+        b2buaNode2 = new SimpleB2BUA("b2buaNode2_subsnotify", 5081, IP_ADDRESS, ReplicationStrategy.ConfirmedDialogNoApplicationData);
 
         shootme.init();
         shootist.setSendSubscribe(true);
@@ -1230,9 +1230,9 @@ public class B2BUADialogRecoveryTest extends TestCase {
         shootist = new Shootist("shootist_reinvite", true);
         shootme = new Shootme("shootme_reinvite", 5070, true);
 
-        b2buaNode1 = new SimpleB2BUA("b2buaNode1_reinvite", 5080, IP_ADDRESS);
+        b2buaNode1 = new SimpleB2BUA("b2buaNode1_reinvite", 5080, IP_ADDRESS, ReplicationStrategy.ConfirmedDialogNoApplicationData);
         Thread.sleep(5000);
-        b2buaNode2 = new SimpleB2BUA("b2buaNode2_reinvite", 5081, IP_ADDRESS);
+        b2buaNode2 = new SimpleB2BUA("b2buaNode2_reinvite", 5081, IP_ADDRESS, ReplicationStrategy.ConfirmedDialogNoApplicationData);
 
         shootme.init();
         shootist.init("ReInvite");        
