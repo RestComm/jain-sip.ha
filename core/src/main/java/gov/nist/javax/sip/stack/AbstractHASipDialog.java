@@ -50,6 +50,7 @@ import javax.sip.header.HeaderFactory;
 
 import org.mobicents.ha.javax.sip.ClusteredSipStack;
 import org.mobicents.ha.javax.sip.HASipDialog;
+import org.mobicents.ha.javax.sip.ReplicationStrategy;
 
 /**
  * @author jean.deruelle@gmail.com
@@ -78,13 +79,15 @@ public abstract class AbstractHASipDialog extends SIPDialog implements HASipDial
 	public static final String LOCAL_CSEQ = "lc";
 	public static final String DIALOG_METHOD = "dm";
 	public static final String ENABLE_CSEQ_VALIDATION = "dc";
+	public static final String DIALOG_STATE = "ds";
 
 	public boolean b2buaChanged;
 	public boolean eventChanged;	
 	public boolean remoteTargetChanged;
 	public boolean terminateOnByeChanged;	
 	public boolean isReinviteChanged;	
-	public boolean storeFirstTxChanged;	
+	public boolean storeFirstTxChanged;
+	public boolean dialogStateChanged;	
 	
 	static AddressFactory addressFactory = null;
 	static HeaderFactory headerFactory = null;		
@@ -147,7 +150,14 @@ public abstract class AbstractHASipDialog extends SIPDialog implements HASipDial
 		if (getStack().getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
 			getStack().getStackLogger().logDebug(getDialogIdToReplicate() + " : version " + version);
 		}
-		boolean firstTimeReplication = version.get() == 1;
+		if(dialogStateChanged) {
+			dialogMetaData.put(DIALOG_STATE, Integer.valueOf(getState().getValue()));
+			if (getStack().getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+				getStack().getStackLogger().logDebug(getDialogIdToReplicate() + " : dialogState " + getState());
+			}
+			dialogStateChanged = false;
+		}
+		boolean firstTimeReplication = version.get() == 1;		
 		if(firstTimeReplication) {
 			dialogMetaData.put(DIALOG_METHOD, getMethod());
 			if (getStack().getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
@@ -270,8 +280,17 @@ public abstract class AbstractHASipDialog extends SIPDialog implements HASipDial
 	}
 	
 	public void setMetaDataToReplicate(Map<String, Object> metaData, boolean recreation) {
-		// the call to super is very important otherwise it triggers replication on dialog recreation
-		super.setState(DialogState._CONFIRMED);		
+		final ReplicationStrategy replicationStrategy = ((ClusteredSipStack)getStack()).getReplicationStrategy();
+		if(replicationStrategy == ReplicationStrategy.EarlyDialog) {
+			Integer dialogState = (Integer) metaData.get(DIALOG_STATE);
+			if(dialogState!= null) {
+				// the call to super is very important otherwise it triggers replication on dialog recreation
+				super.setState(dialogState);				
+			} 
+		} else {
+			// the call to super is very important otherwise it triggers replication on dialog recreation
+			super.setState(DialogState._CONFIRMED);
+		}
 		lastResponseStringified = (String) metaData.get(LAST_RESPONSE);
 		if (getStack().getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
 			getStack().getStackLogger().logDebug(getDialogIdToReplicate() + " : lastResponse " + lastResponseStringified);
@@ -296,7 +315,7 @@ public abstract class AbstractHASipDialog extends SIPDialog implements HASipDial
 		}		
 		final Boolean isReinvite = (Boolean) metaData.get(IS_REINVITE);
 		if(isReinvite != null) {
-			setReInviteFlag(isReinvite);
+			super.setReInviteFlag(isReinvite);
 			if (getStack().getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
 				getStack().getStackLogger().logDebug(getDialogIdToReplicate() + " : isReInvite " + isReinvite);
 			}
@@ -304,7 +323,7 @@ public abstract class AbstractHASipDialog extends SIPDialog implements HASipDial
 		final String eventHeaderStringified = (String) metaData.get(EVENT_HEADER);
 		if(eventHeaderStringified != null) {
 			try {
-				setEventHeader((EventHeader)new EventParser(eventHeaderStringified).parse());
+				super.setEventHeader((EventHeader)new EventParser(eventHeaderStringified).parse());
 			} catch (ParseException e) {
 				getStack().getStackLogger().logError("Unexpected exception while parsing a deserialized eventHeader", e);
 			}
@@ -312,12 +331,13 @@ public abstract class AbstractHASipDialog extends SIPDialog implements HASipDial
 				getStack().getStackLogger().logDebug(getDialogIdToReplicate() + " : evenHeader " + eventHeaderStringified);
 			}	
 		}			
-		final String remoteTargetStringified = (String) metaData.get(REMOTE_TARGET);
-		if(remoteTargetStringified != null) {
+		final String remoteTargetCache = (String) metaData.get(REMOTE_TARGET);
+		if(remoteTargetCache != null) {
 			Contact contact = new Contact();
 			try {
-				contact.setAddress(addressFactory.createAddress(remoteTargetStringified));
-				setRemoteTarget(contact);
+				super.remotePartyStringified = remoteTargetCache;
+				contact.setAddress(addressFactory.createAddress(remoteTargetCache));
+				super.setRemoteTarget(contact);
 			} catch (ParseException e) {
 				getStack().getStackLogger().logError("Unexpected exception while parsing a deserialized remoteTarget address", e);
 			}
@@ -503,17 +523,37 @@ public abstract class AbstractHASipDialog extends SIPDialog implements HASipDial
 			boolean lastResponseChanged = false;
 			long previousVersion = version.get(); 			
 			// for 2xx w/o 1xx
-			if(sipResponse != null && getLastResponseStringified() == null && sipResponse.getStatusCode() >= 200) {
+			final ReplicationStrategy replicationStrategy = ((ClusteredSipStack)getStack()).getReplicationStrategy();
+			// set to confirmed dialog strategy at least
+			int lowerStatusCodeToReplicateOn = 200;
+			if(replicationStrategy == ReplicationStrategy.EarlyDialog) {
+				lowerStatusCodeToReplicateOn = 101; 
+			}
+			if (getStack().getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+				getStack().getStackLogger().logDebug(dialogId  + " lowerStatusCodeToReplicateOn = " + lowerStatusCodeToReplicateOn);
+				getStack().getStackLogger().logDebug(dialogId  + " lastResponseStr = " + lastResponseStringified);
+				getStack().getStackLogger().logDebug(dialogId  + " sipResponse = " + sipResponse);
+			}
+			if(sipResponse != null && getLastResponseStringified() == null && sipResponse.getStatusCode() >= lowerStatusCodeToReplicateOn) {
 				lastResponseChanged = true;
 			}
 			String responseStringified = sipResponse.toString(); 
-			if(sipResponse != null && getLastResponseStringified() != null && sipResponse.getStatusCode() >= 200 && !responseStringified.equals(this.getLastResponseStringified())) {
+			if(sipResponse != null && getLastResponseStringified() != null && sipResponse.getStatusCode() >= lowerStatusCodeToReplicateOn && !responseStringified.equals(this.getLastResponseStringified())) {
 				lastResponseChanged = true;
 			}		
 			super.setLastResponse(transaction, sipResponse);
 			lastResponseStringified = responseStringified;
+			if (getStack().getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+				getStack().getStackLogger().logDebug(dialogId  + " lastResponseChanged = " + lastResponseChanged);
+				getStack().getStackLogger().logDebug(dialogId  + " previousVersion = " + previousVersion);
+				getStack().getStackLogger().logDebug(dialogId  + " currentVersion = " + version.get());
+			}
 			// we replicate only if the version is the same, otherwise it means lastResponse already triggered a replication by putting the dialog in the stack and therefore in the cache		
 			if(lastResponseChanged && previousVersion == version.get()) {
+				// don't consider it a retrans even if it is on the new node taking over
+				if(replicationStrategy == ReplicationStrategy.EarlyDialog) {
+					sipResponse.setRetransmission(false);
+				}
 				replicateState();
 			}
 		}
@@ -584,5 +624,18 @@ public abstract class AbstractHASipDialog extends SIPDialog implements HASipDial
 	public void setRemoteTarget(ContactHeader contact) {		
 		super.setRemoteTarget(contact);
 		remoteTargetChanged = true;
+	}
+	
+	@Override
+	public void setState(int state) {
+		DialogState oldState = this.getState();
+		super.setState(state);
+		final ReplicationStrategy replicationStrategy = ((ClusteredSipStack)getStack()).getReplicationStrategy();
+		if(replicationStrategy == ReplicationStrategy.EarlyDialog && (oldState == null  || oldState.getValue() != state && state != DialogState.TERMINATED.getValue())) { 
+			dialogStateChanged = true;
+			if (getStack().getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+				getStack().getStackLogger().logDebug("dialogStateChanged");
+			}
+		}
 	}
 }

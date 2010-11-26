@@ -22,6 +22,7 @@
 package org.mobicents.ha.javax.sip.cache;
 
 import gov.nist.javax.sip.stack.SIPDialog;
+import gov.nist.javax.sip.stack.SIPServerTransaction;
 
 import java.util.Properties;
 
@@ -30,6 +31,7 @@ import org.jboss.cache.Region;
 import org.mobicents.cache.MobicentsCache;
 import org.mobicents.cluster.MobicentsCluster;
 import org.mobicents.ha.javax.sip.ClusteredSipStack;
+import org.mobicents.ha.javax.sip.ReplicationStrategy;
 
 /**
  * Implementation of the SipCache interface, backed by a Mobicents Cache (JBoss Cache 3.X Cache).
@@ -52,7 +54,9 @@ public abstract class MobicentsSipCache implements SipCache {
 	private static final String DEFAULT_NAME = "jain-sip-ha";
 	
 	private SIPDialogCacheData dialogsCacheData;
-	private DataRemovalListener dataRemovalListener;
+	private DataRemovalListener dialogDataRemovalListener;
+	private ServerTransactionCacheData serverTransactionCacheData;
+	private DataRemovalListener serverTransactionDataRemovalListener;
 	
 	/**
 	 * 
@@ -142,13 +146,24 @@ public abstract class MobicentsSipCache implements SipCache {
 	 */
 	public void start() throws SipCacheException {
 		dialogsCacheData = new SIPDialogCacheData(Fqn.fromElements(name,SipCache.DIALOG_PARENT_FQN_ELEMENT),cluster.getMobicentsCache(), clusteredSipStack);
-		dialogsCacheData.create();
-		dataRemovalListener = new DataRemovalListener(dialogsCacheData.getNodeFqn(), clusteredSipStack);
-		cluster.addDataRemovalListener(dataRemovalListener);
+		dialogsCacheData.create();		
+		dialogDataRemovalListener = new DataRemovalListener(dialogsCacheData.getNodeFqn(), clusteredSipStack);
+		cluster.addDataRemovalListener(dialogDataRemovalListener);
+		if(clusteredSipStack.getReplicationStrategy() == ReplicationStrategy.EarlyDialog) {
+			serverTransactionCacheData = new ServerTransactionCacheData(Fqn.fromElements(name,SipCache.SERVER_TX_PARENT_FQN_ELEMENT),cluster.getMobicentsCache(), clusteredSipStack);
+			serverTransactionCacheData.create();
+			serverTransactionDataRemovalListener = new DataRemovalListener(serverTransactionCacheData.getNodeFqn(), clusteredSipStack);
+			cluster.addDataRemovalListener(serverTransactionDataRemovalListener);
+		}
 		if (serializationClassLoader != null) {
 			Region region = getMobicentsCache().getJBossCache().getRegion(dialogsCacheData.getNodeFqn(),true);
 			region.registerContextClassLoader(serializationClassLoader);
 			region.activate();
+			if(clusteredSipStack.getReplicationStrategy() == ReplicationStrategy.EarlyDialog) {
+				Region stxRegion = getMobicentsCache().getJBossCache().getRegion(serverTransactionCacheData.getNodeFqn(),true);
+				stxRegion.registerContextClassLoader(serializationClassLoader);
+				stxRegion.activate();
+			}
 		}
 	}
 
@@ -158,7 +173,11 @@ public abstract class MobicentsSipCache implements SipCache {
 	 */
 	public void stop() throws SipCacheException {
 		dialogsCacheData.remove();
-		cluster.removeDataRemovalListener(dataRemovalListener);
+		cluster.removeDataRemovalListener(dialogDataRemovalListener);
+		if(clusteredSipStack.getReplicationStrategy() == ReplicationStrategy.EarlyDialog) {
+			serverTransactionCacheData.remove();
+			cluster.removeDataRemovalListener(serverTransactionDataRemovalListener);
+		}
 	}
 
 	/*
@@ -181,5 +200,27 @@ public abstract class MobicentsSipCache implements SipCache {
 		return cluster.getMobicentsCache();
 	}
 	
-	
+	/*
+	 * (non-Javadoc)
+	 * @see org.mobicents.ha.javax.sip.cache.SipCache#getServerTransaction(java.lang.String)
+	 */
+	public SIPServerTransaction getServerTransaction(String transactionId) throws SipCacheException {
+		return serverTransactionCacheData.getServerTransaction(transactionId);
+	}
+
+	/*
+	 * (non-Javadoc)
+	 * @see org.mobicents.ha.javax.sip.cache.SipCache#putServerTransaction(gov.nist.javax.sip.stack.SIPServerTransaction)
+	 */
+	public void putServerTransaction(SIPServerTransaction serverTransaction) throws SipCacheException {
+		serverTransactionCacheData.putServerTransaction(serverTransaction);
+	}
+
+	/*
+	 * (non-Javadoc)
+	 * @see org.mobicents.ha.javax.sip.cache.SipCache#removeServerTransaction(java.lang.String)
+	 */
+	public void removeServerTransaction(String transactionId) throws SipCacheException {
+		serverTransactionCacheData.removeServerTransaction(transactionId);
+	}
 }

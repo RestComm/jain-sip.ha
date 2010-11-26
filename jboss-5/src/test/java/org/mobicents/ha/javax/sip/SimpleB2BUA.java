@@ -1,5 +1,7 @@
 package org.mobicents.ha.javax.sip;
 
+import gov.nist.javax.sip.ResponseEventExt;
+
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.text.ParseException;
@@ -50,11 +52,13 @@ public class SimpleB2BUA implements SipListener {
 	private SimpleB2BUAHandler b2buaHandler;
 	private TimerTask keepaliveTask;
 	
-	public SimpleB2BUA(String stackName, int myPort, String ipAddress, ReplicationStrategy replicationStrategy) throws NumberFormatException, SipException, TooManyListenersException, InvalidArgumentException, ParseException {
+	public SimpleB2BUA(String stackName, int myPort, String ipAddress, ReplicationStrategy replicationStrategy, boolean useLoadBalancer) throws NumberFormatException, SipException, TooManyListenersException, InvalidArgumentException, ParseException {
 		properties = new Properties();        
         properties.setProperty("javax.sip.STACK_NAME", stackName);
         properties.setProperty(SIP_PORT_BIND, String.valueOf(myPort));        
-        properties.setProperty("javax.sip.OUTBOUND_PROXY", ipAddress + ":" + Integer.toString(5065) + "/udp");
+        if(useLoadBalancer) {
+        	properties.setProperty("javax.sip.OUTBOUND_PROXY", ipAddress + ":" + Integer.toString(5065) + "/udp");
+        }
         // You need 16 for logging traces. 32 for debug + traces.
         // Your code will limp at 32 but it is best for debugging.
         properties.setProperty("gov.nist.javax.sip.TRACE_LEVEL", "32");
@@ -135,8 +139,9 @@ public class SimpleB2BUA implements SipListener {
 				
 		if (dialog != null) {
 			System.out.println("dialog is " +  dialog.getDialogId() + " for response " +responseEvent.getResponse() );
-			if (responseEvent.getClientTransaction() == null) {
+			if (((ResponseEventExt)responseEvent).isRetransmission()) {
 				// retransmission, drop it
+				System.out.println("dropping retransmission for response " +responseEvent.getResponse() + "on dialog " + dialog.getDialogId());
 				return;
 			}			
 			if (b2buaHandler != null) {				

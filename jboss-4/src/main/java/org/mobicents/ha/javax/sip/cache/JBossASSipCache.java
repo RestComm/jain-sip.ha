@@ -23,6 +23,7 @@ package org.mobicents.ha.javax.sip.cache;
 
 import gov.nist.core.StackLogger;
 import gov.nist.javax.sip.stack.SIPDialog;
+import gov.nist.javax.sip.stack.SIPServerTransaction;
 
 import java.util.Map;
 import java.util.Properties;
@@ -248,6 +249,18 @@ public class JBossASSipCache extends AbstractJBossSipCache implements SipCache {
 
 	public boolean inLocalMode() {		
 		return isLocal;
+	}
+
+	public SIPServerTransaction getServerTransaction(String transactionId) {
+		throw new UnsupportedOperationException("Transaction Replication is not supported on AS 4");
+	}
+
+	public void putServerTransaction(SIPServerTransaction serverTransaction) {
+		throw new UnsupportedOperationException("Transaction Replication is not supported on AS 4");
+	}
+
+	public void removeServerTransaction(String transactionId) {
+		throw new UnsupportedOperationException("Transaction Replication is not supported on AS 4");
 	}	
 
 }

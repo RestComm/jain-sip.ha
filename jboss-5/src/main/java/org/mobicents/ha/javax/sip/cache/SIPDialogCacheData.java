@@ -100,7 +100,7 @@ public class SIPDialogCacheData extends CacheData {
 					haSipDialog = createDialog(dialogId, dialogMetaData, dialogAppData);
 											
 				} catch (CacheException e) {
-					throw new SipCacheException("A problem occured while retrieving the following dialog " + dialogId + " from the TreeCache", e);
+					throw new SipCacheException("A problem occured while retrieving the following dialog " + dialogId + " from the Cache", e);
 				} 
 			}			
 		} catch (Exception ex) {
@@ -182,7 +182,7 @@ public class SIPDialogCacheData extends CacheData {
 					final Object dialogAppData = childNode.get(APPDATA);
 					updateDialog(haSipDialog, dialogMetaData, dialogAppData);				
 				} catch (CacheException e) {
-					throw new SipCacheException("A problem occured while retrieving the following dialog " + dialogId + " from the TreeCache", e);
+					throw new SipCacheException("A problem occured while retrieving the following dialog " + dialogId + " from the Cache", e);
 				}
 			}
 		} catch (Exception ex) {
@@ -245,9 +245,9 @@ public class SIPDialogCacheData extends CacheData {
 					clusteredSipStack.getStackLogger().logDebug("HA SIP Dialog " + dialogId + " remoteParty  = " + haSipDialog.getRemoteParty());
 				}
 			} catch (PeerUnavailableException e) {
-				throw new SipCacheException("A problem occured while retrieving the following dialog " + dialogId + " from the TreeCache", e);
+				throw new SipCacheException("A problem occured while retrieving the following dialog " + dialogId + " from the Cache", e);
 			} catch (ParseException e) {
-				throw new SipCacheException("A problem occured while retrieving the following dialog " + dialogId + " from the TreeCache", e);
+				throw new SipCacheException("A problem occured while retrieving the following dialog " + dialogId + " from the Cache", e);
 			}
 		}
 		

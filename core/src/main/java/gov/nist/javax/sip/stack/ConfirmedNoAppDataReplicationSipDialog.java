@@ -21,12 +21,14 @@
  */
 package gov.nist.javax.sip.stack;
 
+import gov.nist.core.StackLogger;
 import gov.nist.javax.sip.SipProviderImpl;
 import gov.nist.javax.sip.message.SIPResponse;
 
 import javax.sip.DialogState;
 
 import org.mobicents.ha.javax.sip.ClusteredSipStack;
+import org.mobicents.ha.javax.sip.ReplicationStrategy;
 import org.mobicents.ha.javax.sip.cache.SipCacheException;
 
 /**
@@ -56,7 +58,18 @@ public class ConfirmedNoAppDataReplicationSipDialog extends AbstractHASipDialog 
 	 */
 	protected void replicateState() {
 		final DialogState dialogState = getState();
-		if (dialogState == DialogState.CONFIRMED && isCreated && super.dialogId != null && isRemoteTagSet() && isLocalTagSet() && getStack().getDialog(getDialogIdToReplicate()) != null) {
+		final ReplicationStrategy replicationStrategy = ((ClusteredSipStack)getStack()).getReplicationStrategy();
+		boolean replicationStateVsDialogStateOK= false;		
+		if (getStack().getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+			getStack().getStackLogger().logDebug("dialogState = " + dialogState + ", replicationStrategy = " + replicationStrategy);
+		}
+		if(dialogState == DialogState.CONFIRMED && (replicationStrategy == ReplicationStrategy.ConfirmedDialog|| replicationStrategy == ReplicationStrategy.ConfirmedDialogNoApplicationData)) {
+			replicationStateVsDialogStateOK = true;
+		}
+		if((dialogState == DialogState.EARLY || dialogState == DialogState.CONFIRMED) && replicationStrategy == ReplicationStrategy.EarlyDialog) {
+			replicationStateVsDialogStateOK = true;
+		}
+		if (replicationStateVsDialogStateOK && isCreated && super.dialogId != null && isRemoteTagSet() && isLocalTagSet() && getStack().getDialog(getDialogIdToReplicate()) != null) {
 			try {
 				((ClusteredSipStack)getStack()).getSipCache().putDialog(this);
 			} catch (SipCacheException e) {

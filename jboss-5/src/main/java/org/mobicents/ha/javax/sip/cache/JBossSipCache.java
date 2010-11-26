@@ -22,22 +22,14 @@
 package org.mobicents.ha.javax.sip.cache;
 
 import gov.nist.core.StackLogger;
-import gov.nist.javax.sip.message.SIPResponse;
-import gov.nist.javax.sip.stack.AbstractHASipDialog;
 import gov.nist.javax.sip.stack.SIPClientTransaction;
 import gov.nist.javax.sip.stack.SIPDialog;
 import gov.nist.javax.sip.stack.SIPServerTransaction;
 
-import java.text.ParseException;
-import java.util.Map;
 import java.util.Properties;
 
 import javax.naming.Context;
 import javax.naming.InitialContext;
-import javax.sip.PeerUnavailableException;
-import javax.sip.SipFactory;
-import javax.sip.address.Address;
-import javax.sip.header.ContactHeader;
 import javax.transaction.UserTransaction;
 
 import org.jboss.cache.Cache;
@@ -47,7 +39,7 @@ import org.jboss.cache.Fqn;
 import org.jboss.cache.Node;
 import org.jboss.cache.config.Configuration.CacheMode;
 import org.mobicents.ha.javax.sip.ClusteredSipStack;
-import org.mobicents.ha.javax.sip.SipStackImpl;
+import org.mobicents.ha.javax.sip.ReplicationStrategy;
 
 /**
  * Implementation of the SipCache interface, backed by a JBoss Cache 3.X Cache.
@@ -194,6 +186,12 @@ public class JBossSipCache implements SipCache {
 		if(dialogRootNode == null) {
 			dialogRootNode = cache.getRoot().addChild(Fqn.fromElements(SipCache.DIALOG_PARENT_FQN_ELEMENT));	
 		}
+		if(clusteredSipStack.getReplicationStrategy() == ReplicationStrategy.EarlyDialog) {
+			serverTxRootNode = cache.getRoot().getChild(SipCache.SERVER_TX_PARENT_FQN_ELEMENT);
+			if(serverTxRootNode == null) {
+				serverTxRootNode = cache.getRoot().addChild(Fqn.fromElements(SipCache.SERVER_TX_PARENT_FQN_ELEMENT));	
+			}
+		}
 	}
 
 	public void stop() throws SipCacheException {
@@ -211,5 +209,64 @@ public class JBossSipCache implements SipCache {
 
 	public void evictDialog(String dialogId) {
 		cache.evict(Fqn.fromElements(dialogRootNode.getFqn(), Fqn.fromString(dialogId)));
+	}
+
+	public SIPServerTransaction getServerTransaction(String transactionId)
+			throws SipCacheException {
+		try {
+			Node serverTransactionNode = ((Node) serverTxRootNode.getChild(Fqn.fromString(transactionId)));
+			if(serverTransactionNode != null) {
+				return (SIPServerTransaction) serverTransactionNode.get(transactionId);
+			} else {
+				return null;
+			}
+		} catch (CacheException e) {
+			throw new SipCacheException("A problem occured while retrieving the following server transaction " + transactionId + " from JBoss Cache", e);
+		}
+	}
+
+	public void putServerTransaction(SIPServerTransaction serverTransaction)
+			throws SipCacheException {
+		UserTransaction tx = null;
+		try {
+			Properties prop = new Properties();
+			prop.put(Context.INITIAL_CONTEXT_FACTORY, "org.jboss.cache.transaction.DummyContextFactory");
+			tx = (UserTransaction) new InitialContext(prop).lookup("UserTransaction");
+			if(tx != null) {
+				tx.begin();
+			}
+			Node serverTransactionNode = serverTxRootNode.addChild(Fqn.fromString(serverTransaction.getTransactionId()));
+			serverTransactionNode.put(serverTransaction.getTransactionId(), serverTransaction);
+			if(tx != null) {
+				tx.commit();
+			}
+		} catch (Exception e) {
+			if(tx != null) {
+				try { tx.rollback(); } catch(Throwable t) {}
+			}
+			throw new SipCacheException("A problem occured while putting the following server transaction " + serverTransaction.getTransactionId() + "  into JBoss Cache", e);
+		} 
+	}
+
+	public void removeServerTransaction(String transactionId)
+			throws SipCacheException {
+		UserTransaction tx = null;
+		try {
+			Properties prop = new Properties();
+			prop.put(Context.INITIAL_CONTEXT_FACTORY, "org.jboss.cache.transaction.DummyContextFactory");
+			tx = (UserTransaction) new InitialContext(prop).lookup("UserTransaction");
+			if(tx != null) {
+				tx.begin();
+			}
+			serverTxRootNode.removeChild(transactionId);
+			if(tx != null) {
+				tx.commit();
+			}
+		} catch (Exception e) {
+			if(tx != null) {
+				try { tx.rollback(); } catch(Throwable t) {}
+			}
+			throw new SipCacheException("A problem occured while removing the following server transaction " + transactionId + " from JBoss Cache", e);
+		}
 	}
 }

@@ -38,8 +38,10 @@ import java.util.StringTokenizer;
 import javax.sip.DialogState;
 import javax.sip.PeerUnavailableException;
 import javax.sip.ProviderDoesNotExistException;
+import javax.sip.ServerTransaction;
 import javax.sip.SipException;
 import javax.sip.SipFactory;
+import javax.sip.message.Request;
 
 import org.mobicents.ext.javax.sip.SipProviderFactory;
 import org.mobicents.ext.javax.sip.SipStackExtension;
@@ -147,6 +149,11 @@ public abstract class ClusteredSipStackImpl extends gov.nist.javax.sip.SipStackI
 		String replicationStrategyProperty = configurationProperties.getProperty(ClusteredSipStack.REPLICATION_STRATEGY_PROPERTY);
 		if(replicationStrategyProperty != null) {
 			replicationStrategy = ReplicationStrategy.valueOf(replicationStrategyProperty);
+			if(replicationStrategy == ReplicationStrategy.EarlyDialog && transactionFactory == null) {
+				// when using EarlyDialog replication strategy we need to have an HA transaction factory to replicate transactions
+				transactionFactory = new MobicentsHATransactionFactory();
+				transactionFactory.setSipStack(this);
+			}
 		}
 		if(getStackLogger().isLoggingEnabled(StackLogger.TRACE_INFO)) {
 			getStackLogger().logInfo("Replication Strategy is " + replicationStrategy);
@@ -406,6 +413,47 @@ public abstract class ClusteredSipStackImpl extends gov.nist.javax.sip.SipStackI
 			sipCache.removeDialog(dialogId);
 		} catch (SipCacheException e) {
 			getStackLogger().logError("sipStack " + this + " problem removing dialog " + dialogId + " from the distributed cache", e);
+		}
+	}
+	
+	/*
+	 * (non-Javadoc)
+	 * @see gov.nist.javax.sip.stack.SIPTransactionStack#findTransaction(java.lang.String, boolean)
+	 */
+	public SIPTransaction findTransaction(String transactionId, boolean isServer) {
+		SIPTransaction sipTransaction = super.findTransaction(transactionId, isServer);
+		if(sipTransaction == null && transactionFactory != null && replicationStrategy == ReplicationStrategy.EarlyDialog) {
+			if(getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+				getStackLogger().logDebug("local transaction " + transactionId + " server = " + isServer + " is null, checking in the distributed cache");
+			}
+			if(getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+				getStackLogger().logDebug("sipStack " + this + " checking if the transaction " + transactionId + " server = " + isServer + " is present in the distributed cache");
+			}	
+			if(isServer) {
+				// fetch the corresponding server transaction from the cache instance
+				try {
+					sipTransaction = sipCache.getServerTransaction(transactionId);
+					serverTransactionTable.put(transactionId, (SIPServerTransaction) sipTransaction);
+				} catch (SipCacheException e) {
+					getStackLogger().logError("sipStack " + this + " problem getting transaction " + transactionId + " server = " + isServer + " from the distributed cache", e);
+				}
+			}
+		}
+		return sipTransaction;
+	}
+	
+	@Override
+	public void removeTransaction(SIPTransaction sipTransaction) {
+		super.removeTransaction(sipTransaction);
+		if(transactionFactory != null && sipTransaction != null && replicationStrategy == ReplicationStrategy.EarlyDialog && sipTransaction.getMethod().equalsIgnoreCase(Request.INVITE)) {
+			if(sipTransaction instanceof ServerTransaction) {
+				// remove the corresponding server transaction from the cache instance
+				try {
+					sipCache.removeServerTransaction(sipTransaction.getTransactionId());
+				} catch (SipCacheException e) {
+					getStackLogger().logError("sipStack " + this + " problem getting transaction " + sipTransaction.getTransactionId() + " from the distributed cache", e);
+				}
+			}
 		}
 	}
 

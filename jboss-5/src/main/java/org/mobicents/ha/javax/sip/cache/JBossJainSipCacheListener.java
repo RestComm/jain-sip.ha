@@ -36,7 +36,6 @@ import org.jboss.cache.notifications.event.NodeCreatedEvent;
 import org.jboss.cache.notifications.event.NodeModifiedEvent;
 import org.jboss.cache.notifications.event.NodeRemovedEvent;
 import org.mobicents.ha.javax.sip.ClusteredSipStack;
-import org.mobicents.ha.javax.sip.SipStackImpl;
 
 /**
  * Listener on the cache to be notified and update the local stack accordingly
@@ -95,7 +94,7 @@ public class JBossJainSipCacheListener {
 		final Fqn fqn = nodeModifiedEvent.getFqn();
 		if (!nodeModifiedEvent.isOriginLocal() && clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
 			clusteredSipStack.getStackLogger().logDebug("sipStack " + clusteredSipStack + 
-					" Node modified : " + fqn);
+					" Node modified : " + fqn + " " + nodeModifiedEvent.getData());
 		}
 		
 	}

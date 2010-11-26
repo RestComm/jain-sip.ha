@@ -22,7 +22,8 @@
 package org.mobicents.ha.javax.sip;
 
 import gov.nist.core.StackLogger;
-import gov.nist.javax.sip.stack.AbstractHASipDialog;
+import gov.nist.javax.sip.stack.MessageProcessor;
+import gov.nist.javax.sip.stack.SIPTransaction;
 
 import java.util.Properties;
 
@@ -160,5 +161,9 @@ public class SipStackImpl extends ClusteredSipStackImpl implements SipStackImplM
             serverDialogMergeTestTable.remove(mergeId);
         }
 		dialogTable.remove(dialogId);
+	}
+
+	public MessageProcessor[] getStackMessageProcessors() {
+		return getMessageProcessors();
 	}
 }

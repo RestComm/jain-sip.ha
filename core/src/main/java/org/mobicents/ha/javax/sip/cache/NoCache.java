@@ -22,6 +22,7 @@
 package org.mobicents.ha.javax.sip.cache;
 
 import gov.nist.javax.sip.stack.SIPDialog;
+import gov.nist.javax.sip.stack.SIPServerTransaction;
 
 import java.util.Properties;
 
@@ -80,4 +81,17 @@ public class NoCache implements SipCache {
 		
 	}
 
+	public SIPServerTransaction getServerTransaction(String transactionId) {
+		return null;
+	}
+
+	public void putServerTransaction(SIPServerTransaction serverTransaction) {
+		
+	}
+
+	public void removeServerTransaction(String transactionId) {
+		
+	}
+
+	
 }

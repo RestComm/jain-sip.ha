@@ -22,7 +22,9 @@
 package org.mobicents.ha.javax.sip;
 
 import gov.nist.core.StackLogger;
+import gov.nist.javax.sip.stack.MessageProcessor;
 import gov.nist.javax.sip.stack.SIPDialog;
+import gov.nist.javax.sip.stack.SIPTransaction;
 
 import javax.management.MBeanServer;
 import javax.sip.SipStack;
@@ -44,10 +46,8 @@ public interface ClusteredSipStack extends SipStack {
 	
 	SIPDialog getDialog(String dialogId);	
 	void putDialog(SIPDialog dialog);
-		
 	void removeDialog(SIPDialog dialog);		
 	void remoteDialogRemoval(String dialogId);
-
 	void passivateDialog(HASipDialog dialog);
 	/**
 	 * @param sipCache the sipCache to set
@@ -77,5 +77,9 @@ public interface ClusteredSipStack extends SipStack {
 
 	void closeAllTcpSockets();
 	
-	MBeanServer getMBeanServer() throws Exception;
+	MBeanServer getMBeanServer() throws Exception;	
+	
+    MessageProcessor[] getStackMessageProcessors();
+     
+    SIPTransaction findTransaction(String transactionId, boolean isServer);
 }

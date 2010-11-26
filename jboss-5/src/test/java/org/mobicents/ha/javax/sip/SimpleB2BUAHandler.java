@@ -2,12 +2,12 @@ package org.mobicents.ha.javax.sip;
 
 import gov.nist.javax.sip.ListeningPointImpl;
 import gov.nist.javax.sip.RequestEventExt;
+import gov.nist.javax.sip.ResponseEventExt;
 import gov.nist.javax.sip.header.Route;
 import gov.nist.javax.sip.header.RouteList;
 import gov.nist.javax.sip.header.Via;
 import gov.nist.javax.sip.header.ViaList;
 import gov.nist.javax.sip.message.MessageExt;
-import gov.nist.javax.sip.message.RequestExt;
 import gov.nist.javax.sip.message.SIPRequest;
 
 import java.text.ParseException;
@@ -135,6 +135,7 @@ public class SimpleB2BUAHandler {
 	}
 	
 	private void storeOutgoingDialogId(String outgoingDialogId) {
+		((ClusteredSipStack)sipProvider.getSipStack()).getStackLogger().logDebug("Storing outgoing dialog Id " + outgoingDialogId);
 		try {
 			((MobicentsSipCache)((ClusteredSipStack)sipProvider.getSipStack()).getSipCache()).getMobicentsCache().getJBossCache().put(Fqn.fromString("DIALOG_IDS"), "outgoingDialogId", outgoingDialogId);
 		} catch (CacheException e) {
@@ -144,12 +145,43 @@ public class SimpleB2BUAHandler {
 	}
 
 	private void storeIncomingDialogId(String incomingDialogId) {
+		((ClusteredSipStack)sipProvider.getSipStack()).getStackLogger().logDebug("Storing incoming dialog Id " + incomingDialogId);
 		try {
 			((MobicentsSipCache)((ClusteredSipStack)sipProvider.getSipStack()).getSipCache()).getMobicentsCache().getJBossCache().put(Fqn.fromString("DIALOG_IDS"), "incomingDialogId", incomingDialogId);
 		} catch (CacheException e) {
 			// TODO Auto-generated catch block
 			((SipStackImpl)sipStack).getStackLogger().logError("unexpected exception", e);
 		}
+	}
+	
+	private void storeServerTransactionId(String branchId) {
+		((ClusteredSipStack)sipProvider.getSipStack()).getStackLogger().logDebug("Storing transaction Id " + branchId);
+		try {
+			((MobicentsSipCache)((ClusteredSipStack)sipProvider.getSipStack()).getSipCache()).getMobicentsCache().getJBossCache().put(Fqn.fromString("STX_IDS"), "serverTransactionId", branchId);
+		} catch (CacheException e) {
+			// TODO Auto-generated catch block
+			((SipStackImpl)sipStack).getStackLogger().logError("unexpected exception", e);
+		}
+	}
+	
+	/**
+	 * @return the outgoingDialog
+	 */
+	public ServerTransaction getServerTransaction() {
+		if(serverTransaction != null) {
+			return serverTransaction;
+		}
+		String serverTransactionId = null;
+		try {
+			serverTransactionId = (String) ((MobicentsSipCache)((ClusteredSipStack)sipProvider.getSipStack()).getSipCache()).getMobicentsCache().getJBossCache().get(Fqn.fromString("STX_IDS"), "serverTransactionId");
+		} catch (CacheException e) {
+			((SipStackImpl)sipStack).getStackLogger().logError("unexpected exception", e);
+		}
+		((ClusteredSipStack)sipStack).getStackLogger().logInfo("server transaction Id " + serverTransactionId);
+		if(serverTransactionId == null) {
+			return null;
+		}
+		return (ServerTransaction) ((ClusteredSipStack)sipProvider.getSipStack()).findTransaction(serverTransactionId, true);
 	}
 	
 	public void processInvite(RequestEvent requestEvent) {
@@ -165,6 +197,7 @@ public class SimpleB2BUAHandler {
 					return;
 				}
 			}
+			storeServerTransactionId(serverTransaction.getBranchId());
 			//serverTransaction.sendResponse(messageFactory.createResponse(100, requestEvent.getRequest()));
 			if(serverTransaction.getDialog() == null) {
 				setupIncomingDialog();
@@ -181,8 +214,8 @@ public class SimpleB2BUAHandler {
 		} catch (Exception ex) {
 			ex.printStackTrace();
 		}
-	}
-	
+	}	
+
 	/**
 	 * @param serverTransaction2
 	 * @return
@@ -199,7 +232,7 @@ public class SimpleB2BUAHandler {
 	 * @throws SipException 
 	 */
 	private void forwardInvite(int peerPort) throws SipException {
-		Request request = createRequest(serverTransaction.getRequest(), peerPort);
+		Request request = createRequest(getServerTransaction().getRequest(), peerPort);
 		ClientTransaction ct = sipProvider.getNewClientTransaction(request);
 		Dialog outgoingDialog = sipProvider.getNewDialog(ct);
 		outgoingDialog.setApplicationData(this);
@@ -384,7 +417,7 @@ public class SimpleB2BUAHandler {
 			return;
 		}
 		System.out.println("Forwarding " + receivedResponse);
-		final ServerTransaction origServerTransaction = this.serverTransaction;	
+		final ServerTransaction origServerTransaction = this.getServerTransaction();	
 		Response forgedResponse = null;
 		
 		try {
@@ -438,6 +471,15 @@ public class SimpleB2BUAHandler {
 			forgedResponse.setHeader(((ListeningPointImpl)sipProvider.getListeningPoint(transport)).createContactHeader());
 		}
 		
+		// set the to tag mandatory so that the dialog gets replicated
+		if(((MessageExt)forgedResponse).getToHeader().getTag() == null) {
+			try {
+				((MessageExt)forgedResponse).getToHeader().setTag("696");
+			} catch (ParseException e) {
+				e.printStackTrace();
+			}
+		}
+		
 		origServerTransaction.sendResponse(forgedResponse);		
 	}
 
@@ -468,7 +510,7 @@ public class SimpleB2BUAHandler {
 		// forwarding of this response and further UAC Ack
 		// note that the app does not handles UAC ACKs		
 		String outgoingDialogId = responseEvent.getDialog().getDialogId();
-		if(myPort == 5080 && getOutgoingDialogId() == null) {
+		if((((ResponseEventExt)responseEvent).getRemotePort() == 5065 ||myPort == 5080) && getOutgoingDialogId() == null) {
 			storeOutgoingDialogId(outgoingDialogId);
 		}
 		if(sendAckOn2xx) {
