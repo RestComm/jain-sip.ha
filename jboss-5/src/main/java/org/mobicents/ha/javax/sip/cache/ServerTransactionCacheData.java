@@ -32,7 +32,6 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.text.ParseException;
 import java.util.Map;
-import java.util.Set;
 import java.util.Map.Entry;
 
 import javax.sip.PeerUnavailableException;
@@ -149,19 +148,19 @@ public class ServerTransactionCacheData extends CacheData {
 			if(clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
 				clusteredSipStack.getStackLogger().logDebug("sipStack " + this + " server transaction " + txId + " is present in the distributed cache, recreating it locally");
 			}
-			String channelTransport = (String) transactionMetaData.get("ct");
+			String channelTransport = (String) transactionMetaData.get(MobicentsHASIPserverTransaction.TRANSPORT);
 			if (clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
 				clusteredSipStack.getStackLogger().logDebug(txId + " : transport " + channelTransport);
 			}
-			InetAddress channelIp = (InetAddress) transactionMetaData.get("cip");
+			InetAddress channelIp = (InetAddress) transactionMetaData.get(MobicentsHASIPserverTransaction.PEER_IP);
 			if (clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
 				clusteredSipStack.getStackLogger().logDebug(txId + " : channel peer Ip address " + channelIp);
 			}
-			Integer channelPort = (Integer) transactionMetaData.get("cp");
+			Integer channelPort = (Integer) transactionMetaData.get(MobicentsHASIPserverTransaction.PEER_PORT);
 			if (clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
 				clusteredSipStack.getStackLogger().logDebug(txId + " : channel peer port " + channelPort);
 			}
-			Integer myPort = (Integer) transactionMetaData.get("mp");
+			Integer myPort = (Integer) transactionMetaData.get(MobicentsHASIPserverTransaction.MY_PORT);
 			if (clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
 				clusteredSipStack.getStackLogger().logDebug(txId + " : my port " + myPort);
 			}
