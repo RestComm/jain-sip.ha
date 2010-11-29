@@ -621,7 +621,7 @@ public class B2BUAEarlyDialogRecoveryOn1xxTest extends TestCase {
         
         private static final String myAddress = IP_ADDRESS;
 
-        public int myPort = 5060;
+        public int myPort = 5050;
 
 		private boolean sendSubscribe ;
         
@@ -979,7 +979,7 @@ public class B2BUAEarlyDialogRecoveryOn1xxTest extends TestCase {
                 headerFactory = sipFactory.createHeaderFactory();
                 addressFactory = sipFactory.createAddressFactory();
                 messageFactory = sipFactory.createMessageFactory();
-                udpListeningPoint = sipStack.createListeningPoint(IP_ADDRESS, 5050, "udp");
+                udpListeningPoint = sipStack.createListeningPoint(IP_ADDRESS, myPort, "udp");
                 sipProvider = sipStack.createSipProvider(udpListeningPoint);
                 Shootist listener = this;
                 sipProvider.addSipListener(listener);                
@@ -1210,13 +1210,13 @@ public class B2BUAEarlyDialogRecoveryOn1xxTest extends TestCase {
 	 * 
 	 * 											INVITE (CSeq 1)
 	 * 								             <---------------------
-	 * 					INVITE (CSeq 2)
+	 * 					INVITE (CSeq 1)
 	 * <------------------------------------------
 	 * 								
 	 *  BYE (CSeq 2)
-	 *  ----------------------->
-	 *  								BYE (CSeq 2)
-	 *  						------------------------------------->
+	 *  ------------------------------------------->
+	 *  												BYE (CSeq 2)
+	 *  											-------------------->
      */
     public void testEarlyDialogFailoverOn2xx() throws Exception {
 
@@ -1290,13 +1290,14 @@ public class B2BUAEarlyDialogRecoveryOn1xxTest extends TestCase {
 	 * 
 	 * 											INVITE (CSeq 1)
 	 * 								             <---------------------
-	 * 					INVITE (CSeq 2)
+	 * 					INVITE (CSeq 1)
 	 * <------------------------------------------
 	 * 								
+	 *  								
 	 *  BYE (CSeq 2)
-	 *  ----------------------->
-	 *  								BYE (CSeq 2)
-	 *  						------------------------------------->
+	 *  ------------------------------------------->
+	 *  												BYE (CSeq 2)
+	 *  											-------------------->
      */
     public void testEarlyDialogFailoverOn1xx() throws Exception {
 
@@ -1331,8 +1332,90 @@ public class B2BUAEarlyDialogRecoveryOn1xxTest extends TestCase {
         b2buaNode1 = new SimpleB2BUA("b2buaNode1_reinvite", 5080, IP_ADDRESS, ReplicationStrategy.EarlyDialog, true);
         Thread.sleep(5000);
         b2buaNode2 = new SimpleB2BUA("b2buaNode2_reinvite", 5081, IP_ADDRESS, ReplicationStrategy.EarlyDialog, true);
-//        b2buaNode1.getB2buaHandler().setSendAckOn2xx(true);
-//        b2buaNode2.getB2buaHandler().setSendAckOn2xx(true);
+        b2buaNode1.getB2buaHandler().setSendAckOn2xx(true);
+        b2buaNode2.getB2buaHandler().setSendAckOn2xx(true);
+        Thread.sleep(5000);
+        b2buaNode1.pingBalancer();
+        Thread.sleep(1000);
+        b2buaNode2.pingBalancer();
+        Thread.sleep(1000);
+        shootist.setFailoverOn1xx(true);
+        
+        shootme.init();
+        shootist.init("ReInvite");        
+        Thread.sleep(60000);
+        
+        shootme.checkState(false);
+        shootist.checkState(false);
+        // make sure dialogs are removed on both nodes
+        // non regression for Issue 1418
+        // http://code.google.com/p/mobicents/issues/detail?id=1418
+        assertTrue(b2buaNode1.checkDialogsRemoved());
+        assertTrue(b2buaNode2.checkDialogsRemoved());
+        
+        balancer.stop();
+        b2buaNode1.stop();
+        b2buaNode2.stop();
+        
+        shootist.stop();
+        shootme.stop();        
+        Thread.sleep(5000);
+    }
+    
+    /**
+     * UA1			B2BUA (Engine1)			B2BUA (Engine2)			UA2
+	 * INVITE (CSeq 1)
+	 * --------------------->
+	 * 		
+	 * 				INVITE (CSeq 1)
+	 * 				-------------------------------------------------> 	
+	 * 
+	 * 											INVITE (CSeq 1)
+	 * 								             <---------------------
+	 * 					INVITE (CSeq 1)
+	 * <------------------------------------------
+	 * 								
+	 *   								
+	 *  BYE (CSeq 2)
+	 *  ------------------------------------------->
+	 *  												BYE (CSeq 2)
+	 *  											-------------------->
+     */
+    public void testEarlyDialogFailoverOn1xxForwardACK() throws Exception {
+
+    	balancer = new BalancerRunner();
+    	Handler fh = new FileHandler("logs/sipbalancer_util.log");
+    	fh.setFormatter(new SimpleFormatter());
+    	Logger.getLogger("org.mobicents").addHandler(fh);
+    	Logger.getLogger("org.mobicents").setLevel(Level.FINEST);
+    	
+    	Properties properties = new Properties();
+    	properties.setProperty("javax.sip.STACK_NAME", "SipBalancerForwarder");
+    	properties.setProperty("javax.sip.AUTOMATIC_DIALOG_SUPPORT", "off");
+    	// You need 16 for logging traces. 32 for debug + traces.
+    	// Your code will limp at 32 but it is best for debugging.
+    	properties.setProperty("gov.nist.javax.sip.TRACE_LEVEL", "32");
+    	properties.setProperty("gov.nist.javax.sip.DEBUG_LOG",
+    			"logs/sipbalancerforwarderdebug.txt");
+    	properties.setProperty("gov.nist.javax.sip.SERVER_LOG",
+    			"logs/sipbalancerforwarder.xml");
+    	properties.setProperty("gov.nist.javax.sip.THREAD_POOL_SIZE", "8");
+    	properties.setProperty("gov.nist.javax.sip.REENTRANT_LISTENER", "true");
+    	properties.setProperty("gov.nist.javax.sip.CANCEL_CLIENT_TRANSACTION_CHECKED", "false");
+//    	properties.setProperty("algorithmClass", InviteTransactionFailover.class.getName());
+    	properties.setProperty("host", IP_ADDRESS);
+    	properties.setProperty("internalPort", "5065");
+    	properties.setProperty("externalPort", "5060");
+    	balancer.start(properties);
+    	
+        shootist = new Shootist("shootist_reinvite", true);
+        shootme = new Shootme("shootme_reinvite", 5070, true);
+
+        b2buaNode1 = new SimpleB2BUA("b2buaNode1_reinvite", 5080, IP_ADDRESS, ReplicationStrategy.EarlyDialog, true);
+        Thread.sleep(5000);
+        b2buaNode2 = new SimpleB2BUA("b2buaNode2_reinvite", 5081, IP_ADDRESS, ReplicationStrategy.EarlyDialog, true);
+        b2buaNode1.getB2buaHandler().setSendAckOn2xx(false);
+        b2buaNode2.getB2buaHandler().setSendAckOn2xx(false);
         Thread.sleep(5000);
         b2buaNode1.pingBalancer();
         Thread.sleep(1000);

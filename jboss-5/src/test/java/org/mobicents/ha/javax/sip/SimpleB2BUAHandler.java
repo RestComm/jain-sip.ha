@@ -329,14 +329,17 @@ public class SimpleB2BUAHandler {
 				if(((RequestEventExt)requestEvent).getRemotePort() == 5070) {
 					dialog = getIncomingDialog();
 				}
-				if(((RequestEventExt)requestEvent).getRemotePort() == 5060) {
+				if(((RequestEventExt)requestEvent).getRemotePort() == 5050 || ((RequestEventExt)requestEvent).getRemotePort() == 5060 || ((RequestEventExt)requestEvent).getRemotePort() == 5065) {
 					storeIncomingDialogId(requestEvent.getDialog().getDialogId());
 					dialog = getOutgoingDialog();
 				}	
 				final Request ack = dialog.createAck(((MessageExt)requestEvent.getRequest()).getCSeqHeader().getSeqNumber());
 				dialog.sendAck(ack);
 			} else {
-				if((((RequestEventExt)requestEvent).getRemotePort() == 5065 || myPort == 5080) && getIncomingDialogId() == null) {
+				if(myPort == 5080 && getIncomingDialogId() == null) {
+					storeIncomingDialogId(requestEvent.getDialog().getDialogId());
+				}
+				if(((RequestEventExt)requestEvent).getRemotePort() == 5050 || ((RequestEventExt)requestEvent).getRemotePort() == 5060 || ((RequestEventExt)requestEvent).getRemotePort() == 5065) {
 					storeIncomingDialogId(requestEvent.getDialog().getDialogId());
 				}
 			}
@@ -355,6 +358,9 @@ public class SimpleB2BUAHandler {
 		try {
 			requestEvent.getServerTransaction().sendResponse(messageFactory.createResponse(200, requestEvent.getRequest()));
 			Dialog dialog = getOutgoingDialog();
+			if(((RequestEventExt)requestEvent).getRemotePort() == 5060 || ((RequestEventExt)requestEvent).getRemotePort() == 5065) {	
+				dialog = getIncomingDialog();
+			} 
 			Request request = dialog.createRequest(Request.BYE);
 			final ClientTransaction ct = sipProvider.getNewClientTransaction(request);
 			dialog.sendRequest(ct);						
@@ -389,7 +395,7 @@ public class SimpleB2BUAHandler {
 			request.addHeader(headerFactory.createHeader(EventHeader.NAME, "presence"));
             ((SipURI)request.getRequestURI()).setUser(null);
 //            ((SipURI)request.getRequestURI()).setHost(IP_ADDRESS);
-			((SipURI)request.getRequestURI()).setPort(5060);
+			((SipURI)request.getRequestURI()).setPort(5050);
 			final ClientTransaction ct = sipProvider.getNewClientTransaction(request);
 			dialog.sendRequest(ct);						
 		}
@@ -510,7 +516,10 @@ public class SimpleB2BUAHandler {
 		// forwarding of this response and further UAC Ack
 		// note that the app does not handles UAC ACKs		
 		String outgoingDialogId = responseEvent.getDialog().getDialogId();
-		if((((ResponseEventExt)responseEvent).getRemotePort() == 5065 ||myPort == 5080) && getOutgoingDialogId() == null) {
+		if(((ResponseEventExt)responseEvent).getRemotePort() == 5065) {
+			storeOutgoingDialogId(outgoingDialogId);
+		}
+		if(myPort == 5080 && getOutgoingDialogId() == null) {
 			storeOutgoingDialogId(outgoingDialogId);
 		}
 		if(sendAckOn2xx) {

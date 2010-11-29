@@ -611,7 +611,7 @@ public class B2BUAEarlyDialogRecoveryOn2xxTest extends TestCase {
         
         private static final String myAddress = IP_ADDRESS;
 
-        public int myPort = 5060;
+        public int myPort = 5050;
 
 		private boolean sendSubscribe ;
         
@@ -961,7 +961,7 @@ public class B2BUAEarlyDialogRecoveryOn2xxTest extends TestCase {
                 headerFactory = sipFactory.createHeaderFactory();
                 addressFactory = sipFactory.createAddressFactory();
                 messageFactory = sipFactory.createMessageFactory();
-                udpListeningPoint = sipStack.createListeningPoint(IP_ADDRESS, 5060, "udp");
+                udpListeningPoint = sipStack.createListeningPoint(IP_ADDRESS, myPort, "udp");
                 sipProvider = sipStack.createSipProvider(udpListeningPoint);
                 Shootist listener = this;
                 sipProvider.addSipListener(listener);
@@ -1180,7 +1180,7 @@ public class B2BUAEarlyDialogRecoveryOn2xxTest extends TestCase {
 	 * 
 	 * 											INVITE (CSeq 1)
 	 * 								             <---------------------
-	 * 					INVITE (CSeq 2)
+	 * 					INVITE (CSeq 1)
 	 * <------------------------------------------
 	 * 								
 	 *  BYE (CSeq 2)
