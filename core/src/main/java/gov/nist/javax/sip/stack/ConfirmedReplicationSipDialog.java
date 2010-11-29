@@ -21,6 +21,8 @@
  */
 package gov.nist.javax.sip.stack;
 
+import org.mobicents.ha.javax.sip.ClusteredSipStack;
+
 import gov.nist.javax.sip.SipProviderImpl;
 import gov.nist.javax.sip.message.SIPResponse;
 
@@ -49,10 +51,20 @@ public class ConfirmedReplicationSipDialog extends ConfirmedNoAppDataReplication
 	@Override
 	public void setApplicationData(Object applicationData) {
 		super.setApplicationData(applicationData);
-		replicateState();
+		if(((ClusteredSipStack)getStack()).isReplicateApplicationData()) {
+			replicateState();
+		}
 	}
 	
 	public Object getApplicationDataToReplicate() {
-		return getApplicationData();
+		if(((ClusteredSipStack)getStack()).isReplicateApplicationData()) {
+			return getApplicationData();
+		}
+		return null;
+	}
+	
+	@Override
+	public void setApplicationDataToReplicate(Object appData) {
+		super.setApplicationData(appData);
 	}
 }

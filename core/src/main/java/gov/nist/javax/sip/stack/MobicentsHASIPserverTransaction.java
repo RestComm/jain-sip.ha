@@ -58,17 +58,6 @@ public class MobicentsHASIPserverTransaction extends MobicentsSIPServerTransacti
 		super(sipStack, newChannelToUse);
 	}
 
-	@Override
-	protected void map() {
-		super.map();
-//		// store the tx when the transaction is mapped
-//		try {
-//			((ClusteredSipStack)sipStack).getSipCache().putServerTransaction(this);
-//		} catch (SipCacheException e) {
-//			sipStack.getStackLogger().logError("problem storing server transaction " + transactionId + " into the distributed cache", e);
-//		}
-	}
-
 	public Map<String, Object> getMetaDataToReplicate() {
 		Map<String,Object> transactionMetaData = new HashMap<String,Object>();
 		
@@ -131,10 +120,6 @@ public class MobicentsHASIPserverTransaction extends MobicentsSIPServerTransacti
 		super.sendResponse(response);
 	}
 
-	public Object getApplicationDataToReplicate() {
-		return null;
-	}
-
 	public void setMetaDataToReplicate(Map<String, Object> transactionMetaData,
 			boolean recreation) throws PeerUnavailableException, ParseException {
 		String originalRequestString = (String) transactionMetaData.get(ORIGINAL_REQUEST);
@@ -162,7 +147,26 @@ public class MobicentsHASIPserverTransaction extends MobicentsSIPServerTransacti
 		}		
 	}
 
-	public void setApplicationDataToReplicate(Object transactionAppData) {
-		
+	@Override
+	public void setApplicationData(Object applicationData) {
+		super.setApplicationData(applicationData);
+		if(((ClusteredSipStack)getSIPStack()).isReplicateApplicationData()) {
+			try {
+				((ClusteredSipStack)getSIPStack()).getSipCache().putServerTransaction(this);
+			} catch (SipCacheException e) {
+				getSIPStack().getStackLogger().logError("problem storing server transaction " + transactionId + " into the distributed cache", e);
+			}
+		}
+	}
+	
+	public Object getApplicationDataToReplicate() {
+		if(((ClusteredSipStack)getSIPStack()).isReplicateApplicationData()) {
+			return getApplicationData();
+		}
+		return null;
+	}
+	
+	public void setApplicationDataToReplicate(Object appData) {
+		super.setApplicationData(appData);
 	}
 }

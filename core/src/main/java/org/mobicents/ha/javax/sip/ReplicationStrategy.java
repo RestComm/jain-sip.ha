@@ -26,5 +26,9 @@ package org.mobicents.ha.javax.sip;
  *
  */
 public enum ReplicationStrategy {
-	ConfirmedDialog, ConfirmedDialogNoApplicationData, EarlyDialog, Transaction
+	ConfirmedDialog,
+	@Deprecated
+	ConfirmedDialogNoApplicationData, 
+	EarlyDialog, 
+	Transaction
 }

@@ -43,6 +43,7 @@ import org.mobicents.ha.javax.sip.cache.SipCache;
 public interface ClusteredSipStack extends SipStack {	
 	public static final String CACHE_CLASS_NAME_PROPERTY = "org.mobicents.ha.javax.sip.CACHE_CLASS_NAME";
 	public static final String REPLICATION_STRATEGY_PROPERTY = "org.mobicents.ha.javax.sip.REPLICATION_STRATEGY";
+	public static final String REPLICATE_APPLICATION_DATA = "org.mobicents.ha.javax.sip.REPLICATE_APPLICATION_DATA";
 	
 	SIPDialog getDialog(String dialogId);	
 	void putDialog(SIPDialog dialog);
@@ -53,7 +54,6 @@ public interface ClusteredSipStack extends SipStack {
 	 * @param sipCache the sipCache to set
 	 */
 	void setSipCache(SipCache sipCache);
-
 	/**
 	 * @return the sipCache
 	 */
@@ -82,4 +82,6 @@ public interface ClusteredSipStack extends SipStack {
     MessageProcessor[] getStackMessageProcessors();
      
     SIPTransaction findTransaction(String transactionId, boolean isServer);
+    
+    boolean isReplicateApplicationData();
 }

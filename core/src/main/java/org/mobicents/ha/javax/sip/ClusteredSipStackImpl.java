@@ -73,7 +73,8 @@ public abstract class ClusteredSipStackImpl extends gov.nist.javax.sip.SipStackI
 	protected LoadBalancerElector loadBalancerElector = null;
 	protected TransactionFactory transactionFactory = null;
 	protected SipProviderFactory sipProviderFactory = null;
-	private boolean sendTryingRightAway;
+	protected boolean sendTryingRightAway;
+	private boolean replicateApplicationData = false;
 	
 	public ClusteredSipStackImpl(Properties configurationProperties) throws PeerUnavailableException {
 		
@@ -154,6 +155,14 @@ public abstract class ClusteredSipStackImpl extends gov.nist.javax.sip.SipStackI
 				transactionFactory = new MobicentsHATransactionFactory();
 				transactionFactory.setSipStack(this);
 			}
+		}
+		String replicateApplicationDataProperty = configurationProperties.getProperty(ClusteredSipStack.REPLICATE_APPLICATION_DATA);
+		if(replicateApplicationDataProperty != null) {
+			replicateApplicationData = Boolean.valueOf(replicateApplicationDataProperty);
+		}
+		// backward compatible hack to make sure old applications still replicate the app data if they don't use the new property
+		if(replicateApplicationDataProperty == null && replicationStrategy == ReplicationStrategy.ConfirmedDialog) {
+			replicateApplicationData = true;
 		}
 		if(getStackLogger().isLoggingEnabled(StackLogger.TRACE_INFO)) {
 			getStackLogger().logInfo("Replication Strategy is " + replicationStrategy);
@@ -535,5 +544,12 @@ public abstract class ClusteredSipStackImpl extends gov.nist.javax.sip.SipStackI
 	
 	public void removeSipProvider(SipProviderImpl sipProvider) {
 		sipProviders.remove(sipProvider);
+	}
+
+	/**
+	 * @return the replicateApplicationData
+	 */
+	public boolean isReplicateApplicationData() {
+		return replicateApplicationData;
 	}  
 }	
