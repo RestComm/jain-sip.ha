@@ -22,6 +22,7 @@
 package gov.nist.javax.sip.stack;
 
 import gov.nist.core.StackLogger;
+import gov.nist.javax.sip.message.ResponseExt;
 import gov.nist.javax.sip.message.SIPMessage;
 import gov.nist.javax.sip.message.SIPRequest;
 import gov.nist.javax.sip.message.SIPResponse;
@@ -52,6 +53,7 @@ public class MobicentsHASIPserverTransaction extends MobicentsSIPServerTransacti
 	public static final String DIALOG_ID = "did";
 	public static final String ORIGINAL_REQUEST = "req";
 	String localDialogId;
+	int peerReliablePort = -1;
 	
 	public MobicentsHASIPserverTransaction(SIPTransactionStack sipStack,
 			MessageChannel newChannelToUse) {
@@ -90,13 +92,17 @@ public class MobicentsHASIPserverTransaction extends MobicentsSIPServerTransacti
 		if (sipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
 			sipStack.getStackLogger().logDebug(transactionId + " : message channel ip " + getMessageChannel().getPeerInetAddress());
 		}
-		transactionMetaData.put(PEER_PORT, Integer.valueOf(getMessageChannel().getPeerPort()));
+		int peerPort = getMessageChannel().getPeerPort();
+		if(isReliable()) {
+			peerPort = peerReliablePort;
+		}
+		transactionMetaData.put(PEER_PORT, Integer.valueOf(peerPort));
 		if (sipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
-			sipStack.getStackLogger().logDebug(transactionId + " : message channel ip " + getMessageChannel().getPeerPort());
+			sipStack.getStackLogger().logDebug(transactionId + " : message channel peer port " + peerPort);
 		}
 		transactionMetaData.put(MY_PORT, Integer.valueOf(getMessageChannel().getPort()));
 		if (sipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
-			sipStack.getStackLogger().logDebug(transactionId + " : message channel ip " + getMessageChannel().getPort());
+			sipStack.getStackLogger().logDebug(transactionId + " : message channel my port " + getMessageChannel().getPort());
 		}
 		
 		return transactionMetaData;
@@ -109,6 +115,12 @@ public class MobicentsHASIPserverTransaction extends MobicentsSIPServerTransacti
 			this.localDialogId = response.getDialogId(true);
 			if (sipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
 				sipStack.getStackLogger().logDebug(transactionId + " : local dialog Id " + localDialogId);
+			}			
+			if(isReliable()) {
+				this.peerReliablePort = ((ResponseExt)response).getTopmostViaHeader().getPort();
+				if (sipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+					sipStack.getStackLogger().logDebug(transactionId + " : peer Reliable Port " + peerReliablePort);
+				}
 			}
 			// store the tx when the response will be sent
 			try {

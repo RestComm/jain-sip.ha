@@ -367,6 +367,7 @@ public class SimpleB2BUAHandler {
 			if(ListeningPoint.TCP.equalsIgnoreCase(transport)) {
 				remotePort = ((MessageExt)requestEvent.getRequest()).getTopmostViaHeader().getPort();
 			}
+			((ClusteredSipStack)sipStack).getStackLogger().logDebug("remotePort = " + remotePort);
 			requestEvent.getServerTransaction().sendResponse(messageFactory.createResponse(200, requestEvent.getRequest()));
 			Dialog dialog = getOutgoingDialog();
 			if(remotePort == 5060 || remotePort == 5065) {	
@@ -527,7 +528,12 @@ public class SimpleB2BUAHandler {
 		// forwarding of this response and further UAC Ack
 		// note that the app does not handles UAC ACKs		
 		String outgoingDialogId = responseEvent.getDialog().getDialogId();
-		if(((ResponseEventExt)responseEvent).getRemotePort() == 5065) {
+		int remotePort = ((ResponseEventExt)responseEvent).getRemotePort() ;
+		if(ListeningPoint.TCP.equalsIgnoreCase(transport)) {
+			remotePort = ((MessageExt)responseEvent.getResponse()).getTopmostViaHeader().getPort();
+		}
+		((ClusteredSipStack)sipStack).getStackLogger().logDebug("remotePort = " + remotePort);
+		if(remotePort == 5065 || remotePort == 5081) {
 			storeOutgoingDialogId(outgoingDialogId);
 		}
 		if(myPort == 5080 && getOutgoingDialogId() == null) {

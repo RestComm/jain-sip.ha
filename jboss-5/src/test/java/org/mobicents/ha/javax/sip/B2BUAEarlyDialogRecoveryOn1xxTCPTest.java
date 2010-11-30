@@ -324,7 +324,7 @@ public class B2BUAEarlyDialogRecoveryOn1xxTCPTest extends TestCase {
 
                 st.sendResponse(response);
 
-                Thread.sleep(3000);
+                Thread.sleep(4000);
                 
                 this.okResponse = messageFactory.createResponse(Response.OK,
                         request);
@@ -1518,7 +1518,7 @@ public class B2BUAEarlyDialogRecoveryOn1xxTCPTest extends TestCase {
         
         shootme.init();
         shootist.init("ReInvite");        
-        Thread.sleep(60000);
+        Thread.sleep(80000);
         
         shootme.checkState(false);
         shootist.checkState(false);
@@ -1600,7 +1600,7 @@ public class B2BUAEarlyDialogRecoveryOn1xxTCPTest extends TestCase {
         
         shootme.init();
         shootist.init("ReInvite");        
-        Thread.sleep(60000);
+        Thread.sleep(80000);
         
         shootme.checkState(false);
         shootist.checkState(false);
