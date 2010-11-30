@@ -51,13 +51,15 @@ public class SimpleB2BUA implements SipListener {
 	private Properties properties;
 	private SimpleB2BUAHandler b2buaHandler;
 	private TimerTask keepaliveTask;
+	private String transport;
 	
-	public SimpleB2BUA(String stackName, int myPort, String ipAddress, ReplicationStrategy replicationStrategy, boolean useLoadBalancer) throws NumberFormatException, SipException, TooManyListenersException, InvalidArgumentException, ParseException {
+	public SimpleB2BUA(String stackName, int myPort, String ipAddress, String transport, ReplicationStrategy replicationStrategy, boolean useLoadBalancer) throws NumberFormatException, SipException, TooManyListenersException, InvalidArgumentException, ParseException {
+		this.transport = transport;
 		properties = new Properties();        
         properties.setProperty("javax.sip.STACK_NAME", stackName);
         properties.setProperty(SIP_PORT_BIND, String.valueOf(myPort));        
         if(useLoadBalancer) {
-        	properties.setProperty("javax.sip.OUTBOUND_PROXY", ipAddress + ":" + Integer.toString(5065) + "/udp");
+        	properties.setProperty("javax.sip.OUTBOUND_PROXY", ipAddress + ":" + Integer.toString(5065) + "/" + transport);
         }
         // You need 16 for logging traces. 32 for debug + traces.
         // Your code will limp at 32 but it is best for debugging.
@@ -74,10 +76,10 @@ public class SimpleB2BUA implements SipListener {
         System.setProperty("jgroups.udp.mcast_addr", "FFFF::232.5.5.5");
         System.setProperty("jboss.server.log.threshold", "DEBUG");
         System.setProperty("jbosscache.config.validate", "false");
-		initStack(ipAddress);
+		initStack(ipAddress, transport);
 	}
 	
-	public void initStack(String ipAddress) throws SipException, TooManyListenersException,
+	public void initStack(String ipAddress, String transport) throws SipException, TooManyListenersException,
 			NumberFormatException, InvalidArgumentException, ParseException {
 		this.sipFactory = SipFactory.getInstance();
 		this.sipFactory.setPathName("org.mobicents.ha");
@@ -87,12 +89,12 @@ public class SimpleB2BUA implements SipListener {
 		this.listeningPoint = this.sipStack.createListeningPoint(properties.getProperty(
 				SIP_BIND_ADDRESS, ipAddress), Integer.valueOf(properties
 				.getProperty(SIP_PORT_BIND, "5060")), properties.getProperty(
-				TRANSPORTS_BIND, "udp"));
+				TRANSPORTS_BIND, transport));
 		this.provider = this.sipStack.createSipProvider(this.listeningPoint);
 		this.provider.addSipListener(this);
 		this.headerFactory = sipFactory.createHeaderFactory();
 		this.messageFactory = sipFactory.createMessageFactory();
-		b2buaHandler = new SimpleB2BUAHandler(provider,headerFactory,messageFactory, Integer.parseInt(properties.getProperty(SIP_PORT_BIND)));
+		b2buaHandler = new SimpleB2BUAHandler(provider,headerFactory,messageFactory, Integer.parseInt(properties.getProperty(SIP_PORT_BIND)), transport);
 		properties.setProperty(SIP_BIND_ADDRESS, ipAddress);
 	}
 
@@ -199,14 +201,16 @@ public class SimpleB2BUA implements SipListener {
         try{
             while (sipProviderIterator.hasNext()) {
                 SipProvider sipProvider = sipProviderIterator.next();
-                ListeningPoint[] listeningPoints = sipProvider.getListeningPoints();
-                for (ListeningPoint listeningPoint : listeningPoints) {
-                    sipProvider.removeListeningPoint(listeningPoint);
-                    sipStack.deleteListeningPoint(listeningPoint);
-                    listeningPoints = sipProvider.getListeningPoints();
+                if(!ListeningPoint.TCP.equalsIgnoreCase(transport)) {
+	                ListeningPoint[] listeningPoints = sipProvider.getListeningPoints();
+	                for (ListeningPoint listeningPoint : listeningPoints) {
+	                    sipProvider.removeListeningPoint(listeningPoint);
+	                    sipStack.deleteListeningPoint(listeningPoint);
+	                    listeningPoints = sipProvider.getListeningPoints();
+	                }
                 }
                 sipProvider.removeSipListener(this);
-                sipStack.deleteSipProvider(sipProvider);
+                sipStack.deleteSipProvider(sipProvider);                
                 sipProviderIterator = sipStack.getSipProviders();
             }
         } catch (Exception e) {
@@ -244,7 +248,11 @@ public class SimpleB2BUA implements SipListener {
 	
 	public void pingBalancer() {
 		final SIPNode appServerNode = new SIPNode(sipStack.getStackName(), properties.getProperty(SIP_BIND_ADDRESS));
-		appServerNode.getProperties().put("udpPort",  Integer.parseInt(properties.getProperty(SIP_PORT_BIND)));
+		if(ListeningPoint.UDP.equalsIgnoreCase(transport)) {
+			appServerNode.getProperties().put("udpPort",  Integer.parseInt(properties.getProperty(SIP_PORT_BIND)));
+		} else {
+			appServerNode.getProperties().put("tcpPort",  Integer.parseInt(properties.getProperty(SIP_PORT_BIND)));
+		}
 		keepaliveTask = new TimerTask() {
 			@Override
 			public void run() {
@@ -280,7 +288,11 @@ public class SimpleB2BUA implements SipListener {
 			Registry registry = LocateRegistry.getRegistry(properties.getProperty(SIP_BIND_ADDRESS), 2000);
 			NodeRegisterRMIStub reg=(NodeRegisterRMIStub) registry.lookup("SIPBalancer");
 			final SIPNode appServerNode = new SIPNode(sipStack.getStackName(), properties.getProperty(SIP_BIND_ADDRESS));
-			appServerNode.getProperties().put("udpPort",  Integer.parseInt(properties.getProperty(SIP_PORT_BIND)));
+			if(ListeningPoint.UDP.equalsIgnoreCase(transport)) {
+				appServerNode.getProperties().put("udpPort",  Integer.parseInt(properties.getProperty(SIP_PORT_BIND)));
+			} else {
+				appServerNode.getProperties().put("tcpPort",  Integer.parseInt(properties.getProperty(SIP_PORT_BIND)));
+			}
 			ArrayList<SIPNode> nodes = new ArrayList<SIPNode>();
 			nodes.add(appServerNode);
 			reg.forceRemoval(nodes);

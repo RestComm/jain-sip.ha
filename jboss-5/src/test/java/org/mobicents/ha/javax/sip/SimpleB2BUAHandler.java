@@ -21,6 +21,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import javax.sip.ClientTransaction;
 import javax.sip.Dialog;
 import javax.sip.InvalidArgumentException;
+import javax.sip.ListeningPoint;
 import javax.sip.RequestEvent;
 import javax.sip.ResponseEvent;
 import javax.sip.ServerTransaction;
@@ -61,15 +62,17 @@ public class SimpleB2BUAHandler {
 	private boolean createInviteOnAck = false;
 	private SipStack sipStack;
 	int myPort;
+	String transport;
 	private boolean sendAckOn2xx = true;
 	
-	public SimpleB2BUAHandler(SipProvider sipProvider, HeaderFactory headerFactory, MessageFactory messageFactory, int port) {
+	public SimpleB2BUAHandler(SipProvider sipProvider, HeaderFactory headerFactory, MessageFactory messageFactory, int port, String transport) {
 //		this.localTag = localTag;
 		this.sipProvider = sipProvider;
 		this.sipStack = sipProvider.getSipStack();
 		this.messageFactory = messageFactory;
 		this.headerFactory = headerFactory;
 		myPort = port;
+		this.transport = transport;
 	}
 	
 	/**
@@ -322,14 +325,18 @@ public class SimpleB2BUAHandler {
 	}
 
 	public void processAck(RequestEvent requestEvent) {
-		// ignore
+		int remotePort = ((RequestEventExt)requestEvent).getRemotePort() ;
+		if(ListeningPoint.TCP.equalsIgnoreCase(transport)) {
+			remotePort = ((MessageExt)requestEvent.getRequest()).getTopmostViaHeader().getPort();
+		}
+		((ClusteredSipStack)sipStack).getStackLogger().logDebug("remotePort = " + remotePort);
 		try {			
 			if(!sendAckOn2xx) {
 				Dialog dialog = null; 
-				if(((RequestEventExt)requestEvent).getRemotePort() == 5070) {
+				if(remotePort == 5070) {
 					dialog = getIncomingDialog();
 				}
-				if(((RequestEventExt)requestEvent).getRemotePort() == 5050 || ((RequestEventExt)requestEvent).getRemotePort() == 5060 || ((RequestEventExt)requestEvent).getRemotePort() == 5065) {
+				if(remotePort == 5050 || remotePort == 5060 || remotePort == 5065) {
 					storeIncomingDialogId(requestEvent.getDialog().getDialogId());
 					dialog = getOutgoingDialog();
 				}	
@@ -339,7 +346,7 @@ public class SimpleB2BUAHandler {
 				if(myPort == 5080 && getIncomingDialogId() == null) {
 					storeIncomingDialogId(requestEvent.getDialog().getDialogId());
 				}
-				if(((RequestEventExt)requestEvent).getRemotePort() == 5050 || ((RequestEventExt)requestEvent).getRemotePort() == 5060 || ((RequestEventExt)requestEvent).getRemotePort() == 5065) {
+				if(remotePort == 5050 || remotePort == 5060 || remotePort == 5065) {
 					storeIncomingDialogId(requestEvent.getDialog().getDialogId());
 				}
 			}
@@ -356,9 +363,13 @@ public class SimpleB2BUAHandler {
 
 	public void processBye(RequestEvent requestEvent) {
 		try {
+			int remotePort = ((RequestEventExt)requestEvent).getRemotePort() ;
+			if(ListeningPoint.TCP.equalsIgnoreCase(transport)) {
+				remotePort = ((MessageExt)requestEvent.getRequest()).getTopmostViaHeader().getPort();
+			}
 			requestEvent.getServerTransaction().sendResponse(messageFactory.createResponse(200, requestEvent.getRequest()));
 			Dialog dialog = getOutgoingDialog();
-			if(((RequestEventExt)requestEvent).getRemotePort() == 5060 || ((RequestEventExt)requestEvent).getRemotePort() == 5065) {	
+			if(remotePort == 5060 || remotePort == 5065) {	
 				dialog = getIncomingDialog();
 			} 
 			Request request = dialog.createRequest(Request.BYE);
