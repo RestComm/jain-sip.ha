@@ -70,7 +70,9 @@ public class SimpleStatefulProxy implements SipListener {
 	private HeaderFactory headerFactory;
 	private AddressFactory addressFactory;
 	private ServerTransaction serverTransaction;
-	private ClientTransaction clientTransaction;	
+	private ClientTransaction clientTransaction;
+	private String currentCtxBranchId;
+	private Integer currentCtxRemotePort;
 	int myPort;
 	String transport;
 	String ipAddress;
@@ -136,6 +138,19 @@ public class SimpleStatefulProxy implements SipListener {
 		}
 	}
 	
+	private void storeClientTransactionId(String branchId, int port) {
+		((ClusteredSipStack)sipProvider.getSipStack()).getStackLogger().logDebug("Storing client Id " + branchId + " and remote port" + port);
+		currentCtxBranchId = branchId;
+		currentCtxRemotePort = Integer.valueOf(port);
+		try {
+			((MobicentsSipCache)((ClusteredSipStack)sipProvider.getSipStack()).getSipCache()).getMobicentsCache().getJBossCache().put(Fqn.fromString("CTX_IDS"), "clientTransactionId", branchId);
+			((MobicentsSipCache)((ClusteredSipStack)sipProvider.getSipStack()).getSipCache()).getMobicentsCache().getJBossCache().put(Fqn.fromString("CTX_PORT"), "clientTransactionRemotePort", currentCtxRemotePort);
+		} catch (CacheException e) {
+			// TODO Auto-generated catch block
+			((SipStackImpl)sipStack).getStackLogger().logError("unexpected exception", e);
+		}
+	}
+	
 	/**
 	 * @return the outgoingDialog
 	 */
@@ -153,7 +168,8 @@ public class SimpleStatefulProxy implements SipListener {
 		if(serverTransactionId == null) {
 			return null;
 		}
-		return (ServerTransaction) ((ClusteredSipStack)sipProvider.getSipStack()).findTransaction(serverTransactionId, true);
+		serverTransaction =  (ServerTransaction) ((ClusteredSipStack)sipProvider.getSipStack()).findTransaction(serverTransactionId, true);
+		return serverTransaction;
 	}
 	
 	/**
@@ -174,6 +190,36 @@ public class SimpleStatefulProxy implements SipListener {
 			return null;
 		}
 		return (ClientTransaction) ((ClusteredSipStack)sipProvider.getSipStack()).findTransaction(clientTransactionId, false);
+	}
+	
+	/**
+	 * @return the outgoingDialog
+	 */
+	public String getClientTransactionId() {
+		String clientTransactionId = currentCtxBranchId;
+		if(clientTransactionId == null) {
+			try {
+				clientTransactionId = (String) ((MobicentsSipCache)((ClusteredSipStack)sipProvider.getSipStack()).getSipCache()).getMobicentsCache().getJBossCache().get(Fqn.fromString("CTX_IDS"), "clientTransactionId");
+			} catch (CacheException e) {
+				((SipStackImpl)sipStack).getStackLogger().logError("unexpected exception", e);
+			}		
+		}
+		return clientTransactionId;
+	}
+	
+	/**
+	 * @return the outgoingDialog
+	 */
+	public int getClientTransactionPort() {
+		Integer clientTransactionRemotePort = currentCtxRemotePort;
+		if(clientTransactionRemotePort == null) {
+			try {
+				clientTransactionRemotePort = (Integer) ((MobicentsSipCache)((ClusteredSipStack)sipProvider.getSipStack()).getSipCache()).getMobicentsCache().getJBossCache().get(Fqn.fromString("CTX_PORT"), "clientTransactionRemotePort");
+			} catch (CacheException e) {
+				((SipStackImpl)sipStack).getStackLogger().logError("unexpected exception", e);
+			}		
+		}
+		return clientTransactionRemotePort.intValue();
 	}
 	
 	public void processInvite(RequestEvent requestEvent) {
@@ -220,10 +266,15 @@ public class SimpleStatefulProxy implements SipListener {
 		}
 		RecordRouteHeader recordRouteHeader = headerFactory.createRecordRouteHeader(address);
 		request.addFirst(recordRouteHeader);
+		RouteHeader routeHeader = (RouteHeader) request.getHeader(RouteHeader.NAME);
+		if(routeHeader != null && (((SipURI)routeHeader.getAddress().getURI()).getPort() == 5080 || ((SipURI)routeHeader.getAddress().getURI()).getPort() == 5081)) {
+			request.removeFirst(RouteHeader.NAME);
+		}
 		request.addHeader(headerFactory.createViaHeader(ipAddress, myPort, transport, null));
-		ClientTransaction ct = sipProvider.getNewClientTransaction(request);
+		ClientTransaction ct = sipProvider.getNewClientTransaction(request);		
 		clientTransaction = ct;
 		clientTransaction.sendRequest();		
+		storeClientTransactionId(clientTransaction.getBranchId(), peerPort);
 	}
 
 	@SuppressWarnings("unchecked")
@@ -243,10 +294,14 @@ public class SimpleStatefulProxy implements SipListener {
 		((ClusteredSipStack)sipStack).getStackLogger().logDebug("remotePort = " + remotePort);
 		try {			
 			final Request ack = (Request) requestEvent.getRequest().clone();
-			String branchId = getClientTransaction().getBranchId();
+			String branchId = getClientTransactionId();
 			ack.addHeader(headerFactory.createViaHeader(ipAddress, myPort, transport, branchId));
-			((SipURI)ack.getRequestURI()).setPort(((SipURI)getClientTransaction().getRequest().getRequestURI()).getPort());
+			((SipURI)ack.getRequestURI()).setPort(getClientTransactionPort());
 			ack.removeLast(RouteHeader.NAME);
+			RouteHeader routeHeader = (RouteHeader) ack.getHeader(RouteHeader.NAME);
+			if(routeHeader != null && (((SipURI)routeHeader.getAddress().getURI()).getPort() == 5080 || ((SipURI)routeHeader.getAddress().getURI()).getPort() == 5081)) {
+				ack.removeFirst(RouteHeader.NAME);
+			}
 			sipProvider.sendRequest(ack);
 		} catch (Exception e) {
 			((SipStackImpl)sipStack).getStackLogger().logError("unexpected exception", e);
@@ -273,6 +328,10 @@ public class SimpleStatefulProxy implements SipListener {
 			final Request request = (Request) requestEvent.getRequest().clone();
 			((SipURI)request.getRequestURI()).setPort(5070);
 			request.removeLast(RouteHeader.NAME);
+			RouteHeader routeHeader = (RouteHeader) request.getHeader(RouteHeader.NAME);
+			if(routeHeader != null && (((SipURI)routeHeader.getAddress().getURI()).getPort() == 5080 || ((SipURI)routeHeader.getAddress().getURI()).getPort() == 5081)) {
+				request.removeFirst(RouteHeader.NAME);
+			}
 			request.addHeader(headerFactory.createViaHeader(ipAddress, myPort, transport, null));
 			final ClientTransaction ct = sipProvider.getNewClientTransaction(request);
 			ct.sendRequest();						
@@ -499,7 +558,10 @@ public class SimpleStatefulProxy implements SipListener {
         listeningPoint = null;
         sipProvider = null;
         sipFactory.resetFactory();
-        
+        serverTransaction = null;
+        clientTransaction = null;
+        currentCtxBranchId = null;
+        currentCtxRemotePort = null;
         if(stopSipStack){
         	sipStack.stop();
         	sipStack = null;

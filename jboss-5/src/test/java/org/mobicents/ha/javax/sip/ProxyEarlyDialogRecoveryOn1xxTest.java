@@ -762,7 +762,7 @@ public class ProxyEarlyDialogRecoveryOn1xxTest extends TestCase {
             	throw new IllegalStateException("The From and To Headers are reversed !!!!");
             }
             try {
-            	if(failoverOn2xx || failoverOn1xx) {
+            	if(failoverOn1xx && stopNodeOnReinvite) {
 					//restart the sip stack
 					try {
 						proxyNode1.initStack(IP_ADDRESS, ListeningPoint.UDP);
@@ -1262,14 +1262,14 @@ public class ProxyEarlyDialogRecoveryOn1xxTest extends TestCase {
         shootist = new Shootist("shootist_reinvite", true);
         shootme = new Shootme("shootme_reinvite", 5070, true);
 
-        proxyNode1 = new SimpleStatefulProxy("proxyNode1_reinvite", IP_ADDRESS, 5080, ListeningPoint.UDP, ReplicationStrategy.ConfirmedDialogNoApplicationData);
+        proxyNode1 = new SimpleStatefulProxy("proxyNode1_reinvite", IP_ADDRESS, 5080, ListeningPoint.UDP, ReplicationStrategy.EarlyDialog);
         Thread.sleep(5000);
-        proxyNode2 = new SimpleStatefulProxy("proxyNode2_reinvite", IP_ADDRESS, 5081, ListeningPoint.UDP, ReplicationStrategy.ConfirmedDialogNoApplicationData);
+        proxyNode2 = new SimpleStatefulProxy("proxyNode2_reinvite", IP_ADDRESS, 5081, ListeningPoint.UDP, ReplicationStrategy.EarlyDialog);
         proxyNode1.pingBalancer();
         Thread.sleep(1000);
         proxyNode2.pingBalancer();
         Thread.sleep(1000);
-//        shootist.setFailoverOn2xx(true);
+        shootist.setFailoverOn2xx(true);
         
         shootme.init();
         shootist.init("ReInvite");        
@@ -1336,9 +1336,9 @@ public class ProxyEarlyDialogRecoveryOn1xxTest extends TestCase {
         shootist = new Shootist("shootist_reinvite", true);
         shootme = new Shootme("shootme_reinvite", 5070, true);
 
-        proxyNode1 = new SimpleStatefulProxy("proxyNode1_reinvite", IP_ADDRESS, 5080, ListeningPoint.UDP, ReplicationStrategy.ConfirmedDialogNoApplicationData);
+        proxyNode1 = new SimpleStatefulProxy("proxyNode1_reinvite", IP_ADDRESS, 5080, ListeningPoint.UDP, ReplicationStrategy.EarlyDialog);
         Thread.sleep(5000);
-        proxyNode2 = new SimpleStatefulProxy("proxyNode2_reinvite", IP_ADDRESS, 5081, ListeningPoint.UDP, ReplicationStrategy.ConfirmedDialogNoApplicationData);       
+        proxyNode2 = new SimpleStatefulProxy("proxyNode2_reinvite", IP_ADDRESS, 5081, ListeningPoint.UDP, ReplicationStrategy.EarlyDialog);       
         Thread.sleep(5000);
         proxyNode1.pingBalancer();
         Thread.sleep(1000);
@@ -1411,9 +1411,9 @@ public class ProxyEarlyDialogRecoveryOn1xxTest extends TestCase {
         shootist = new Shootist("shootist_reinvite", true);
         shootme = new Shootme("shootme_reinvite", 5070, true);
 
-        proxyNode1 = new SimpleStatefulProxy("proxyNode1_reinvite", IP_ADDRESS, 5080, ListeningPoint.UDP, ReplicationStrategy.ConfirmedDialogNoApplicationData);
+        proxyNode1 = new SimpleStatefulProxy("proxyNode1_reinvite", IP_ADDRESS, 5080, ListeningPoint.UDP, ReplicationStrategy.EarlyDialog);
         Thread.sleep(5000);
-        proxyNode2 = new SimpleStatefulProxy("proxyNode2_reinvite", IP_ADDRESS, 5081, ListeningPoint.UDP, ReplicationStrategy.ConfirmedDialogNoApplicationData);
+        proxyNode2 = new SimpleStatefulProxy("proxyNode2_reinvite", IP_ADDRESS, 5081, ListeningPoint.UDP, ReplicationStrategy.EarlyDialog);
         Thread.sleep(5000);
         proxyNode1.pingBalancer();
         Thread.sleep(1000);

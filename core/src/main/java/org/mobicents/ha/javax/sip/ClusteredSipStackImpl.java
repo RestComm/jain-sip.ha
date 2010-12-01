@@ -442,7 +442,16 @@ public abstract class ClusteredSipStackImpl extends gov.nist.javax.sip.SipStackI
 				// fetch the corresponding server transaction from the cache instance
 				try {
 					sipTransaction = sipCache.getServerTransaction(transactionId);
-					serverTransactionTable.put(transactionId, (SIPServerTransaction) sipTransaction);
+					if(sipTransaction != null) {
+						if(getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+							getStackLogger().logDebug("sipStack " + this + " transaction " + transactionId + " server = " + isServer + " is present in the distributed cache");
+						}	
+						serverTransactionTable.put(transactionId, (SIPServerTransaction) sipTransaction);
+					} else {
+						if(getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+							getStackLogger().logDebug("sipStack " + this + " transaction " + transactionId + " server = " + isServer + " is not present in the distributed cache");
+						}	
+					}
 				} catch (SipCacheException e) {
 					getStackLogger().logError("sipStack " + this + " problem getting transaction " + transactionId + " server = " + isServer + " from the distributed cache", e);
 				}
