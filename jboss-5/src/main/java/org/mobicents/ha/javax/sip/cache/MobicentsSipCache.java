@@ -54,9 +54,9 @@ public abstract class MobicentsSipCache implements SipCache {
 	private static final String DEFAULT_NAME = "jain-sip-ha";
 	
 	private SIPDialogCacheData dialogsCacheData;
-	private DataRemovalListener dialogDataRemovalListener;
+	private DialogDataRemovalListener dialogDataRemovalListener;
 	private ServerTransactionCacheData serverTransactionCacheData;
-	private DataRemovalListener serverTransactionDataRemovalListener;
+	private DialogDataRemovalListener serverTransactionDataRemovalListener;
 	
 	/**
 	 * 
@@ -147,12 +147,12 @@ public abstract class MobicentsSipCache implements SipCache {
 	public void start() throws SipCacheException {
 		dialogsCacheData = new SIPDialogCacheData(Fqn.fromElements(name,SipCache.DIALOG_PARENT_FQN_ELEMENT),cluster.getMobicentsCache(), clusteredSipStack);
 		dialogsCacheData.create();		
-		dialogDataRemovalListener = new DataRemovalListener(dialogsCacheData.getNodeFqn(), clusteredSipStack);
+		dialogDataRemovalListener = new DialogDataRemovalListener(dialogsCacheData.getNodeFqn(), clusteredSipStack);
 		cluster.addDataRemovalListener(dialogDataRemovalListener);
 		if(clusteredSipStack.getReplicationStrategy() == ReplicationStrategy.EarlyDialog) {
 			serverTransactionCacheData = new ServerTransactionCacheData(Fqn.fromElements(name,SipCache.SERVER_TX_PARENT_FQN_ELEMENT),cluster.getMobicentsCache(), clusteredSipStack);
 			serverTransactionCacheData.create();
-			serverTransactionDataRemovalListener = new DataRemovalListener(serverTransactionCacheData.getNodeFqn(), clusteredSipStack);
+			serverTransactionDataRemovalListener = new DialogDataRemovalListener(serverTransactionCacheData.getNodeFqn(), clusteredSipStack);
 			cluster.addDataRemovalListener(serverTransactionDataRemovalListener);
 		}
 		if (serializationClassLoader != null) {

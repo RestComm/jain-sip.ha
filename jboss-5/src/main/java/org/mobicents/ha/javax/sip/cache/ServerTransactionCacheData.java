@@ -86,7 +86,7 @@ public class ServerTransactionCacheData extends CacheData {
 				}
 				jbossCache.getInvocationContext().getOptionOverrides().setForceDataGravitation(true);
 			}
-
+			// not sure why but whatever we do the transactionId is always set to lower case in the cache
             final Node<String,Object> childNode = getNode().getChild(txId.toLowerCase());
 			if(childNode != null) {
 				try {
@@ -232,7 +232,8 @@ public class ServerTransactionCacheData extends CacheData {
 				}
 				transactionManager.begin();				
 				doTx = true;				
-	        }			
+	        }					
+			// not sure why but whatever we do the transactionId is always set to lower case in the cache
 			final Node childNode = getNode().addChild(Fqn.fromElements(transactionId.toLowerCase()));
 			for (Entry<String, Object> metaData : haServerTransaction.getMetaDataToReplicate().entrySet()) {
 				childNode.put(metaData.getKey(), metaData.getValue());
@@ -299,6 +300,7 @@ public class ServerTransactionCacheData extends CacheData {
 				transactionManager.begin();				
 				doTx = true;				
 	        }			
+			// not sure why but whatever we do the transactionId is always set to lower case in the cache
 			succeeded = getNode().removeChild(transactionId.toLowerCase());
 		} catch (Exception ex) {
 			try {

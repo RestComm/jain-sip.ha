@@ -622,5 +622,17 @@ public class SimpleStatefulProxy implements SipListener {
 	public void processTimeout(TimeoutEvent timeoutEvent) {}
 
 	public void processTransactionTerminated(TransactionTerminatedEvent transactionTerminatedEvent) {}
+
+	public boolean checkTransactionsRemoved() {
+		System.out.println("client transaction table size " +  ((SipStackImpl)sipStack).getClientTransactionTableSize());
+		if(((SipStackImpl)sipStack).getClientTransactionTableSize() > 0) {
+			return false;
+		}
+		System.out.println("server transaction table size " +  ((SipStackImpl)sipStack).getServerTransactionTableSize());
+		if(((SipStackImpl)sipStack).getServerTransactionTableSize() > 0) {			
+			return false;
+		}
+		return true;
+	}
 	
 }

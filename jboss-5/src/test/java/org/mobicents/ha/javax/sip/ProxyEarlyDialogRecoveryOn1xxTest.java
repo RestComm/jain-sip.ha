@@ -1273,10 +1273,13 @@ public class ProxyEarlyDialogRecoveryOn1xxTest extends TestCase {
         
         shootme.init();
         shootist.init("ReInvite");        
-        Thread.sleep(60000);
+        Thread.sleep(100000);
         
         shootme.checkState(false);
         shootist.checkState(false);        
+        
+        assertTrue(proxyNode1.checkTransactionsRemoved());
+        assertTrue(proxyNode2.checkTransactionsRemoved());
         
         balancer.stop();
         proxyNode1.stop();
@@ -1348,10 +1351,13 @@ public class ProxyEarlyDialogRecoveryOn1xxTest extends TestCase {
         
         shootme.init();
         shootist.init("ReInvite");        
-        Thread.sleep(60000);
+        Thread.sleep(100000);
         
         shootme.checkState(false);
         shootist.checkState(false);
+        
+        assertTrue(proxyNode1.checkTransactionsRemoved());
+        assertTrue(proxyNode2.checkTransactionsRemoved());
         
         balancer.stop();
         proxyNode1.stop();
@@ -1423,11 +1429,14 @@ public class ProxyEarlyDialogRecoveryOn1xxTest extends TestCase {
         
         shootme.init();
         shootist.init("ReInvite");        
-        Thread.sleep(60000);
+        Thread.sleep(100000);
         
         shootme.checkState(false);
         shootist.checkState(false);
 
+        assertTrue(proxyNode1.checkTransactionsRemoved());
+        assertTrue(proxyNode2.checkTransactionsRemoved());
+        
         balancer.stop();
         proxyNode1.stop();
         proxyNode2.stop();
