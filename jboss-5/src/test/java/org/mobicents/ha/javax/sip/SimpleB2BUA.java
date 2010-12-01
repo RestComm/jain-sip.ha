@@ -300,4 +300,16 @@ public class SimpleB2BUA implements SipListener {
 			
 		}
 	 }
+
+	 public boolean checkTransactionsRemoved() {
+			System.out.println("client transaction table size " +  ((SipStackImpl)sipStack).getClientTransactionTableSize());
+			if(((SipStackImpl)sipStack).getClientTransactionTableSize() > 0) {
+				return false;
+			}
+			System.out.println("server transaction table size " +  ((SipStackImpl)sipStack).getServerTransactionTableSize());
+			if(((SipStackImpl)sipStack).getServerTransactionTableSize() > 0) {			
+				return false;
+			}
+			return true;
+		}
 }

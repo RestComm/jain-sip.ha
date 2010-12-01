@@ -129,7 +129,7 @@ public class MobicentsHASIPserverTransaction extends MobicentsSIPServerTransacti
 				sipStack.getStackLogger().logError("problem storing server transaction " + transactionId + " into the distributed cache", e);
 			}
 		}
-		super.sendResponse(response);
+		super.sendMessage(message);
 	}
 
 	public void setMetaDataToReplicate(Map<String, Object> transactionMetaData,
@@ -153,7 +153,7 @@ public class MobicentsHASIPserverTransaction extends MobicentsSIPServerTransacti
 			}
 		}
 		Integer state = (Integer) transactionMetaData.get(CURRENT_STATE);
-		if(state != null) {
+		if(state != null && super.getState() == null) {
 			setState(state);
 			if (sipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
 				sipStack.getStackLogger().logDebug(transactionId + " : state " + getState());

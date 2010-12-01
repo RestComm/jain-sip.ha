@@ -446,7 +446,7 @@ public abstract class ClusteredSipStackImpl extends gov.nist.javax.sip.SipStackI
 						if(getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
 							getStackLogger().logDebug("sipStack " + this + " transaction " + transactionId + " server = " + isServer + " is present in the distributed cache");
 						}	
-						serverTransactionTable.put(transactionId, (SIPServerTransaction) sipTransaction);
+						serverTransactionTable.put(sipTransaction.getTransactionId(), (SIPServerTransaction) sipTransaction);
 					} else {
 						if(getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
 							getStackLogger().logDebug("sipStack " + this + " transaction " + transactionId + " server = " + isServer + " is not present in the distributed cache");
@@ -561,4 +561,24 @@ public abstract class ClusteredSipStackImpl extends gov.nist.javax.sip.SipStackI
 	public boolean isReplicateApplicationData() {
 		return replicateApplicationData;
 	}  
+	
+	/*
+	 * (non-Javadoc)
+	 * @see org.mobicents.ha.javax.sip.ClusteredSipStack#remoteServerTransactionRemoval(java.lang.String)
+	 */
+	public void remoteServerTransactionRemoval(String transactionId) {
+		// note we don't want a dialog terminated event, thus we need to go directly to map removal
+		// assuming it's a confirmed dialog there is no chance it is on early dialogs too
+		if (getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+			getStackLogger().logDebug("sipStack " + this + 
+					" remote Server Transaction Removal of transaction Id : " + transactionId);
+		}
+		// the transaction id is set to lower case in the cache so it might not remove it correctly
+		SIPServerTransaction sipServerTransaction = super.serverTransactionTable.remove(transactionId);
+		if (sipServerTransaction != null) {
+			super.removeFromMergeTable(sipServerTransaction);
+			super.removePendingTransaction(sipServerTransaction);
+			super.removeTransactionPendingAck(sipServerTransaction);
+		}
+	}
 }	

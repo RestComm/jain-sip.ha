@@ -84,4 +84,5 @@ public interface ClusteredSipStack extends SipStack {
     SIPTransaction findTransaction(String transactionId, boolean isServer);
     
     boolean isReplicateApplicationData();
+	void remoteServerTransactionRemoval(String transactionId);
 }

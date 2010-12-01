@@ -1272,7 +1272,7 @@ public class B2BUAEarlyDialogRecoveryOn1xxTCPTest extends TestCase {
         
         shootme.init();
         shootist.init("ReInvite");        
-        Thread.sleep(60000);
+        Thread.sleep(100000);
         
         shootme.checkState(false);
         shootist.checkState(false);
@@ -1281,6 +1281,9 @@ public class B2BUAEarlyDialogRecoveryOn1xxTCPTest extends TestCase {
         // http://code.google.com/p/mobicents/issues/detail?id=1418
         assertTrue(b2buaNode1.checkDialogsRemoved());
         assertTrue(b2buaNode2.checkDialogsRemoved());
+        
+        assertTrue(b2buaNode1.checkTransactionsRemoved());
+        assertTrue(b2buaNode2.checkTransactionsRemoved());
                 
         b2buaNode1.stop();
         b2buaNode2.stop();
@@ -1354,7 +1357,7 @@ public class B2BUAEarlyDialogRecoveryOn1xxTCPTest extends TestCase {
         
         shootme.init();
         shootist.init("ReInvite");        
-        Thread.sleep(60000);
+        Thread.sleep(100000);
         
         shootme.checkState(false);
         shootist.checkState(false);
@@ -1363,6 +1366,9 @@ public class B2BUAEarlyDialogRecoveryOn1xxTCPTest extends TestCase {
         // http://code.google.com/p/mobicents/issues/detail?id=1418
         assertTrue(b2buaNode1.checkDialogsRemoved());
         assertTrue(b2buaNode2.checkDialogsRemoved());
+        
+        assertTrue(b2buaNode1.checkTransactionsRemoved());
+        assertTrue(b2buaNode2.checkTransactionsRemoved());
         
         balancer.stop();
         b2buaNode1.stop();
@@ -1436,7 +1442,7 @@ public class B2BUAEarlyDialogRecoveryOn1xxTCPTest extends TestCase {
         
         shootme.init();
         shootist.init("ReInvite");        
-        Thread.sleep(60000);
+        Thread.sleep(100000);
         
         shootme.checkState(false);
         shootist.checkState(false);
@@ -1445,6 +1451,9 @@ public class B2BUAEarlyDialogRecoveryOn1xxTCPTest extends TestCase {
         // http://code.google.com/p/mobicents/issues/detail?id=1418
         assertTrue(b2buaNode1.checkDialogsRemoved());
         assertTrue(b2buaNode2.checkDialogsRemoved());
+        
+        assertTrue(b2buaNode1.checkTransactionsRemoved());
+        assertTrue(b2buaNode2.checkTransactionsRemoved());
         
         balancer.stop();
         b2buaNode1.stop();
@@ -1518,7 +1527,7 @@ public class B2BUAEarlyDialogRecoveryOn1xxTCPTest extends TestCase {
         
         shootme.init();
         shootist.init("ReInvite");        
-        Thread.sleep(80000);
+        Thread.sleep(100000);
         
         shootme.checkState(false);
         shootist.checkState(false);
@@ -1527,6 +1536,9 @@ public class B2BUAEarlyDialogRecoveryOn1xxTCPTest extends TestCase {
         // http://code.google.com/p/mobicents/issues/detail?id=1418
         assertTrue(b2buaNode1.checkDialogsRemoved());
         assertTrue(b2buaNode2.checkDialogsRemoved());
+        
+        assertTrue(b2buaNode1.checkTransactionsRemoved());
+        assertTrue(b2buaNode2.checkTransactionsRemoved());
         
         balancer.stop();
         b2buaNode1.stop();
@@ -1600,7 +1612,7 @@ public class B2BUAEarlyDialogRecoveryOn1xxTCPTest extends TestCase {
         
         shootme.init();
         shootist.init("ReInvite");        
-        Thread.sleep(80000);
+        Thread.sleep(100000);
         
         shootme.checkState(false);
         shootist.checkState(false);
@@ -1609,6 +1621,9 @@ public class B2BUAEarlyDialogRecoveryOn1xxTCPTest extends TestCase {
         // http://code.google.com/p/mobicents/issues/detail?id=1418
         assertTrue(b2buaNode1.checkDialogsRemoved());
         assertTrue(b2buaNode2.checkDialogsRemoved());
+        
+        assertTrue(b2buaNode1.checkTransactionsRemoved());
+        assertTrue(b2buaNode2.checkTransactionsRemoved());
         
         balancer.stop();
         b2buaNode1.stop();
