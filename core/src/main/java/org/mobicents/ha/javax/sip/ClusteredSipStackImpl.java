@@ -157,7 +157,7 @@ public abstract class ClusteredSipStackImpl extends gov.nist.javax.sip.SipStackI
 			}
 		}
 		String replicateApplicationDataProperty = configurationProperties.getProperty(ClusteredSipStack.REPLICATE_APPLICATION_DATA);
-		if(replicateApplicationDataProperty != null) {
+		if(replicateApplicationDataProperty != null) {			
 			replicateApplicationData = Boolean.valueOf(replicateApplicationDataProperty);
 		}
 		// backward compatible hack to make sure old applications still replicate the app data if they don't use the new property
@@ -165,7 +165,7 @@ public abstract class ClusteredSipStackImpl extends gov.nist.javax.sip.SipStackI
 			replicateApplicationData = true;
 		}
 		if(getStackLogger().isLoggingEnabled(StackLogger.TRACE_INFO)) {
-			getStackLogger().logInfo("Replication Strategy is " + replicationStrategy);
+			getStackLogger().logInfo("Replication Strategy is " + replicationStrategy + " replicating application data " + replicateApplicationData);
 		}
 	}		
 	
