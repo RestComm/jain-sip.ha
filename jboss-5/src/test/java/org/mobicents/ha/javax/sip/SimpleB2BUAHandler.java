@@ -502,6 +502,9 @@ public class SimpleB2BUAHandler {
 	}
 
 	public void process200(ResponseEvent responseEvent) {
+		boolean isRetransmission = ((ResponseEventExt)responseEvent).isRetransmission();
+		ClientTransaction clientTransaction = ((ResponseEventExt)responseEvent).getClientTransaction();
+		((ClusteredSipStack)sipStack).getStackLogger().logDebug("clientTransaction = " + clientTransaction + ", isRetransmission " + isRetransmission);
 		try {
 			final CSeqHeader cSeqHeader = (CSeqHeader) responseEvent.getResponse().getHeader(CSeqHeader.NAME); 			
 			if (cSeqHeader.getMethod().equals(Request.INVITE)) {

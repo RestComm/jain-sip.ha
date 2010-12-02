@@ -237,16 +237,4 @@ public class JBossTreeSipCache extends AbstractJBossSipCache implements SipCache
 	public TreeCache getCache() {
 		return treeCache;
 	}	
-	
-	public SIPServerTransaction getServerTransaction(String transactionId) {
-		throw new UnsupportedOperationException("Transaction Replication is not supported on AS 4");
-	}
-
-	public void putServerTransaction(SIPServerTransaction serverTransaction) {
-		throw new UnsupportedOperationException("Transaction Replication is not supported on AS 4");
-	}
-
-	public void removeServerTransaction(String transactionId) {
-		throw new UnsupportedOperationException("Transaction Replication is not supported on AS 4");
-	}
 }

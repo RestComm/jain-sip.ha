@@ -21,6 +21,7 @@
  */
 package org.mobicents.ha.javax.sip.cache;
 
+import gov.nist.javax.sip.stack.SIPClientTransaction;
 import gov.nist.javax.sip.stack.SIPDialog;
 import gov.nist.javax.sip.stack.SIPServerTransaction;
 
@@ -90,6 +91,24 @@ public class NoCache implements SipCache {
 	}
 
 	public void removeServerTransaction(String transactionId) {
+		
+	}
+
+	public SIPClientTransaction getClientTransaction(String transactionId)
+			throws SipCacheException {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	public void putClientTransaction(SIPClientTransaction clientTransaction)
+			throws SipCacheException {
+		// TODO Auto-generated method stub
+		
+	}
+
+	public void removeClientTransaction(String transactionId)
+			throws SipCacheException {
+		// TODO Auto-generated method stub
 		
 	}
 

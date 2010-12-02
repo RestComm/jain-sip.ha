@@ -24,7 +24,7 @@ package org.mobicents.ha.javax.sip;
 import gov.nist.javax.sip.message.SIPRequest;
 import gov.nist.javax.sip.stack.MessageChannel;
 import gov.nist.javax.sip.stack.MobicentsHASIPClientTransaction;
-import gov.nist.javax.sip.stack.MobicentsHASIPserverTransaction;
+import gov.nist.javax.sip.stack.MobicentsHASIPServerTransaction;
 import gov.nist.javax.sip.stack.SIPClientTransaction;
 import gov.nist.javax.sip.stack.SIPServerTransaction;
 import gov.nist.javax.sip.stack.SIPTransactionStack;
@@ -57,7 +57,7 @@ public class MobicentsHATransactionFactory implements TransactionFactory {
 	 */
 	public SIPServerTransaction createServerTransaction(
 			MessageChannel encapsulatedMessageChannel) {
-		return new MobicentsHASIPserverTransaction(sipStack, encapsulatedMessageChannel);
+		return new MobicentsHASIPServerTransaction(sipStack, encapsulatedMessageChannel);
 	}
 
 	/* (non-Javadoc)

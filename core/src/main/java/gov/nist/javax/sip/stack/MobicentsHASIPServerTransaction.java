@@ -43,7 +43,7 @@ import org.mobicents.ha.javax.sip.cache.SipCacheException;
  * @author jean.deruelle@gmail.com
  *
  */
-public class MobicentsHASIPserverTransaction extends MobicentsSIPServerTransaction {
+public class MobicentsHASIPServerTransaction extends MobicentsSIPServerTransaction {
 
 	public static final String MY_PORT = "mp";
 	public static final String PEER_PORT = "cp";
@@ -55,7 +55,7 @@ public class MobicentsHASIPserverTransaction extends MobicentsSIPServerTransacti
 	String localDialogId;
 	int peerReliablePort = -1;
 	
-	public MobicentsHASIPserverTransaction(SIPTransactionStack sipStack,
+	public MobicentsHASIPServerTransaction(SIPTransactionStack sipStack,
 			MessageChannel newChannelToUse) {
 		super(sipStack, newChannelToUse);
 	}

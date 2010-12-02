@@ -21,15 +21,159 @@
  */
 package gov.nist.javax.sip.stack;
 
+import gov.nist.core.StackLogger;
+import gov.nist.javax.sip.message.ResponseExt;
+import gov.nist.javax.sip.message.SIPMessage;
+import gov.nist.javax.sip.message.SIPRequest;
+import gov.nist.javax.sip.message.SIPResponse;
+
+import java.io.IOException;
+import java.text.ParseException;
+import java.util.HashMap;
+import java.util.Map;
+
+import javax.sip.PeerUnavailableException;
+import javax.sip.SipFactory;
+import javax.sip.TransactionState;
+import javax.sip.message.Request;
+
+import org.mobicents.ha.javax.sip.ClusteredSipStack;
+import org.mobicents.ha.javax.sip.cache.SipCacheException;
+
 /**
  * @author jean.deruelle@gmail.com
  *
  */
 public class MobicentsHASIPClientTransaction extends MobicentsSIPClientTransaction {
 
+	public static final String MY_PORT = "mp";
+	public static final String PEER_PORT = "cp";
+	public static final String PEER_IP = "cip";
+	public static final String TRANSPORT = "ct";
+	public static final String CURRENT_STATE = "cs";
+	public static final String DIALOG_ID = "did";
+	public static final String ORIGINAL_REQUEST = "req";
+	String localDialogId;
+	int peerReliablePort = -1;
+	int lastResponseStatusCode= -1;
+	
 	public MobicentsHASIPClientTransaction(SIPTransactionStack newSIPStack,
 			MessageChannel newChannelToUse) {
 		super(newSIPStack, newChannelToUse);
 	}
 
+	public Map<String, Object> getMetaDataToReplicate() {
+		Map<String,Object> transactionMetaData = new HashMap<String,Object>();
+		
+		transactionMetaData.put(ORIGINAL_REQUEST, getOriginalRequest().toString());
+		if (sipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+			sipStack.getStackLogger().logDebug(transactionId + " : original request " + getOriginalRequest());
+		}
+		SIPDialog dialog = getDefaultDialog();
+		if(dialog != null) {
+			transactionMetaData.put(DIALOG_ID, dialog.getDialogId());
+			if (sipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+				sipStack.getStackLogger().logDebug(transactionId + " : dialog Id " + dialog.getDialogId());
+			}
+		} else if(localDialogId != null) {
+			transactionMetaData.put(DIALOG_ID, localDialogId);
+			if (sipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+				sipStack.getStackLogger().logDebug(transactionId + " : dialog Id " + localDialogId);
+			}
+		}
+		if(getState() != null) {
+			transactionMetaData.put(CURRENT_STATE, Integer.valueOf(getState().getValue()));
+			if (sipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+				sipStack.getStackLogger().logDebug(transactionId + " : current state " + getState());
+			}
+		}
+		transactionMetaData.put(TRANSPORT, getMessageChannel().getTransport());
+		if (sipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+			sipStack.getStackLogger().logDebug(transactionId + " : message channel transport " + getTransport());
+		}
+		transactionMetaData.put(PEER_IP, getMessageChannel().getPeerInetAddress());
+		if (sipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+			sipStack.getStackLogger().logDebug(transactionId + " : message channel ip " + getMessageChannel().getPeerInetAddress());
+		}
+		int peerPort = getMessageChannel().getPeerPort();
+		if(isReliable()) {
+			peerPort = peerReliablePort;
+		}
+		transactionMetaData.put(PEER_PORT, Integer.valueOf(peerPort));
+		if (sipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+			sipStack.getStackLogger().logDebug(transactionId + " : message channel peer port " + peerPort);
+		}
+		transactionMetaData.put(MY_PORT, Integer.valueOf(getMessageChannel().getPort()));
+		if (sipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+			sipStack.getStackLogger().logDebug(transactionId + " : message channel my port " + getMessageChannel().getPort());
+		}
+		
+		return transactionMetaData;
+	}		
+	
+	@Override
+	public void setState(int newState) {		
+		super.setState(newState);
+		if(newState == TransactionState._TRYING || newState == TransactionState._PROCEEDING && Request.INVITE.equalsIgnoreCase(getMethod()) && lastResponse == null || (lastResponse != null && lastResponseStatusCode < lastResponse.getStatusCode())) {
+			if(lastResponse != null) {
+				this.localDialogId = lastResponse.getDialogId(false);
+				if (sipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+					sipStack.getStackLogger().logDebug(transactionId + " : local dialog Id " + localDialogId);
+				}			
+			}
+			// store the tx when the response will be sent
+			try {
+				((ClusteredSipStack)sipStack).getSipCache().putClientTransaction(this);
+			} catch (SipCacheException e) {
+				sipStack.getStackLogger().logError("problem storing server transaction " + transactionId + " into the distributed cache", e);
+			}
+		}
+	}
+
+
+	public void setMetaDataToReplicate(Map<String, Object> transactionMetaData,
+			boolean recreation) throws PeerUnavailableException, ParseException {
+		String originalRequestString = (String) transactionMetaData.get(ORIGINAL_REQUEST);
+		if(originalRequestString != null) {
+			final SIPRequest origRequest = (SIPRequest) SipFactory.getInstance().createMessageFactory().createRequest(originalRequestString);			
+			super.setOriginalRequest(origRequest);
+			if (sipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+				sipStack.getStackLogger().logDebug(transactionId + " : original Request " + originalRequest);
+			}
+		}
+		String dialogId = (String) transactionMetaData.get(DIALOG_ID);
+		if(dialogId != null) {
+			SIPDialog sipDialog = sipStack.getDialog(dialogId);
+			if(sipDialog != null) {
+				setDialog(sipDialog, dialogId);
+			}
+			if (sipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+				sipStack.getStackLogger().logDebug(transactionId + " : dialog Id " + dialogId + " dialog " + sipDialog);
+			}
+		}
+		Integer state = (Integer) transactionMetaData.get(CURRENT_STATE);
+		if(state != null && super.getState() == null) {
+			super.setState(state);
+			if (sipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+				sipStack.getStackLogger().logDebug(transactionId + " : state " + getState());
+			}
+		}
+		super.startTransactionTimer();
+	}
+	
+	@Override
+	public void setApplicationData(Object applicationData) {
+		super.setApplicationData(applicationData);		
+	}
+	
+	public Object getApplicationDataToReplicate() {
+		if(((ClusteredSipStack)getSIPStack()).isReplicateApplicationData()) {
+			return getApplicationData();
+		}
+		return null;
+	}
+	
+	public void setApplicationDataToReplicate(Object appData) {
+		super.setApplicationData(appData);
+	}
 }

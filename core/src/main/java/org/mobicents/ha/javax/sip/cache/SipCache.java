@@ -21,6 +21,8 @@
  */
 package org.mobicents.ha.javax.sip.cache;
 
+import gov.nist.javax.sip.stack.MobicentsHASIPClientTransaction;
+import gov.nist.javax.sip.stack.SIPClientTransaction;
 import gov.nist.javax.sip.stack.SIPDialog;
 import gov.nist.javax.sip.stack.SIPServerTransaction;
 
@@ -117,9 +119,25 @@ public interface SipCache {
 	void removeServerTransaction(String transactionId) throws SipCacheException;
 	
 	/**
+	 * Retrieve the client transaction with the passed transactionId from the cache
+	 * @param transactionId id of the transaction to retrieve from the cache 
+	 * @return the transaction with the passed transactionId from the cache, null if not found
+	 */
+	SIPClientTransaction getClientTransaction(String transactionId) throws SipCacheException;	
+	/**
+	 * Store the client transaction into the cache
+	 * @param clientTransaction the transaction to store
+	 */
+	void putClientTransaction(SIPClientTransaction clientTransaction) throws SipCacheException;
+	/**
+	 * Remove the transaction from the cache
+	 * @param transactionId the id of the transaction to remove
+	 */
+	void removeClientTransaction(String transactionId) throws SipCacheException;
+	
+	/**
 	 * Indicates if the cache is running in local or clustered mode.
 	 * @return
 	 */
-	boolean inLocalMode();	
-	
+	boolean inLocalMode();
 }

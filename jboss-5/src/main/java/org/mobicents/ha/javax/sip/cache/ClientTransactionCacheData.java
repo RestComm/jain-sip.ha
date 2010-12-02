@@ -24,8 +24,8 @@ package org.mobicents.ha.javax.sip.cache;
 import gov.nist.core.StackLogger;
 import gov.nist.javax.sip.stack.MessageChannel;
 import gov.nist.javax.sip.stack.MessageProcessor;
-import gov.nist.javax.sip.stack.MobicentsHASIPServerTransaction;
-import gov.nist.javax.sip.stack.SIPServerTransaction;
+import gov.nist.javax.sip.stack.MobicentsHASIPClientTransaction;
+import gov.nist.javax.sip.stack.SIPClientTransaction;
 import gov.nist.javax.sip.stack.SIPTransactionStack;
 
 import java.io.IOException;
@@ -51,17 +51,17 @@ import org.mobicents.ha.javax.sip.ClusteredSipStack;
 /**
  * @author jean.deruelle@gmail.com
  */
-public class ServerTransactionCacheData extends CacheData {
+public class ClientTransactionCacheData extends CacheData {
 	private static final String APPDATA = "APPDATA";
 	private ClusteredSipStack clusteredSipStack;	
 	
-	public ServerTransactionCacheData(Fqn nodeFqn, MobicentsCache mobicentsCache, ClusteredSipStack clusteredSipStack) {
+	public ClientTransactionCacheData(Fqn nodeFqn, MobicentsCache mobicentsCache, ClusteredSipStack clusteredSipStack) {
 		super(nodeFqn, mobicentsCache);
 		this.clusteredSipStack = clusteredSipStack;
 	}
 	
-	public SIPServerTransaction getServerTransaction(String txId) throws SipCacheException {
-		SIPServerTransaction haSipServerTransaction = null;
+	public SIPClientTransaction getServerTransaction(String txId) throws SipCacheException {
+		SIPClientTransaction haSipClientTransaction = null;
 		final Cache jbossCache = getMobicentsCache().getJBossCache();
 		Configuration config = jbossCache.getConfiguration();
 		final boolean isBuddyReplicationEnabled = config.getBuddyReplicationConfig() != null && config.getBuddyReplicationConfig().isEnabled();
@@ -93,9 +93,9 @@ public class ServerTransactionCacheData extends CacheData {
 					final Map<String, Object> transactionMetaData = childNode.getData();		
 					final Object dialogAppData = childNode.get(APPDATA);
 						
-					haSipServerTransaction = createServerTransaction(txId, transactionMetaData, dialogAppData);
+					haSipClientTransaction = createClientTransaction(txId, transactionMetaData, dialogAppData);
 				} catch (CacheException e) {
-					throw new SipCacheException("A problem occured while retrieving the following server transaction " + txId + " from the Cache", e);
+					throw new SipCacheException("A problem occured while retrieving the following client transaction " + txId + " from the Cache", e);
 				} 
 			} else {
 				if(clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
@@ -139,28 +139,28 @@ public class ServerTransactionCacheData extends CacheData {
 				}
 			}
 		}
-		return haSipServerTransaction;
+		return haSipClientTransaction;
 	}
 	
-	public MobicentsHASIPServerTransaction createServerTransaction(String txId, Map<String, Object> transactionMetaData, Object transactionAppData) throws SipCacheException {
-		MobicentsHASIPServerTransaction haServerTransaction = null; 
+	public MobicentsHASIPClientTransaction createClientTransaction(String txId, Map<String, Object> transactionMetaData, Object transactionAppData) throws SipCacheException {
+		MobicentsHASIPClientTransaction haClientTransaction = null; 
 		if(transactionMetaData != null) {
 			if(clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
-				clusteredSipStack.getStackLogger().logDebug("sipStack " + this + " server transaction " + txId + " is present in the distributed cache, recreating it locally");
+				clusteredSipStack.getStackLogger().logDebug("sipStack " + this + " client transaction " + txId + " is present in the distributed cache, recreating it locally");
 			}
-			String channelTransport = (String) transactionMetaData.get(MobicentsHASIPServerTransaction.TRANSPORT);
+			String channelTransport = (String) transactionMetaData.get(MobicentsHASIPClientTransaction.TRANSPORT);
 			if (clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
 				clusteredSipStack.getStackLogger().logDebug(txId + " : transport " + channelTransport);
 			}
-			InetAddress channelIp = (InetAddress) transactionMetaData.get(MobicentsHASIPServerTransaction.PEER_IP);
+			InetAddress channelIp = (InetAddress) transactionMetaData.get(MobicentsHASIPClientTransaction.PEER_IP);
 			if (clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
 				clusteredSipStack.getStackLogger().logDebug(txId + " : channel peer Ip address " + channelIp);
 			}
-			Integer channelPort = (Integer) transactionMetaData.get(MobicentsHASIPServerTransaction.PEER_PORT);
+			Integer channelPort = (Integer) transactionMetaData.get(MobicentsHASIPClientTransaction.PEER_PORT);
 			if (clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
 				clusteredSipStack.getStackLogger().logDebug(txId + " : channel peer port " + channelPort);
 			}
-			Integer myPort = (Integer) transactionMetaData.get(MobicentsHASIPServerTransaction.MY_PORT);
+			Integer myPort = (Integer) transactionMetaData.get(MobicentsHASIPClientTransaction.MY_PORT);
 			if (clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
 				clusteredSipStack.getStackLogger().logDebug(txId + " : my port " + myPort);
 			}
@@ -178,10 +178,10 @@ public class ServerTransactionCacheData extends CacheData {
 				}
 			}
 			
-			haServerTransaction = new MobicentsHASIPServerTransaction((SIPTransactionStack) clusteredSipStack, messageChannel);
-			haServerTransaction.setBranch(txId);
+			haClientTransaction = new MobicentsHASIPClientTransaction((SIPTransactionStack) clusteredSipStack, messageChannel);
+			haClientTransaction.setBranch(txId);
 			try {
-				updateServerTransactionMetaData(transactionMetaData, transactionAppData, haServerTransaction, true);						
+				updateClientTransactionMetaData(transactionMetaData, transactionAppData, haClientTransaction, true);						
 			} catch (PeerUnavailableException e) {
 				throw new SipCacheException("A problem occured while retrieving the following transaction " + txId + " from the Cache", e);
 			} catch (ParseException e) {
@@ -189,35 +189,35 @@ public class ServerTransactionCacheData extends CacheData {
 			}
 		} else {
 			if(clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
-				clusteredSipStack.getStackLogger().logDebug("sipStack " + this + " server transaction " + txId + " not found in the distributed cache");
+				clusteredSipStack.getStackLogger().logDebug("sipStack " + this + " client transaction " + txId + " not found in the distributed cache");
 			}
 		}
 		
-		return haServerTransaction;
+		return haClientTransaction;
 	}
 
 	/**
 	 * Update the haSipDialog passed in param with the dialogMetaData and app meta data
 	 * @param transactionMetaData
 	 * @param transactionAppData
-	 * @param haServerTransaction
+	 * @param haClientTransaction
 	 * @throws ParseException
 	 * @throws PeerUnavailableException
 	 */
-	private void updateServerTransactionMetaData(Map<String, Object> transactionMetaData, Object transactionAppData, MobicentsHASIPServerTransaction haServerTransaction, boolean recreation) throws ParseException,
+	private void updateClientTransactionMetaData(Map<String, Object> transactionMetaData, Object transactionAppData, MobicentsHASIPClientTransaction haClientTransaction, boolean recreation) throws ParseException,
 			PeerUnavailableException {
-		haServerTransaction.setMetaDataToReplicate(transactionMetaData, recreation);
-		haServerTransaction.setApplicationDataToReplicate(transactionAppData);		
+		haClientTransaction.setMetaDataToReplicate(transactionMetaData, recreation);
+		haClientTransaction.setApplicationDataToReplicate(transactionAppData);		
 	}
 	
-	public void putServerTransaction(SIPServerTransaction serverTransaction) throws SipCacheException {
+	public void putClientTransaction(SIPClientTransaction clientTransaction) throws SipCacheException {
 		if(clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
 			clusteredSipStack.getStackLogger().logStackTrace();
 		}
-		final MobicentsHASIPServerTransaction haServerTransaction = (MobicentsHASIPServerTransaction) serverTransaction;
-		final String transactionId = haServerTransaction.getTransactionId();
+		final MobicentsHASIPClientTransaction haClientTransaction = (MobicentsHASIPClientTransaction) clientTransaction;
+		final String transactionId = haClientTransaction.getTransactionId();
 		if(clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
-			clusteredSipStack.getStackLogger().logDebug("put HA SIP Server Transaction " + serverTransaction + " with id " + transactionId);
+			clusteredSipStack.getStackLogger().logDebug("put HA SIP Client Transaction " + clientTransaction + " with id " + transactionId);
 		}
 		final Cache jbossCache = getMobicentsCache().getJBossCache();
 		TransactionManager transactionManager = jbossCache.getConfiguration().getRuntimeConfig().getTransactionManager();		
@@ -235,10 +235,10 @@ public class ServerTransactionCacheData extends CacheData {
 	        }					
 			// not sure why but whatever we do the transactionId is always set to lower case in the cache
 			final Node childNode = getNode().addChild(Fqn.fromElements(transactionId.toLowerCase()));
-			for (Entry<String, Object> metaData : haServerTransaction.getMetaDataToReplicate().entrySet()) {
+			for (Entry<String, Object> metaData : haClientTransaction.getMetaDataToReplicate().entrySet()) {
 				childNode.put(metaData.getKey(), metaData.getValue());
 			}
-			final Object transactionAppData = haServerTransaction.getApplicationDataToReplicate();
+			final Object transactionAppData = haClientTransaction.getApplicationDataToReplicate();
 			if(transactionAppData != null) {
 				childNode.put(APPDATA, transactionAppData);
 			}
@@ -281,9 +281,9 @@ public class ServerTransactionCacheData extends CacheData {
 		}
 	}
 
-	public boolean removeServerTransaction(String transactionId) {
+	public boolean removeClientTransaction(String transactionId) {
 		if(clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
-			clusteredSipStack.getStackLogger().logDebug("remove HA SIP Server Transaction " + transactionId);
+			clusteredSipStack.getStackLogger().logDebug("remove HA SIP Client Transaction " + transactionId);
 		}
 		boolean succeeded = false;
 		final Cache jbossCache = getMobicentsCache().getJBossCache();

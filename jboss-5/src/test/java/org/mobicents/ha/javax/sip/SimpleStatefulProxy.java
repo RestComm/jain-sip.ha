@@ -399,6 +399,9 @@ public class SimpleStatefulProxy implements SipListener {
 
 	public void process200(ResponseEvent responseEvent) {
 		try {
+			boolean isRetransmission = ((ResponseEventExt)responseEvent).isRetransmission();
+			ClientTransaction clientTransaction = ((ResponseEventExt)responseEvent).getClientTransaction();
+			((ClusteredSipStack)sipStack).getStackLogger().logDebug("clientTransaction = " + clientTransaction + ", isRetransmission " + isRetransmission);
 			final CSeqHeader cSeqHeader = (CSeqHeader) responseEvent.getResponse().getHeader(CSeqHeader.NAME); 			
 			if (cSeqHeader.getMethod().equals(Request.INVITE)) {
 				processInvite200(responseEvent,cSeqHeader);

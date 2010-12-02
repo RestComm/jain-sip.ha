@@ -269,4 +269,84 @@ public class JBossSipCache implements SipCache {
 			throw new SipCacheException("A problem occured while removing the following server transaction " + transactionId + " from JBoss Cache", e);
 		}
 	}
+	
+	public SIPClientTransaction getClientTransaction(String transactionId)
+			throws SipCacheException {
+		try {
+			Node clientTransactionNode = ((Node) clientTxRootNode.getChild(Fqn
+					.fromString(transactionId)));
+			if (clientTransactionNode != null) {
+				return (SIPClientTransaction) clientTransactionNode
+						.get(transactionId);
+			} else {
+				return null;
+			}
+		} catch (CacheException e) {
+			throw new SipCacheException(
+					"A problem occured while retrieving the following client transaction "
+							+ transactionId + " from JBoss Cache", e);
+		}
+	}
+
+	public void putClientTransaction(SIPClientTransaction clientTransaction)
+			throws SipCacheException {
+		UserTransaction tx = null;
+		try {
+			Properties prop = new Properties();
+			prop.put(Context.INITIAL_CONTEXT_FACTORY,
+					"org.jboss.cache.transaction.DummyContextFactory");
+			tx = (UserTransaction) new InitialContext(prop)
+					.lookup("UserTransaction");
+			if (tx != null) {
+				tx.begin();
+			}
+			Node clientTransactionNode = clientTxRootNode.addChild(Fqn
+					.fromString(clientTransaction.getTransactionId()));
+			clientTransactionNode.put(clientTransaction.getTransactionId(),
+					clientTransaction);
+			if (tx != null) {
+				tx.commit();
+			}
+		} catch (Exception e) {
+			if (tx != null) {
+				try {
+					tx.rollback();
+				} catch (Throwable t) {
+				}
+			}
+			throw new SipCacheException(
+					"A problem occured while putting the following client transaction "
+							+ clientTransaction.getTransactionId()
+							+ "  into JBoss Cache", e);
+		}
+	}
+
+	public void removeClientTransaction(String transactionId)
+			throws SipCacheException {
+		UserTransaction tx = null;
+		try {
+			Properties prop = new Properties();
+			prop.put(Context.INITIAL_CONTEXT_FACTORY,
+					"org.jboss.cache.transaction.DummyContextFactory");
+			tx = (UserTransaction) new InitialContext(prop)
+					.lookup("UserTransaction");
+			if (tx != null) {
+				tx.begin();
+			}
+			clientTxRootNode.removeChild(transactionId);
+			if (tx != null) {
+				tx.commit();
+			}
+		} catch (Exception e) {
+			if (tx != null) {
+				try {
+					tx.rollback();
+				} catch (Throwable t) {
+				}
+			}
+			throw new SipCacheException(
+					"A problem occured while removing the following client transaction "
+							+ transactionId + " from JBoss Cache", e);
+		}
+	}	
 }

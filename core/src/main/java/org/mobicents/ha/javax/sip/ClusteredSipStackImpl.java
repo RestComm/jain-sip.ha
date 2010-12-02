@@ -434,6 +434,7 @@ public abstract class ClusteredSipStackImpl extends gov.nist.javax.sip.SipStackI
 	 * (non-Javadoc)
 	 * @see gov.nist.javax.sip.stack.SIPTransactionStack#findTransaction(java.lang.String, boolean)
 	 */
+	@Override
 	public SIPTransaction findTransaction(String transactionId, boolean isServer) {
 		SIPTransaction sipTransaction = super.findTransaction(transactionId, isServer);
 		if(sipTransaction == null && transactionFactory != null && replicationStrategy == ReplicationStrategy.EarlyDialog) {
@@ -451,7 +452,24 @@ public abstract class ClusteredSipStackImpl extends gov.nist.javax.sip.SipStackI
 						if(getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
 							getStackLogger().logDebug("sipStack " + this + " transaction " + transactionId + " server = " + isServer + " is present in the distributed cache");
 						}	
-						serverTransactionTable.put(sipTransaction.getTransactionId(), (SIPServerTransaction) sipTransaction);
+						serverTransactionTable.putIfAbsent(sipTransaction.getTransactionId(), (SIPServerTransaction) sipTransaction);
+					} else {
+						if(getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+							getStackLogger().logDebug("sipStack " + this + " transaction " + transactionId + " server = " + isServer + " is not present in the distributed cache");
+						}	
+					}
+				} catch (SipCacheException e) {
+					getStackLogger().logError("sipStack " + this + " problem getting transaction " + transactionId + " server = " + isServer + " from the distributed cache", e);
+				}
+			} else {
+				// fetch the corresponding client transaction from the cache instance
+				try {
+					sipTransaction = sipCache.getClientTransaction(transactionId);
+					if(sipTransaction != null) {
+						if(getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+							getStackLogger().logDebug("sipStack " + this + " transaction " + transactionId + " server = " + isServer + " is present in the distributed cache");
+						}	
+						clientTransactionTable.putIfAbsent(sipTransaction.getTransactionId(), (SIPClientTransaction) sipTransaction);
 					} else {
 						if(getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
 							getStackLogger().logDebug("sipStack " + this + " transaction " + transactionId + " server = " + isServer + " is not present in the distributed cache");
@@ -473,6 +491,35 @@ public abstract class ClusteredSipStackImpl extends gov.nist.javax.sip.SipStackI
 				// remove the corresponding server transaction from the cache instance
 				try {
 					sipCache.removeServerTransaction(sipTransaction.getTransactionId());
+				} catch (SipCacheException e) {
+					getStackLogger().logError("sipStack " + this + " problem getting transaction " + sipTransaction.getTransactionId() + " from the distributed cache", e);
+				}
+			} else {
+				// remove the corresponding client transaction from the cache instance
+				try {
+					sipCache.removeClientTransaction(sipTransaction.getTransactionId());
+				} catch (SipCacheException e) {
+					getStackLogger().logError("sipStack " + this + " problem getting transaction " + sipTransaction.getTransactionId() + " from the distributed cache", e);
+				}
+			}
+		}
+	}
+	
+	@Override
+	protected void removeTransactionHash(SIPTransaction sipTransaction) {
+		super.removeTransactionHash(sipTransaction);
+		if(transactionFactory != null && sipTransaction != null && replicationStrategy == ReplicationStrategy.EarlyDialog && sipTransaction.getMethod().equalsIgnoreCase(Request.INVITE)) {
+			if(sipTransaction instanceof ServerTransaction) {
+				// remove the corresponding server transaction from the cache instance
+				try {
+					sipCache.removeServerTransaction(sipTransaction.getTransactionId());
+				} catch (SipCacheException e) {
+					getStackLogger().logError("sipStack " + this + " problem getting transaction " + sipTransaction.getTransactionId() + " from the distributed cache", e);
+				}
+			} else {
+				// remove the corresponding client transaction from the cache instance
+				try {
+					sipCache.removeClientTransaction(sipTransaction.getTransactionId());
 				} catch (SipCacheException e) {
 					getStackLogger().logError("sipStack " + this + " problem getting transaction " + sipTransaction.getTransactionId() + " from the distributed cache", e);
 				}
@@ -585,5 +632,19 @@ public abstract class ClusteredSipStackImpl extends gov.nist.javax.sip.SipStackI
 			super.removePendingTransaction(sipServerTransaction);
 			super.removeTransactionPendingAck(sipServerTransaction);
 		}
+	}
+	/*
+	 * (non-Javadoc)
+	 * @see org.mobicents.ha.javax.sip.ClusteredSipStack#remoteClientTransactionRemoval(java.lang.String)
+	 */
+	public void remoteClientTransactionRemoval(String transactionId) {
+		// note we don't want a dialog terminated event, thus we need to go directly to map removal
+		// assuming it's a confirmed dialog there is no chance it is on early dialogs too
+		if (getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+			getStackLogger().logDebug("sipStack " + this + 
+					" remote Client Transaction Removal of transaction Id : " + transactionId);
+		}
+		// the transaction id is set to lower case in the cache so it might not remove it correctly
+		SIPClientTransaction sipClientTransaction = super.clientTransactionTable.remove(transactionId);		
 	}
 }	

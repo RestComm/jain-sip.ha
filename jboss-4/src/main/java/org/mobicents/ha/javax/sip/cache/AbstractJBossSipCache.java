@@ -25,7 +25,9 @@ import gov.nist.core.StackLogger;
 import gov.nist.javax.sip.SipProviderImpl;
 import gov.nist.javax.sip.message.SIPResponse;
 import gov.nist.javax.sip.stack.AbstractHASipDialog;
+import gov.nist.javax.sip.stack.SIPClientTransaction;
 import gov.nist.javax.sip.stack.SIPDialog;
+import gov.nist.javax.sip.stack.SIPServerTransaction;
 
 import java.text.ParseException;
 import java.util.Map;
@@ -138,4 +140,28 @@ public abstract class AbstractJBossSipCache {
 	public void evictDialog(String dialogId) {
 		throw new UnsupportedOperationException("The dialog eviction feature is not available on JBoss AS 4.2.X");
 	}
+	
+	public SIPServerTransaction getServerTransaction(String transactionId) {
+		throw new UnsupportedOperationException("Transaction Replication is not supported on AS 4");
+	}
+
+	public void putServerTransaction(SIPServerTransaction serverTransaction) {
+		throw new UnsupportedOperationException("Transaction Replication is not supported on AS 4");
+	}
+
+	public void removeServerTransaction(String transactionId) {
+		throw new UnsupportedOperationException("Transaction Replication is not supported on AS 4");
+	}
+	
+	public SIPClientTransaction getClientTransaction(String transactionId) {
+		throw new UnsupportedOperationException("Transaction Replication is not supported on AS 4");
+	}
+
+	public void putClientTransaction(SIPClientTransaction serverTransaction) {
+		throw new UnsupportedOperationException("Transaction Replication is not supported on AS 4");
+	}
+
+	public void removeClientTransaction(String transactionId) {
+		throw new UnsupportedOperationException("Transaction Replication is not supported on AS 4");
+	}	
 }

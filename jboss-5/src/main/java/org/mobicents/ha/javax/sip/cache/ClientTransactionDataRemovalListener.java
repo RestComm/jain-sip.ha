@@ -8,7 +8,7 @@ import org.mobicents.ha.javax.sip.ClusteredSipStack;
  * @author martins
  * 
  */
-public class ServerTransactionDataRemovalListener implements
+public class ClientTransactionDataRemovalListener implements
 		org.mobicents.cluster.DataRemovalListener {
 
 	/**
@@ -26,7 +26,7 @@ public class ServerTransactionDataRemovalListener implements
 	 * @param baseFqn
 	 * @param clusteredSipStack
 	 */
-	public ServerTransactionDataRemovalListener(Fqn baseFqn,
+	public ClientTransactionDataRemovalListener(Fqn baseFqn,
 			ClusteredSipStack clusteredSipStack) {
 		this.baseFqn = baseFqn;
 		this.clusteredSipStack = clusteredSipStack;
@@ -41,7 +41,7 @@ public class ServerTransactionDataRemovalListener implements
 	 */
 	@SuppressWarnings("unchecked")
 	public void dataRemoved(Fqn fqn) {
-		clusteredSipStack.remoteServerTransactionRemoval((String) fqn.getLastElement());
+		clusteredSipStack.remoteClientTransactionRemoval((String) fqn.getLastElement());
 	}
 
 	/*
