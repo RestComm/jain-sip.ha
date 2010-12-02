@@ -163,14 +163,7 @@ public class MobicentsHASIPserverTransaction extends MobicentsSIPServerTransacti
 
 	@Override
 	public void setApplicationData(Object applicationData) {
-		super.setApplicationData(applicationData);
-		if(((ClusteredSipStack)getSIPStack()).isReplicateApplicationData()) {
-			try {
-				((ClusteredSipStack)getSIPStack()).getSipCache().putServerTransaction(this);
-			} catch (SipCacheException e) {
-				getSIPStack().getStackLogger().logError("problem storing server transaction " + transactionId + " into the distributed cache", e);
-			}
-		}
+		super.setApplicationData(applicationData);		
 	}
 	
 	public Object getApplicationDataToReplicate() {

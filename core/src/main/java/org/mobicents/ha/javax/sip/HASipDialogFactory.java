@@ -42,7 +42,7 @@ public class HASipDialogFactory {
 		case ConfirmedDialogNoApplicationData:
 			return new ConfirmedNoAppDataReplicationSipDialog(transaction);
 		case EarlyDialog:
-			return new ConfirmedNoAppDataReplicationSipDialog(transaction);
+			return new ConfirmedReplicationSipDialog(transaction);
 		default:
 			throw new IllegalArgumentException("Replication Strategy " + replicationStrategy + " is not supported");
 		}
@@ -55,7 +55,7 @@ public class HASipDialogFactory {
 		case ConfirmedDialogNoApplicationData:
 			return new ConfirmedNoAppDataReplicationSipDialog(transaction, sipResponse);
 		case EarlyDialog:
-			return new ConfirmedNoAppDataReplicationSipDialog(transaction, sipResponse);
+			return new ConfirmedReplicationSipDialog(transaction, sipResponse);
 		default:
 			throw new IllegalArgumentException("Replication Strategy " + replicationStrategy + " is not supported");
 		}
@@ -68,7 +68,7 @@ public class HASipDialogFactory {
 		case ConfirmedDialogNoApplicationData:
 			return new ConfirmedNoAppDataReplicationSipDialog(sipProvider, sipResponse);
 		case EarlyDialog:
-			return new ConfirmedNoAppDataReplicationSipDialog(sipProvider, sipResponse);
+			return new ConfirmedReplicationSipDialog(sipProvider, sipResponse);
 		default:
 			throw new IllegalArgumentException("Replication Strategy " + replicationStrategy + " is not supported");
 		}

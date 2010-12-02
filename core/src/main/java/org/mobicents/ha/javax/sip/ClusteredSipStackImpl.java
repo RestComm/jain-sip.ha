@@ -297,7 +297,12 @@ public abstract class ClusteredSipStackImpl extends gov.nist.javax.sip.SipStackI
 						if(getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
 							getStackLogger().logDebug("dialog " + dialogId + " found in the distributed cache, storing it locally");
 						}
-						super.putDialog(sipDialog);
+						SIPDialog existingDialog = super.putDialog(sipDialog);
+						// avoid returning wrong dialog if 2 threads try to recreate
+						// the dialog after failover, we use the one that won the race
+						if(existingDialog != null) {
+							sipDialog = existingDialog;
+						}
 					} else {
 						if(getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
 							getStackLogger().logDebug("dialog " + dialogId + " not found in the distributed cache");
@@ -326,8 +331,8 @@ public abstract class ClusteredSipStackImpl extends gov.nist.javax.sip.SipStackI
 	 * @see gov.nist.javax.sip.stack.SIPTransactionStack#putDialog(gov.nist.javax.sip.stack.SIPDialog)
 	 */
 	@Override
-	public void putDialog(SIPDialog dialog) {
-		super.putDialog(dialog);
+	public SIPDialog putDialog(SIPDialog dialog) {
+		return super.putDialog(dialog);
 		// not needed it was causing the dialog to be put in the cache even for 1xx with a to tag
 //		if (!sipCache.inLocalMode() && DialogState.CONFIRMED == dialog.getState()) {
 //			// only replicate dialogs in confirmed state

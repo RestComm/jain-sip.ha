@@ -46,7 +46,7 @@ public interface ClusteredSipStack extends SipStack {
 	public static final String REPLICATE_APPLICATION_DATA = "org.mobicents.ha.javax.sip.REPLICATE_APPLICATION_DATA";
 	
 	SIPDialog getDialog(String dialogId);	
-	void putDialog(SIPDialog dialog);
+	SIPDialog putDialog(SIPDialog dialog);
 	void removeDialog(SIPDialog dialog);		
 	void remoteDialogRemoval(String dialogId);
 	void passivateDialog(HASipDialog dialog);
