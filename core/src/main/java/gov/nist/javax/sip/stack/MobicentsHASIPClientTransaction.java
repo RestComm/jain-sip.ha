@@ -140,22 +140,23 @@ public class MobicentsHASIPClientTransaction extends MobicentsSIPClientTransacti
 			if (sipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
 				sipStack.getStackLogger().logDebug(transactionId + " : original Request " + originalRequest);
 			}
+		}		
+		Integer state = (Integer) transactionMetaData.get(CURRENT_STATE);
+		if(state != null && super.getState() == null) {
+			super.setState(state);
+			if (sipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+				sipStack.getStackLogger().logDebug(transactionId + " : state " + getState());
+			}
 		}
 		String dialogId = (String) transactionMetaData.get(DIALOG_ID);
 		if(dialogId != null) {
 			SIPDialog sipDialog = sipStack.getDialog(dialogId);
 			if(sipDialog != null) {
 				setDialog(sipDialog, dialogId);
+				sipDialog.addTransaction(this);
 			}
 			if (sipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
 				sipStack.getStackLogger().logDebug(transactionId + " : dialog Id " + dialogId + " dialog " + sipDialog);
-			}
-		}
-		Integer state = (Integer) transactionMetaData.get(CURRENT_STATE);
-		if(state != null && super.getState() == null) {
-			super.setState(state);
-			if (sipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
-				sipStack.getStackLogger().logDebug(transactionId + " : state " + getState());
 			}
 		}
 		super.startTransactionTimer();
