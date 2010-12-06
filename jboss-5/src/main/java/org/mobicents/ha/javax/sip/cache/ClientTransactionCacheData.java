@@ -63,7 +63,7 @@ public class ClientTransactionCacheData extends CacheData {
 		this.clusteredSipStack = clusteredSipStack;
 	}
 	
-	public SIPClientTransaction getServerTransaction(String txId) throws SipCacheException {
+	public SIPClientTransaction getClientTransaction(String txId) throws SipCacheException {
 		SIPClientTransaction haSipClientTransaction = null;
 		final Cache jbossCache = getMobicentsCache().getJBossCache();
 		Configuration config = jbossCache.getConfiguration();
@@ -210,6 +210,9 @@ public class ClientTransactionCacheData extends CacheData {
 	private void updateClientTransactionMetaData(Map<String, Object> transactionMetaData, Object transactionAppData, MobicentsHASIPClientTransaction haClientTransaction, boolean recreation) throws ParseException,
 			PeerUnavailableException {
 		haClientTransaction.setMetaDataToReplicate(transactionMetaData, recreation);
+		if(logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+			logger.logDebug("updating application data with the one from cache " + transactionAppData);
+		}
 		haClientTransaction.setApplicationDataToReplicate(transactionAppData);		
 	}
 	
@@ -243,6 +246,9 @@ public class ClientTransactionCacheData extends CacheData {
 			}
 			final Object transactionAppData = haClientTransaction.getApplicationDataToReplicate();
 			if(transactionAppData != null) {
+				if(logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+					logger.logDebug("replicating application data " + transactionAppData);
+				}
 				childNode.put(APPDATA, transactionAppData);
 			}
 		} catch (Exception ex) {

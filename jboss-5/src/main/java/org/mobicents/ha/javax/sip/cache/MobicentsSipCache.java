@@ -239,7 +239,7 @@ public abstract class MobicentsSipCache implements SipCache {
 	 * @see org.mobicents.ha.javax.sip.cache.SipCache#getClientTransaction(java.lang.String)
 	 */
 	public SIPClientTransaction getClientTransaction(String transactionId) throws SipCacheException {
-		return clientTransactionCacheData.getServerTransaction(transactionId);
+		return clientTransactionCacheData.getClientTransaction(transactionId);
 	}
 
 	/*

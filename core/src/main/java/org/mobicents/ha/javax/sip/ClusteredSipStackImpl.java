@@ -472,7 +472,7 @@ public abstract class ClusteredSipStackImpl extends gov.nist.javax.sip.SipStackI
 						if(getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
 							getStackLogger().logDebug("sipStack " + this + " transaction " + transactionId + " server = " + isServer + " is present in the distributed cache");
 						}	
-						SIPClientTransaction retval = clientTransactionTable.putIfAbsent(sipTransaction.getTransactionId(), (SIPClientTransaction) sipTransaction);
+						SIPClientTransaction retval = clientTransactionTable.putIfAbsent(transactionId, (SIPClientTransaction) sipTransaction);
 						if(retval != null) {
 							sipTransaction = retval;
 						}
