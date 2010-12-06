@@ -21,6 +21,7 @@
  */
 package gov.nist.javax.sip.stack;
 
+import gov.nist.core.CommonLogger;
 import gov.nist.core.StackLogger;
 import gov.nist.javax.sip.SipProviderImpl;
 import gov.nist.javax.sip.message.SIPResponse;
@@ -38,6 +39,8 @@ import org.mobicents.ha.javax.sip.cache.SipCacheException;
  *
  */
 public class ConfirmedNoAppDataReplicationSipDialog extends AbstractHASipDialog {	
+	
+	private static StackLogger logger = CommonLogger.getLogger(ConfirmedNoAppDataReplicationSipDialog.class);
 	
 	private static final long serialVersionUID = -779892668482217624L;
 
@@ -60,8 +63,8 @@ public class ConfirmedNoAppDataReplicationSipDialog extends AbstractHASipDialog 
 		final DialogState dialogState = getState();
 		final ReplicationStrategy replicationStrategy = ((ClusteredSipStack)getStack()).getReplicationStrategy();
 		boolean replicationStateVsDialogStateOK= false;		
-		if (getStack().getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
-			getStack().getStackLogger().logDebug("dialogState = " + dialogState + ", replicationStrategy = " + replicationStrategy);
+		if (logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+			logger.logDebug("dialogState = " + dialogState + ", replicationStrategy = " + replicationStrategy);
 		}
 		if(dialogState == DialogState.CONFIRMED && (replicationStrategy == ReplicationStrategy.ConfirmedDialog|| replicationStrategy == ReplicationStrategy.ConfirmedDialogNoApplicationData)) {
 			replicationStateVsDialogStateOK = true;
@@ -73,7 +76,7 @@ public class ConfirmedNoAppDataReplicationSipDialog extends AbstractHASipDialog 
 			try {
 				((ClusteredSipStack)getStack()).getSipCache().putDialog(this);
 			} catch (SipCacheException e) {
-				getStack().getStackLogger().logError("problem storing dialog " + getDialogId() + " into the distributed cache", e);
+				logger.logError("problem storing dialog " + getDialogId() + " into the distributed cache", e);
 			}
 		}
 	}

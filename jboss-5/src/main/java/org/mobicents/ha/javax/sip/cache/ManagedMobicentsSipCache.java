@@ -21,6 +21,7 @@
  */
 package org.mobicents.ha.javax.sip.cache;
 
+import gov.nist.core.CommonLogger;
 import gov.nist.core.StackLogger;
 import gov.nist.javax.sip.stack.SIPClientTransaction;
 import gov.nist.javax.sip.stack.SIPDialog;
@@ -48,6 +49,8 @@ public class ManagedMobicentsSipCache extends MobicentsSipCache {
 	public static final String CACHE_NAME = "org.mobicents.ha.javax.sip.cache.MobicentsSipCache.cacheName";
 	public static final String DEFAULT_CACHE_NAME = "jain-sip-cache";
 		
+	private static StackLogger clusteredlogger = CommonLogger.getLogger(ManagedMobicentsSipCache.class);
+	
 	protected Node<String, SIPDialog> dialogRootNode = null;
 	protected Node<String, SIPClientTransaction> clientTxRootNode = null;
 	protected Node<String, SIPServerTransaction> serverTxRootNode = null;
@@ -72,16 +75,16 @@ public class ManagedMobicentsSipCache extends MobicentsSipCache {
 				CacheManager cacheManager = locator.getCacheManager(null);
 //				Context ctx = new InitialContext();
 //				CacheManager cacheManager = (CacheManager) ctx.lookup("java:CacheManager"); 
-				if (clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_INFO)) {
-					clusteredSipStack.getStackLogger().logInfo(
+				if (clusteredlogger.isLoggingEnabled(StackLogger.TRACE_INFO)) {
+					clusteredlogger.logInfo(
 							"Mobicents JAIN SIP JBoss Cache Manager instance : " + cacheManager);
 				}
 				cluster = new DefaultMobicentsCluster(new MobicentsCache(cacheManager, configProperties.getProperty(CACHE_NAME,DEFAULT_CACHE_NAME), false), null, null);
 				Thread.currentThread().setContextClassLoader(previousClassLoader);
 			} else {
 				String pojoConfigurationPath = configProperties.getProperty(JBOSS_CACHE_CONFIG_PATH, DEFAULT_FILE_CONFIG_PATH);
-				if (clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_INFO)) {
-					clusteredSipStack.getStackLogger().logInfo(
+				if (clusteredlogger.isLoggingEnabled(StackLogger.TRACE_INFO)) {
+					clusteredlogger.logInfo(
 							"Mobicents JAIN SIP JBoss Cache Configuration path is : " + pojoConfigurationPath);
 				}
 				cluster = new DefaultMobicentsCluster(new MobicentsCache(pojoConfigurationPath), null, null);

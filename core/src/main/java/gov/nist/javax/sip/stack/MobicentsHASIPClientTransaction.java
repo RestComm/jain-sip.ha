@@ -21,6 +21,7 @@
  */
 package gov.nist.javax.sip.stack;
 
+import gov.nist.core.CommonLogger;
 import gov.nist.core.StackLogger;
 import gov.nist.javax.sip.message.ResponseExt;
 import gov.nist.javax.sip.message.SIPMessage;
@@ -46,6 +47,7 @@ import org.mobicents.ha.javax.sip.cache.SipCacheException;
  */
 public class MobicentsHASIPClientTransaction extends MobicentsSIPClientTransaction {
 
+	private static StackLogger logger = CommonLogger.getLogger(MobicentsHASIPClientTransaction.class);
 	public static final String MY_PORT = "mp";
 	public static final String PEER_PORT = "cp";
 	public static final String PEER_IP = "cip";
@@ -66,46 +68,46 @@ public class MobicentsHASIPClientTransaction extends MobicentsSIPClientTransacti
 		Map<String,Object> transactionMetaData = new HashMap<String,Object>();
 		
 		transactionMetaData.put(ORIGINAL_REQUEST, getOriginalRequest().toString());
-		if (sipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
-			sipStack.getStackLogger().logDebug(transactionId + " : original request " + getOriginalRequest());
+		if (logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+			logger.logDebug(transactionId + " : original request " + getOriginalRequest());
 		}
 		SIPDialog dialog = getDefaultDialog();
 		if(dialog != null) {
 			transactionMetaData.put(DIALOG_ID, dialog.getDialogId());
-			if (sipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
-				sipStack.getStackLogger().logDebug(transactionId + " : dialog Id " + dialog.getDialogId());
+			if (logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+				logger.logDebug(transactionId + " : dialog Id " + dialog.getDialogId());
 			}
 		} else if(localDialogId != null) {
 			transactionMetaData.put(DIALOG_ID, localDialogId);
-			if (sipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
-				sipStack.getStackLogger().logDebug(transactionId + " : dialog Id " + localDialogId);
+			if (logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+				logger.logDebug(transactionId + " : dialog Id " + localDialogId);
 			}
 		}
 		if(getState() != null) {
 			transactionMetaData.put(CURRENT_STATE, Integer.valueOf(getState().getValue()));
-			if (sipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
-				sipStack.getStackLogger().logDebug(transactionId + " : current state " + getState());
+			if (logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+				logger.logDebug(transactionId + " : current state " + getState());
 			}
 		}
 		transactionMetaData.put(TRANSPORT, getMessageChannel().getTransport());
-		if (sipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
-			sipStack.getStackLogger().logDebug(transactionId + " : message channel transport " + getTransport());
+		if (logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+			logger.logDebug(transactionId + " : message channel transport " + getTransport());
 		}
 		transactionMetaData.put(PEER_IP, getMessageChannel().getPeerInetAddress());
-		if (sipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
-			sipStack.getStackLogger().logDebug(transactionId + " : message channel ip " + getMessageChannel().getPeerInetAddress());
+		if (logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+			logger.logDebug(transactionId + " : message channel ip " + getMessageChannel().getPeerInetAddress());
 		}
 		int peerPort = getMessageChannel().getPeerPort();
 		if(isReliable()) {
 			peerPort = peerReliablePort;
 		}
 		transactionMetaData.put(PEER_PORT, Integer.valueOf(peerPort));
-		if (sipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
-			sipStack.getStackLogger().logDebug(transactionId + " : message channel peer port " + peerPort);
+		if (logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+			logger.logDebug(transactionId + " : message channel peer port " + peerPort);
 		}
 		transactionMetaData.put(MY_PORT, Integer.valueOf(getMessageChannel().getPort()));
-		if (sipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
-			sipStack.getStackLogger().logDebug(transactionId + " : message channel my port " + getMessageChannel().getPort());
+		if (logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+			logger.logDebug(transactionId + " : message channel my port " + getMessageChannel().getPort());
 		}
 		
 		return transactionMetaData;
@@ -117,15 +119,15 @@ public class MobicentsHASIPClientTransaction extends MobicentsSIPClientTransacti
 		if(newState == TransactionState._TRYING || newState == TransactionState._PROCEEDING && Request.INVITE.equalsIgnoreCase(getMethod()) && lastResponse == null || (lastResponse != null && lastResponseStatusCode < lastResponse.getStatusCode())) {
 			if(lastResponse != null) {
 				this.localDialogId = lastResponse.getDialogId(false);
-				if (sipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
-					sipStack.getStackLogger().logDebug(transactionId + " : local dialog Id " + localDialogId);
+				if (logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+					logger.logDebug(transactionId + " : local dialog Id " + localDialogId);
 				}			
 			}
 			// store the tx when the response will be sent
 			try {
 				((ClusteredSipStack)sipStack).getSipCache().putClientTransaction(this);
 			} catch (SipCacheException e) {
-				sipStack.getStackLogger().logError("problem storing server transaction " + transactionId + " into the distributed cache", e);
+				logger.logError("problem storing server transaction " + transactionId + " into the distributed cache", e);
 			}
 		}
 	}
@@ -137,15 +139,15 @@ public class MobicentsHASIPClientTransaction extends MobicentsSIPClientTransacti
 		if(originalRequestString != null) {
 			final SIPRequest origRequest = (SIPRequest) SipFactory.getInstance().createMessageFactory().createRequest(originalRequestString);			
 			super.setOriginalRequest(origRequest);
-			if (sipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
-				sipStack.getStackLogger().logDebug(transactionId + " : original Request " + originalRequest);
+			if (logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+				logger.logDebug(transactionId + " : original Request " + originalRequest);
 			}
 		}		
 		Integer state = (Integer) transactionMetaData.get(CURRENT_STATE);
 		if(state != null && super.getState() == null) {
 			super.setState(state);
-			if (sipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
-				sipStack.getStackLogger().logDebug(transactionId + " : state " + getState());
+			if (logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+				logger.logDebug(transactionId + " : state " + getState());
 			}
 		}
 		String dialogId = (String) transactionMetaData.get(DIALOG_ID);
@@ -155,8 +157,8 @@ public class MobicentsHASIPClientTransaction extends MobicentsSIPClientTransacti
 				setDialog(sipDialog, dialogId);
 				sipDialog.addTransaction(this);
 			}
-			if (sipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
-				sipStack.getStackLogger().logDebug(transactionId + " : dialog Id " + dialogId + " dialog " + sipDialog);
+			if (logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+				logger.logDebug(transactionId + " : dialog Id " + dialogId + " dialog " + sipDialog);
 			}
 		}
 		super.startTransactionTimer();

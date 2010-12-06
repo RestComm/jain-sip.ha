@@ -21,6 +21,7 @@
  */
 package org.mobicents.ha.javax.sip;
 
+import gov.nist.core.CommonLogger;
 import gov.nist.core.StackLogger;
 
 import java.io.IOException;
@@ -62,6 +63,7 @@ import org.mobicents.tools.sip.balancer.SIPNode;
  */
 public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBeatingService, LoadBalancerHeartBeatingServiceImplMBean {
 
+	private static StackLogger logger = CommonLogger.getLogger(LoadBalancerHeartBeatingServiceImpl.class);
 	public static String LB_HB_SERVICE_MBEAN_NAME = "org.mobicents.jain.sip:type=load-balancer-heartbeat-service,name=";
 	
 	public static final int DEFAULT_RMI_PORT = 2000;
@@ -71,7 +73,6 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 	
 	ClusteredSipStack sipStack = null;
 	//the logger
-    StackLogger logger = null;
     //the balancers to send heartbeat to and our health info
 	protected String balancers;
 	//the jvmRoute for this node
@@ -96,7 +97,6 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 	public void init(ClusteredSipStack clusteredSipStack,
 			Properties stackProperties) {
 		sipStack = clusteredSipStack;
-		logger = clusteredSipStack.getStackLogger();
 		balancers = stackProperties.getProperty(BALANCERS);
 		heartBeatInterval = Integer.parseInt(stackProperties.getProperty(HEARTBEAT_INTERVAL, "5000"));
 	}

@@ -21,6 +21,7 @@
  */
 package org.mobicents.ha.javax.sip.cache;
 
+import gov.nist.core.CommonLogger;
 import gov.nist.core.StackLogger;
 
 import org.jboss.cache.Fqn;
@@ -45,6 +46,7 @@ import org.mobicents.ha.javax.sip.ClusteredSipStack;
  */
 @org.jboss.cache.notifications.annotation.CacheListener
 public class JBossJainSipCacheListener {
+	private static StackLogger clusteredlogger = CommonLogger.getLogger(JBossJainSipCacheListener.class);
 
 	private ClusteredSipStack clusteredSipStack;
 
@@ -58,8 +60,8 @@ public class JBossJainSipCacheListener {
 
 	@CacheStarted
 	public void cacheStarted(CacheStartedEvent cacheStartedEvent) {
-		if (clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_INFO)) {
-			clusteredSipStack.getStackLogger().logInfo(
+		if (clusteredlogger.isLoggingEnabled(StackLogger.TRACE_INFO)) {
+			clusteredlogger.logInfo(
 					"Mobicents Cache started, status: " + cacheStartedEvent.getCache().getCacheStatus() + 
 					", Mode: " + cacheStartedEvent.getCache().getConfiguration().getCacheModeString());
 		}
@@ -67,8 +69,8 @@ public class JBossJainSipCacheListener {
 
 	@CacheStopped
 	public void cacheStopped(CacheStoppedEvent cacheStoppedEvent) {
-		if (clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_INFO)) {
-			clusteredSipStack.getStackLogger().logInfo(
+		if (clusteredlogger.isLoggingEnabled(StackLogger.TRACE_INFO)) {
+			clusteredlogger.logInfo(
 					"Mobicents Cache stopped, status: " + cacheStoppedEvent.getCache().getCacheStatus() + 
 					", Mode: " + cacheStoppedEvent.getCache().getConfiguration().getCacheModeString());
 		}
@@ -80,8 +82,8 @@ public class JBossJainSipCacheListener {
 			return ;
 		}
 		final Fqn fqn = nodeCreatedEvent.getFqn();
-		if (!nodeCreatedEvent.isOriginLocal() && clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
-			clusteredSipStack.getStackLogger().logDebug("sipStack " + clusteredSipStack + 
+		if (!nodeCreatedEvent.isOriginLocal() && clusteredlogger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+			clusteredlogger.logDebug("sipStack " + clusteredSipStack + 
 					" Node created : " + fqn);
 		}
 	}
@@ -92,8 +94,8 @@ public class JBossJainSipCacheListener {
 			return ;
 		}
 		final Fqn fqn = nodeModifiedEvent.getFqn();
-		if (!nodeModifiedEvent.isOriginLocal() && clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
-			clusteredSipStack.getStackLogger().logDebug("sipStack " + clusteredSipStack + 
+		if (!nodeModifiedEvent.isOriginLocal() && clusteredlogger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+			clusteredlogger.logDebug("sipStack " + clusteredSipStack + 
 					" Node modified : " + fqn + " " + nodeModifiedEvent.getData());
 		}
 		
@@ -105,16 +107,16 @@ public class JBossJainSipCacheListener {
 			return ;
 		}
 		final Fqn fqn = nodeRemovedEvent.getFqn();
-		if (!nodeRemovedEvent.isOriginLocal() && clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
-			clusteredSipStack.getStackLogger().logDebug("sipStack " + clusteredSipStack + 
+		if (!nodeRemovedEvent.isOriginLocal() && clusteredlogger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+			clusteredlogger.logDebug("sipStack " + clusteredSipStack + 
 					" Node removed : " + fqn);
 		}		
 	}
 
 	@ViewChanged
 	public void viewChange(org.jboss.cache.notifications.event.ViewChangedEvent viewChangedEvent) {
-		if (clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
-			clusteredSipStack.getStackLogger().logDebug("sipStack " + clusteredSipStack + 
+		if (clusteredlogger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+			clusteredlogger.logDebug("sipStack " + clusteredSipStack + 
 					" View changed : " + viewChangedEvent.getNewView().getVid());
 		}
 	}

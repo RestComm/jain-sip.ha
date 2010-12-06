@@ -21,6 +21,7 @@
  */
 package org.mobicents.ha.javax.sip.cache;
 
+import gov.nist.core.CommonLogger;
 import gov.nist.core.StackLogger;
 import gov.nist.javax.sip.stack.SIPClientTransaction;
 import gov.nist.javax.sip.stack.SIPDialog;
@@ -52,7 +53,7 @@ import org.mobicents.ha.javax.sip.ReplicationStrategy;
 public class JBossSipCache implements SipCache {
 	public static final String JBOSS_CACHE_CONFIG_PATH = "org.mobicents.ha.javax.sip.JBOSS_CACHE_CONFIG_PATH";
 	public static final String DEFAULT_FILE_CONFIG_PATH = "META-INF/cache-configuration.xml"; 
-	
+	private static StackLogger clusteredlogger = CommonLogger.getLogger(JBossSipCache.class);
 	ClusteredSipStack clusteredSipStack = null;
 	Properties configProperties = null;	
 	
@@ -162,8 +163,8 @@ public class JBossSipCache implements SipCache {
 
 	public void init() throws SipCacheException {
 		String pojoConfigurationPath = configProperties.getProperty(JBOSS_CACHE_CONFIG_PATH, DEFAULT_FILE_CONFIG_PATH);
-		if (clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_INFO)) {
-			clusteredSipStack.getStackLogger().logInfo(
+		if (clusteredlogger.isLoggingEnabled(StackLogger.TRACE_INFO)) {
+			clusteredlogger.logInfo(
 					"Mobicents JAIN SIP JBoss Cache Configuration path is : " + pojoConfigurationPath);
 		}
 		try {

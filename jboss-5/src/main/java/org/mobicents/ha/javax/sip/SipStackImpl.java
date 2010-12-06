@@ -21,6 +21,7 @@
  */
 package org.mobicents.ha.javax.sip;
 
+import gov.nist.core.CommonLogger;
 import gov.nist.core.StackLogger;
 import gov.nist.javax.sip.stack.MessageProcessor;
 import gov.nist.javax.sip.stack.SIPTransaction;
@@ -47,7 +48,7 @@ import org.mobicents.ha.javax.sip.cache.SipCache;
 public class SipStackImpl extends ClusteredSipStackImpl implements SipStackImplMBean, NotificationListener {
 	public static String JAIN_SIP_MBEAN_NAME = "org.mobicents.jain.sip:type=sip-stack,name=";
 	public static String LOG4J_SERVICE_MBEAN_NAME = "jboss.system:service=Logging,type=Log4jService";
-	
+	private static StackLogger logger = CommonLogger.getLogger(SipStackImpl.class);
 	ObjectName oname = null;
 	MBeanServer mbeanServer = null;
 	boolean isMBeanServerNotAvailable = false;
@@ -87,21 +88,21 @@ public class SipStackImpl extends ClusteredSipStackImpl implements SipStackImplM
 			oname = new ObjectName(mBeanName);
 			if (getMBeanServer() != null && !getMBeanServer().isRegistered(oname)) {
 				getMBeanServer().registerMBean(this, oname);
-				if(getStackLogger().isLoggingEnabled(StackLogger.TRACE_INFO)) {
-					getStackLogger().logInfo("Adding notification listener for logging mbean \"" + LOG4J_SERVICE_MBEAN_NAME + "\" to server " + getMBeanServer());
+				if(logger.isLoggingEnabled(StackLogger.TRACE_INFO)) {
+					logger.logInfo("Adding notification listener for logging mbean \"" + LOG4J_SERVICE_MBEAN_NAME + "\" to server " + getMBeanServer());
 				}
 			}
 		} catch (Exception e) {
-			getStackLogger().logError("Could not register the stack as an MBean under the following name", e);
+			logger.logError("Could not register the stack as an MBean under the following name", e);
 			throw new SipException("Could not register the stack as an MBean under the following name " + mBeanName + ", cause: " + e.getMessage(), e);
 		}
 		try {
-			if(getStackLogger().isLoggingEnabled(StackLogger.TRACE_INFO)) {
-				getStackLogger().logInfo("Adding notification listener for logging mbean \"" + LOG4J_SERVICE_MBEAN_NAME + "\" to server " + getMBeanServer());
+			if(logger.isLoggingEnabled(StackLogger.TRACE_INFO)) {
+				logger.logInfo("Adding notification listener for logging mbean \"" + LOG4J_SERVICE_MBEAN_NAME + "\" to server " + getMBeanServer());
 			}
 			getMBeanServer().addNotificationListener(new ObjectName(LOG4J_SERVICE_MBEAN_NAME), this, null, null);
 		} catch (Exception e) {
-			getStackLogger().logWarning("Could not register the stack as a Notification Listener of " + LOG4J_SERVICE_MBEAN_NAME + " runtime changes to log4j.xml won't affect SIP Stack Logging");
+			logger.logWarning("Could not register the stack as a Notification Listener of " + LOG4J_SERVICE_MBEAN_NAME + " runtime changes to log4j.xml won't affect SIP Stack Logging");
 		}
 	}
 	
@@ -113,7 +114,7 @@ public class SipStackImpl extends ClusteredSipStackImpl implements SipStackImplM
 				getMBeanServer().unregisterMBean(oname);
 			}
 		} catch (Exception e) {
-			getStackLogger().logError("Could not unregister the stack as an MBean under the following name" + mBeanName);
+			logger.logError("Could not unregister the stack as an MBean under the following name" + mBeanName);
 		}
 		super.stop();
 	}
@@ -129,8 +130,8 @@ public class SipStackImpl extends ClusteredSipStackImpl implements SipStackImplM
 			try {
 				mbeanServer = (MBeanServer) MBeanServerFactory.findMBeanServer(null).get(0);				
 			} catch (Exception e) {
-				getStackLogger().logStackTrace(StackLogger.TRACE_DEBUG);
-				getStackLogger().logWarning("No Mbean Server available, so JMX statistics won't be available");
+				logger.logStackTrace(StackLogger.TRACE_DEBUG);
+				logger.logWarning("No Mbean Server available, so JMX statistics won't be available");
 				isMBeanServerNotAvailable = true;
 			}
 		}
@@ -146,7 +147,7 @@ public class SipStackImpl extends ClusteredSipStackImpl implements SipStackImplM
 	 * @see javax.management.NotificationListener#handleNotification(javax.management.Notification, java.lang.Object)
 	 */
 	public void handleNotification(Notification notification, Object handback) {
-		getStackLogger().setStackProperties(super.getConfigurationProperties());
+		logger.setStackProperties(super.getConfigurationProperties());
 	}
 	
 	/*

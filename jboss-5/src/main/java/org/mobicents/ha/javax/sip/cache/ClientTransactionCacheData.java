@@ -21,6 +21,7 @@
  */
 package org.mobicents.ha.javax.sip.cache;
 
+import gov.nist.core.CommonLogger;
 import gov.nist.core.StackLogger;
 import gov.nist.javax.sip.stack.MessageChannel;
 import gov.nist.javax.sip.stack.MessageProcessor;
@@ -53,7 +54,9 @@ import org.mobicents.ha.javax.sip.ClusteredSipStack;
  */
 public class ClientTransactionCacheData extends CacheData {
 	private static final String APPDATA = "APPDATA";
-	private ClusteredSipStack clusteredSipStack;	
+	private ClusteredSipStack clusteredSipStack;
+	
+	private StackLogger logger = CommonLogger.getLogger(ClientTransactionCacheData.class);
 	
 	public ClientTransactionCacheData(Fqn nodeFqn, MobicentsCache mobicentsCache, ClusteredSipStack clusteredSipStack) {
 		super(nodeFqn, mobicentsCache);
@@ -68,12 +71,12 @@ public class ClientTransactionCacheData extends CacheData {
 		TransactionManager transactionManager = config.getRuntimeConfig().getTransactionManager();		
 		boolean doTx = false;
 		try {
-			if(clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
-				clusteredSipStack.getStackLogger().logDebug("transaction manager :" + transactionManager);
+			if(logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+				logger.logDebug("transaction manager :" + transactionManager);
 			}
 			if(transactionManager != null && transactionManager.getTransaction() == null) {
-				if(clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
-					clusteredSipStack.getStackLogger().logDebug("transaction manager begin transaction");
+				if(logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+					logger.logDebug("transaction manager begin transaction");
 				}
 				transactionManager.begin();				
 				doTx = true;				
@@ -81,8 +84,8 @@ public class ClientTransactionCacheData extends CacheData {
 			// Issue 1517 : http://code.google.com/p/mobicents/issues/detail?id=1517
 			// Adding code to handle Buddy replication to force data gravitation   
 			if(isBuddyReplicationEnabled) {     
-				if(clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
-					clusteredSipStack.getStackLogger().logDebug("forcing data gravitation since buddy replication is enabled");
+				if(logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+					logger.logDebug("forcing data gravitation since buddy replication is enabled");
 				}
 				jbossCache.getInvocationContext().getOptionOverrides().setForceDataGravitation(true);
 			}
@@ -98,8 +101,8 @@ public class ClientTransactionCacheData extends CacheData {
 					throw new SipCacheException("A problem occured while retrieving the following client transaction " + txId + " from the Cache", e);
 				} 
 			} else {
-				if(clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
-					clusteredSipStack.getStackLogger().logDebug("no child node found for transactionId " + txId);
+				if(logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+					logger.logDebug("no child node found for transactionId " + txId);
 				}				
 			}
 		} catch (Exception ex) {
@@ -109,26 +112,26 @@ public class ClientTransactionCacheData extends CacheData {
 					transactionManager.setRollbackOnly();
 				}
 			} catch (Exception exn) {
-				clusteredSipStack.getStackLogger().logError("Problem rolling back session mgmt transaction",
+				logger.logError("Problem rolling back session mgmt transaction",
 						exn);
 			}			
 		} finally {
 			if (doTx) {
 				try {
 					if (transactionManager.getTransaction().getStatus() != Status.STATUS_MARKED_ROLLBACK) {
-						if(clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
-							clusteredSipStack.getStackLogger().logDebug("transaction manager committing transaction");
+						if(logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+							logger.logDebug("transaction manager committing transaction");
 						}
 						transactionManager.commit();
 					} else {
-						if(clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
-							clusteredSipStack.getStackLogger().logDebug("endBatch(): rolling back batch");
+						if(logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+							logger.logDebug("endBatch(): rolling back batch");
 						}
 						transactionManager.rollback();
 					}
 				} catch (RollbackException re) {
 					// Do nothing here since cache may rollback automatically.
-					clusteredSipStack.getStackLogger().logWarning("endBatch(): rolling back transaction with exception: "
+					logger.logWarning("endBatch(): rolling back transaction with exception: "
 									+ re);
 				} catch (RuntimeException re) {
 					throw re;
@@ -145,24 +148,24 @@ public class ClientTransactionCacheData extends CacheData {
 	public MobicentsHASIPClientTransaction createClientTransaction(String txId, Map<String, Object> transactionMetaData, Object transactionAppData) throws SipCacheException {
 		MobicentsHASIPClientTransaction haClientTransaction = null; 
 		if(transactionMetaData != null) {
-			if(clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
-				clusteredSipStack.getStackLogger().logDebug("sipStack " + this + " client transaction " + txId + " is present in the distributed cache, recreating it locally");
+			if(logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+				logger.logDebug("sipStack " + this + " client transaction " + txId + " is present in the distributed cache, recreating it locally");
 			}
 			String channelTransport = (String) transactionMetaData.get(MobicentsHASIPClientTransaction.TRANSPORT);
-			if (clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
-				clusteredSipStack.getStackLogger().logDebug(txId + " : transport " + channelTransport);
+			if (logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+				logger.logDebug(txId + " : transport " + channelTransport);
 			}
 			InetAddress channelIp = (InetAddress) transactionMetaData.get(MobicentsHASIPClientTransaction.PEER_IP);
-			if (clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
-				clusteredSipStack.getStackLogger().logDebug(txId + " : channel peer Ip address " + channelIp);
+			if (logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+				logger.logDebug(txId + " : channel peer Ip address " + channelIp);
 			}
 			Integer channelPort = (Integer) transactionMetaData.get(MobicentsHASIPClientTransaction.PEER_PORT);
-			if (clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
-				clusteredSipStack.getStackLogger().logDebug(txId + " : channel peer port " + channelPort);
+			if (logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+				logger.logDebug(txId + " : channel peer port " + channelPort);
 			}
 			Integer myPort = (Integer) transactionMetaData.get(MobicentsHASIPClientTransaction.MY_PORT);
-			if (clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
-				clusteredSipStack.getStackLogger().logDebug(txId + " : my port " + myPort);
+			if (logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+				logger.logDebug(txId + " : my port " + myPort);
 			}
 			MessageChannel messageChannel = null;
 			MessageProcessor[] messageProcessors = clusteredSipStack.getStackMessageProcessors();
@@ -171,7 +174,7 @@ public class ClientTransactionCacheData extends CacheData {
 					try {
 						messageChannel = messageProcessor.createMessageChannel(channelIp, channelPort);
 					} catch (IOException e) {
-						clusteredSipStack.getStackLogger().logError("couldn't recreate the message channel on ip address " 
+						logger.logError("couldn't recreate the message channel on ip address " 
 								+ channelIp + " and port " + channelPort, e);
 					}
 					break;
@@ -188,8 +191,8 @@ public class ClientTransactionCacheData extends CacheData {
 				throw new SipCacheException("A problem occured while retrieving the following transaction " + txId + " from the Cache", e);
 			}
 		} else {
-			if(clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
-				clusteredSipStack.getStackLogger().logDebug("sipStack " + this + " client transaction " + txId + " not found in the distributed cache");
+			if(logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+				logger.logDebug("sipStack " + this + " client transaction " + txId + " not found in the distributed cache");
 			}
 		}
 		
@@ -211,24 +214,24 @@ public class ClientTransactionCacheData extends CacheData {
 	}
 	
 	public void putClientTransaction(SIPClientTransaction clientTransaction) throws SipCacheException {
-		if(clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
-			clusteredSipStack.getStackLogger().logStackTrace();
+		if(logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+			logger.logStackTrace();
 		}
 		final MobicentsHASIPClientTransaction haClientTransaction = (MobicentsHASIPClientTransaction) clientTransaction;
 		final String transactionId = haClientTransaction.getTransactionId();
-		if(clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
-			clusteredSipStack.getStackLogger().logDebug("put HA SIP Client Transaction " + clientTransaction + " with id " + transactionId);
+		if(logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+			logger.logDebug("put HA SIP Client Transaction " + clientTransaction + " with id " + transactionId);
 		}
 		final Cache jbossCache = getMobicentsCache().getJBossCache();
 		TransactionManager transactionManager = jbossCache.getConfiguration().getRuntimeConfig().getTransactionManager();		
 		boolean doTx = false;
 		try {
-			if(clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
-				clusteredSipStack.getStackLogger().logDebug("transaction manager :" + transactionManager);
+			if(logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+				logger.logDebug("transaction manager :" + transactionManager);
 			}
 			if(transactionManager != null && transactionManager.getTransaction() == null) {
-				if(clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
-					clusteredSipStack.getStackLogger().logDebug("transaction manager begin transaction");
+				if(logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+					logger.logDebug("transaction manager begin transaction");
 				}
 				transactionManager.begin();				
 				doTx = true;				
@@ -249,26 +252,26 @@ public class ClientTransactionCacheData extends CacheData {
 					transactionManager.setRollbackOnly();
 				}
 			} catch (Exception exn) {
-				clusteredSipStack.getStackLogger().logError("Problem rolling back session mgmt transaction",
+				logger.logError("Problem rolling back session mgmt transaction",
 						exn);
 			}			
 		} finally {
 			if (doTx) {
 				try {
 					if (transactionManager.getTransaction().getStatus() != Status.STATUS_MARKED_ROLLBACK) {
-						if(clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
-							clusteredSipStack.getStackLogger().logDebug("transaction manager committing transaction");
+						if(logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+							logger.logDebug("transaction manager committing transaction");
 						}
 						transactionManager.commit();
 					} else {
-						if(clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
-							clusteredSipStack.getStackLogger().logDebug("endBatch(): rolling back batch");
+						if(logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+							logger.logDebug("endBatch(): rolling back batch");
 						}
 						transactionManager.rollback();
 					}
 				} catch (RollbackException re) {
 					// Do nothing here since cache may rollback automatically.
-					clusteredSipStack.getStackLogger().logWarning("endBatch(): rolling back transaction with exception: "
+					logger.logWarning("endBatch(): rolling back transaction with exception: "
 									+ re);
 				} catch (RuntimeException re) {
 					throw re;
@@ -282,20 +285,20 @@ public class ClientTransactionCacheData extends CacheData {
 	}
 
 	public boolean removeClientTransaction(String transactionId) {
-		if(clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
-			clusteredSipStack.getStackLogger().logDebug("remove HA SIP Client Transaction " + transactionId);
+		if(logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+			logger.logDebug("remove HA SIP Client Transaction " + transactionId);
 		}
 		boolean succeeded = false;
 		final Cache jbossCache = getMobicentsCache().getJBossCache();
 		TransactionManager transactionManager = jbossCache.getConfiguration().getRuntimeConfig().getTransactionManager();		
 		boolean doTx = false;
 		try {
-			if(clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
-				clusteredSipStack.getStackLogger().logDebug("transaction manager :" + transactionManager);
+			if(logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+				logger.logDebug("transaction manager :" + transactionManager);
 			}
 			if(transactionManager != null && transactionManager.getTransaction() == null) {
-				if(clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
-					clusteredSipStack.getStackLogger().logDebug("transaction manager begin transaction");
+				if(logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+					logger.logDebug("transaction manager begin transaction");
 				}
 				transactionManager.begin();				
 				doTx = true;				
@@ -309,26 +312,26 @@ public class ClientTransactionCacheData extends CacheData {
 					transactionManager.setRollbackOnly();
 				}
 			} catch (Exception exn) {
-				clusteredSipStack.getStackLogger().logError("Problem rolling back session mgmt transaction",
+				logger.logError("Problem rolling back session mgmt transaction",
 						exn);
 			}			
 		} finally {
 			if (doTx) {
 				try {
 					if (transactionManager.getTransaction().getStatus() != Status.STATUS_MARKED_ROLLBACK) {
-						if(clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
-							clusteredSipStack.getStackLogger().logDebug("transaction manager committing transaction");
+						if(logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+							logger.logDebug("transaction manager committing transaction");
 						}
 						transactionManager.commit();
 					} else {
-						if(clusteredSipStack.getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
-							clusteredSipStack.getStackLogger().logDebug("endBatch(): rolling back batch");
+						if(logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+							logger.logDebug("endBatch(): rolling back batch");
 						}
 						transactionManager.rollback();
 					}
 				} catch (RollbackException re) {
 					// Do nothing here since cache may rollback automatically.
-					clusteredSipStack.getStackLogger().logWarning("endBatch(): rolling back transaction with exception: "
+					logger.logWarning("endBatch(): rolling back transaction with exception: "
 									+ re);
 				} catch (RuntimeException re) {
 					throw re;
