@@ -149,6 +149,7 @@ public class MobicentsHASIPServerTransaction extends MobicentsSIPServerTransacti
 			SIPDialog sipDialog = sipStack.getDialog(dialogId);
 			if(sipDialog != null) {
 				setDialog(sipDialog, dialogId);
+				sipDialog.addTransaction(this);
 			}
 			if (logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
 				logger.logDebug(transactionId + " : dialog Id " + dialogId + " dialog " + sipDialog);
