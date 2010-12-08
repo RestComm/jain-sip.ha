@@ -156,8 +156,7 @@ public class MobicentsHASIPClientTransaction extends MobicentsSIPClientTransacti
 			if (logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
 				logger.logDebug(transactionId + " : dialog Id " + dialogId + " dialog " + sipDialog);
 			}
-		}
-		super.startTransactionTimer();
+		}		
 	}
 	
 	@Override
@@ -174,5 +173,9 @@ public class MobicentsHASIPClientTransaction extends MobicentsSIPClientTransacti
 	
 	public void setApplicationDataToReplicate(Object appData) {
 		super.setApplicationData(appData);
+	}
+
+	public void startTransactionTimerOnFailover() {
+		super.startTransactionTimer();
 	}
 }

@@ -27,6 +27,7 @@ import gov.nist.javax.sip.SipProviderImpl;
 import gov.nist.javax.sip.message.SIPRequest;
 import gov.nist.javax.sip.message.SIPResponse;
 import gov.nist.javax.sip.stack.MessageChannel;
+import gov.nist.javax.sip.stack.MobicentsHASIPClientTransaction;
 import gov.nist.javax.sip.stack.SIPClientTransaction;
 import gov.nist.javax.sip.stack.SIPDialog;
 import gov.nist.javax.sip.stack.SIPServerTransaction;
@@ -475,7 +476,11 @@ public abstract class ClusteredSipStackImpl extends gov.nist.javax.sip.SipStackI
 						}	
 						SIPClientTransaction retval = clientTransactionTable.putIfAbsent(txId, (SIPClientTransaction) sipTransaction);
 						if(retval != null) {
-							sipTransaction = retval;
+							sipTransaction = retval;							
+						} else {
+							// start the transaction timer only when the transaction has been added to the stack
+							// to avoid leaks on retransmissions
+							((MobicentsHASIPClientTransaction)sipTransaction).startTransactionTimerOnFailover();
 						}
 					} else {
 						if(getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
