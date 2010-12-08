@@ -112,7 +112,7 @@ public class MobicentsHASIPClientTransaction extends MobicentsSIPClientTransacti
 	@Override
 	public void setState(int newState) {		
 		super.setState(newState);
-		if(newState == TransactionState._TRYING || newState == TransactionState._PROCEEDING && Request.INVITE.equalsIgnoreCase(getMethod()) && lastResponse == null || (lastResponse != null && lastResponseStatusCode < lastResponse.getStatusCode())) {
+		if(Request.INVITE.equalsIgnoreCase(getMethod()) && (newState == TransactionState._TRYING || newState == TransactionState._PROCEEDING) && (lastResponse == null || (lastResponse != null && lastResponseStatusCode < lastResponse.getStatusCode()))) {
 			if(lastResponse != null) {
 				this.localDialogId = lastResponse.getDialogId(false);
 				if (logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {

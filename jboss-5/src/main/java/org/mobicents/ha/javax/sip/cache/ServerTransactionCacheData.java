@@ -87,9 +87,8 @@ public class ServerTransactionCacheData extends CacheData {
 					clusteredlogger.logDebug("forcing data gravitation since buddy replication is enabled");
 				}
 				jbossCache.getInvocationContext().getOptionOverrides().setForceDataGravitation(true);
-			}
-			// not sure why but whatever we do the transactionId is always set to lower case in the cache
-            final Node<String,Object> childNode = getNode().getChild(txId.toLowerCase());
+			} 
+            final Node<String,Object> childNode = getNode().getChild(txId);
 			if(childNode != null) {
 				try {
 					final Map<String, Object> transactionMetaData = childNode.getData();		
@@ -234,9 +233,8 @@ public class ServerTransactionCacheData extends CacheData {
 				}
 				transactionManager.begin();				
 				doTx = true;				
-	        }					
-			// not sure why but whatever we do the transactionId is always set to lower case in the cache
-			final Node childNode = getNode().addChild(Fqn.fromElements(transactionId.toLowerCase()));
+	        }					 
+			final Node childNode = getNode().addChild(Fqn.fromElements(transactionId));
 			for (Entry<String, Object> metaData : haServerTransaction.getMetaDataToReplicate().entrySet()) {
 				childNode.put(metaData.getKey(), metaData.getValue());
 			}
@@ -302,8 +300,10 @@ public class ServerTransactionCacheData extends CacheData {
 				transactionManager.begin();				
 				doTx = true;				
 	        }			
-			// not sure why but whatever we do the transactionId is always set to lower case in the cache
-			succeeded = getNode().removeChild(transactionId.toLowerCase());
+			succeeded = getNode().removeChild(transactionId);
+			if(clusteredlogger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+				clusteredlogger.logDebug("removed HA SIP Server Transaction ? " + succeeded);
+			}
 		} catch (Exception ex) {
 			try {
 				if(transactionManager != null) {
