@@ -187,6 +187,8 @@ public abstract class MobicentsSipCache implements SipCache {
 		if(clusteredSipStack.getReplicationStrategy() == ReplicationStrategy.EarlyDialog) {
 			serverTransactionCacheData.remove();
 			cluster.removeDataRemovalListener(serverTransactionDataRemovalListener);
+			clientTransactionCacheData.remove();
+			cluster.removeDataRemovalListener(clientTransactionDataRemovalListener);
 		}
 	}
 

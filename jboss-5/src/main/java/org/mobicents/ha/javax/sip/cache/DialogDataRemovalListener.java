@@ -41,7 +41,7 @@ public class DialogDataRemovalListener implements
 	 */
 	@SuppressWarnings("unchecked")
 	public void dataRemoved(Fqn fqn) {
-		clusteredSipStack.remoteServerTransactionRemoval((String) fqn.getLastElement());
+		clusteredSipStack.remoteDialogRemoval((String) fqn.getLastElement());
 	}
 
 	/*

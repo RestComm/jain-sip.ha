@@ -437,9 +437,12 @@ public abstract class ClusteredSipStackImpl extends gov.nist.javax.sip.SipStackI
 	 */
 	@Override
 	public SIPTransaction findTransaction(String transactionId, boolean isServer) {
+		if(sipCache.inLocalMode() || replicationStrategy != ReplicationStrategy.EarlyDialog) {
+			return super.findTransaction(transactionId,isServer);
+		}
 		final String txId = transactionId.toLowerCase();
 		SIPTransaction sipTransaction = super.findTransaction(txId, isServer);
-		if(sipTransaction == null && transactionFactory != null && replicationStrategy == ReplicationStrategy.EarlyDialog) {
+		if(sipTransaction == null && transactionFactory != null) {
 			if(getStackLogger().isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
 				getStackLogger().logDebug("local transaction " + txId + " server = " + isServer + " is null, checking in the distributed cache");
 			}
@@ -498,6 +501,9 @@ public abstract class ClusteredSipStackImpl extends gov.nist.javax.sip.SipStackI
 	@Override
 	public void removeTransaction(SIPTransaction sipTransaction) {
 		super.removeTransaction(sipTransaction);
+		if(sipCache.inLocalMode()) {
+			return;
+		}
 		if(transactionFactory != null && sipTransaction != null && replicationStrategy == ReplicationStrategy.EarlyDialog && sipTransaction.getMethod().equalsIgnoreCase(Request.INVITE)) {
 			if(sipTransaction instanceof ServerTransaction) {
 				// remove the corresponding server transaction from the cache instance
@@ -520,6 +526,9 @@ public abstract class ClusteredSipStackImpl extends gov.nist.javax.sip.SipStackI
 	@Override
 	protected void removeTransactionHash(SIPTransaction sipTransaction) {
 		super.removeTransactionHash(sipTransaction);
+		if(sipCache.inLocalMode()) {
+			return;
+		}
 		if(transactionFactory != null && sipTransaction != null && replicationStrategy == ReplicationStrategy.EarlyDialog && sipTransaction.getMethod().equalsIgnoreCase(Request.INVITE)) {
 			if(sipTransaction instanceof ServerTransaction) {
 				// remove the corresponding server transaction from the cache instance
@@ -582,8 +591,7 @@ public abstract class ClusteredSipStackImpl extends gov.nist.javax.sip.SipStackI
 	@Override
 	public SIPClientTransaction createClientTransaction(SIPRequest sipRequest,
 			MessageChannel encapsulatedMessageChannel) {
-		
-		if(transactionFactory == null) {
+		if(sipCache.inLocalMode() || transactionFactory == null) {
 			return super.createClientTransaction(sipRequest, encapsulatedMessageChannel);
 		}
 		return transactionFactory.createClientTransaction(sipRequest, encapsulatedMessageChannel);
@@ -591,7 +599,7 @@ public abstract class ClusteredSipStackImpl extends gov.nist.javax.sip.SipStackI
 	
 	@Override
 	public SIPServerTransaction createServerTransaction(MessageChannel encapsulatedMessageChannel) {
-		if(transactionFactory == null) {
+		if(sipCache.inLocalMode() || transactionFactory == null) {
 			return super.createServerTransaction(encapsulatedMessageChannel);
 		}
 		return transactionFactory.createServerTransaction(encapsulatedMessageChannel);
