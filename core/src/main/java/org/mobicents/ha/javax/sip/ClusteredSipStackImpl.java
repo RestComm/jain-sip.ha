@@ -37,11 +37,14 @@ import java.util.Properties;
 import java.util.StringTokenizer;
 
 import javax.sip.DialogState;
+import javax.sip.ListeningPoint;
+import javax.sip.ObjectInUseException;
 import javax.sip.PeerUnavailableException;
 import javax.sip.ProviderDoesNotExistException;
 import javax.sip.ServerTransaction;
 import javax.sip.SipException;
 import javax.sip.SipFactory;
+import javax.sip.SipProvider;
 import javax.sip.message.Request;
 
 import org.mobicents.ext.javax.sip.SipProviderFactory;
@@ -669,4 +672,9 @@ public abstract class ClusteredSipStackImpl extends gov.nist.javax.sip.SipStackI
 		// the transaction id is set to lower case in the cache so it might not remove it correctly
 		SIPClientTransaction sipClientTransaction = super.clientTransactionTable.remove(txId);		
 	}
+	
+	public SipProvider createSipProvider(ListeningPoint listeningPoint)
+			throws ObjectInUseException {
+		return sipProviderFactory.createSipProvider(listeningPoint);
+	 }  
 }	
