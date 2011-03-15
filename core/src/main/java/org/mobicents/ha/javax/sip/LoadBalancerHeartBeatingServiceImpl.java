@@ -486,6 +486,9 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 				Registry registry = LocateRegistry.getRegistry(balancerDescription.getAddress().getHostAddress(), balancerDescription.getRmiPort());
 				NodeRegisterRMIStub reg=(NodeRegisterRMIStub) registry.lookup("SIPBalancer");
 				ArrayList<SIPNode> reachableInfo = getReachableSIPNodeInfo(balancerDescription.getAddress(), info);
+				if(reachableInfo.isEmpty()) {
+					logger.logWarning("All connectors are unreachable from the balancer");
+				}
 				
 				reg.handlePing(reachableInfo);
 				balancerDescription.setDisplayWarning(true);
@@ -515,12 +518,16 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 	 * @return the list stripped from the nodes not able to reach the load balancer
 	 */
 	protected ArrayList<SIPNode> getReachableSIPNodeInfo(InetAddress balancerAddr, ArrayList<SIPNode> info) {
+		if (balancerAddr.isLoopbackAddress()) {
+			return info;
+		}
+
 		ArrayList<SIPNode> rv = new ArrayList<SIPNode>();
 		for(SIPNode node: info) {
 			try {
 				NetworkInterface ni = NetworkInterface.getByInetAddress(InetAddress.getByName(node.getIp()));
 				// FIXME How can I determine the ttl?
-				boolean b = balancerAddr.isReachable(ni, 5, 100);
+				boolean b = balancerAddr.isReachable(ni, 5, 900);
 				
 				if(b) {
 					rv.add(node);
