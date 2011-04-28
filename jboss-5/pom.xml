@@ -4,7 +4,7 @@
 	<parent>
 		<groupId>org.mobicents.ha.javax.sip</groupId>
 		<artifactId>mobicents-jain-sip-ha</artifactId>
-		<version>1.2.0.FINAL</version>
+		<version>1.3.0-SNAPSHOT</version>
 	</parent>
 		
 	<artifactId>mobicents-jain-sip-jboss5</artifactId>
