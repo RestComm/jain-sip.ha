@@ -142,16 +142,6 @@ public abstract class ClusteredSipStackImpl extends gov.nist.javax.sip.SipStackI
 		this.sendTryingRightAway = Boolean.valueOf(
 			configurationProperties.getProperty(SEND_TRYING_RIGHT_AWAY,"false")).booleanValue();
 		
-		// get/create the jboss cache instance to store all sip stack related data into it
-		sipCache = SipCacheFactory.createSipCache(this, configurationProperties);
-		try {
-			sipCache.init();
-		} catch (Exception e) {
-			throw new PeerUnavailableException("Unable to initialize the SipCache", e);
-		}
-		if(loadBalancerHeartBeatingService != null) {
-			loadBalancerHeartBeatingService.init(this, configurationProperties);
-		}
 		String replicationStrategyProperty = configurationProperties.getProperty(ClusteredSipStack.REPLICATION_STRATEGY_PROPERTY);
 		if(replicationStrategyProperty != null) {
 			replicationStrategy = ReplicationStrategy.valueOf(replicationStrategyProperty);
@@ -161,6 +151,17 @@ public abstract class ClusteredSipStackImpl extends gov.nist.javax.sip.SipStackI
 				transactionFactory.setSipStack(this);
 			}
 		}
+		
+		// get/create the jboss cache instance to store all sip stack related data into it
+		sipCache = SipCacheFactory.createSipCache(this, configurationProperties);
+		try {
+			sipCache.init();
+		} catch (Exception e) {
+			throw new PeerUnavailableException("Unable to initialize the SipCache", e);
+		}
+		if(loadBalancerHeartBeatingService != null) {
+			loadBalancerHeartBeatingService.init(this, configurationProperties);
+		}		
 		String replicateApplicationDataProperty = configurationProperties.getProperty(ClusteredSipStack.REPLICATE_APPLICATION_DATA);
 		if(replicateApplicationDataProperty != null) {			
 			replicateApplicationData = Boolean.valueOf(replicateApplicationDataProperty);
