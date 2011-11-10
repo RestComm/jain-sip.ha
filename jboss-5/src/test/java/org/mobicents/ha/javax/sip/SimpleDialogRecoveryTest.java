@@ -22,6 +22,8 @@
 
 package org.mobicents.ha.javax.sip;
 
+import gov.nist.javax.sip.message.MessageExt;
+import gov.nist.javax.sip.message.ResponseExt;
 import gov.nist.javax.sip.stack.SIPDialog;
 
 import java.io.ByteArrayInputStream;
@@ -70,13 +72,16 @@ import javax.sip.header.HeaderFactory;
 import javax.sip.header.MaxForwardsHeader;
 import javax.sip.header.RecordRouteHeader;
 import javax.sip.header.RouteHeader;
+import javax.sip.header.SubscriptionStateHeader;
 import javax.sip.header.ToHeader;
 import javax.sip.header.ViaHeader;
 import javax.sip.message.MessageFactory;
 import javax.sip.message.Request;
 import javax.sip.message.Response;
 
+import org.jboss.cache.Fqn;
 import org.mobicents.ha.javax.sip.cache.ManagedMobicentsSipCache;
+import org.mobicents.ha.javax.sip.cache.MobicentsSipCache;
 
 import junit.framework.TestCase;
 /**
@@ -103,8 +108,8 @@ public class SimpleDialogRecoveryTest extends TestCase {
 	}
 	
 //	public static final String IP_ADDRESS = getIpAddressFromProperties();
-	public static final String IP_ADDRESS = "192.168.0.11";
-	public static final String TRACE_LEVEL = "DEBUG";
+	public static final String IP_ADDRESS = "192.168.0.10";
+	public static final String TRACE_LEVEL = "32";
 	
     public static final int BALANCER_PORT = 5050;
 
@@ -292,6 +297,8 @@ public class SimpleDialogRecoveryTest extends TestCase {
         protected ServerTransaction inviteTid;
 
         private Response okResponse;
+        
+        private Response lastNotifyResponse;
 
         private Request inviteRequest;
 
@@ -365,6 +372,8 @@ public class SimpleDialogRecoveryTest extends TestCase {
 
             if (request.getMethod().equals(Request.INVITE)) {
                 processInvite(requestEvent, serverTransactionId);
+            } else if (request.getMethod().equals(Request.SUBSCRIBE)) {
+                processSubscribe(requestEvent, serverTransactionId);
             } else if (request.getMethod().equals(Request.ACK)) {
                 processAck(requestEvent, serverTransactionId);
             } else if (request.getMethod().equals(Request.BYE)) {
@@ -395,6 +404,10 @@ public class SimpleDialogRecoveryTest extends TestCase {
         }
 
         public void processResponse(ResponseEvent responseEvent) {
+        	System.out.println(sipStack.getStackName() + " got a response " + responseEvent.getResponse());
+        	if(((ResponseExt)responseEvent.getResponse()).getCSeqHeader().getMethod().equals(Request.NOTIFY)) {
+        		lastNotifyResponse = responseEvent.getResponse();
+        	}
         }
 
         /**
@@ -485,6 +498,56 @@ public class SimpleDialogRecoveryTest extends TestCase {
         /**
          * Process the bye request.
          */
+        public void processSubscribe(RequestEvent requestEvent,
+                ServerTransaction serverTransactionId) {
+            SipProvider sipProvider = (SipProvider) requestEvent.getSource();
+            ServerTransaction st = requestEvent.getServerTransaction();
+            try {
+	            if (st == null) {
+	                st = sipProvider.getNewServerTransaction(requestEvent.getRequest());
+	            }
+	            dialog = st.getDialog();
+	            Request request = requestEvent.getRequest();
+//            Dialog dialog = requestEvent.getDialog();
+//            System.out.println("local party = " + dialog.getLocalParty());            
+                System.out.println(sipStack.getStackName() + " got a subscribe sending OK Accepted.");
+                Response response = messageFactory.createResponse(202, request);
+                response.addHeader(headerFactory.createExpiresHeader(3600));
+                st.sendResponse(response);
+//                System.out.println("Dialog State is "
+//                        + serverTransactionId.getDialog().getState());
+                ((MobicentsSipCache)((ClusteredSipStack)sipProvider.getSipStack()).getSipCache()).getMobicentsCache().getJBossCache().put(Fqn.fromString("DIALOG_IDS"), "dialogId", dialog.getDialogId());
+                                
+                sendNotify(SubscriptionStateHeader.PENDING);
+                
+            } catch (Exception ex) {
+                ex.printStackTrace();
+                System.exit(0);
+
+            }
+        }
+        
+
+		public void sendNotify(String state) {
+			String dialogId = (String) ((MobicentsSipCache)((ClusteredSipStack)sipProvider.getSipStack()).getSipCache()).getMobicentsCache().getJBossCache().get(Fqn.fromString("DIALOG_IDS"), "dialogId");
+			Dialog dialog = ((ClusteredSipStack)sipStack).getDialog(dialogId);
+			try {
+				Request notify = dialog.createRequest(Request.NOTIFY);
+	            notify.addHeader(headerFactory.createSubscriptionStateHeader(state));
+	            notify.addHeader(headerFactory.createEventHeader("reg;id"));
+	            ClientTransaction ct = this.sipProvider.getNewClientTransaction(notify);
+	            System.out.println(sipStack.getStackName() + ":  Sending NOTIFY " + notify);
+	            dialog.sendRequest(ct);
+			} catch (Exception ex) {
+                ex.printStackTrace();
+                System.exit(0);
+
+            }
+		}
+        
+        /**
+         * Process the bye request.
+         */
         public void processBye(RequestEvent requestEvent,
                 ServerTransaction serverTransactionId) {
             SipProvider sipProvider = (SipProvider) requestEvent.getSource();
@@ -492,7 +555,7 @@ public class SimpleDialogRecoveryTest extends TestCase {
             Dialog dialog = requestEvent.getDialog();
             System.out.println("local party = " + dialog.getLocalParty());
             try {
-                System.out.println("shootme:  got a bye sending OK.");
+                System.out.println(sipStack.getStackName() +  "  got a bye sending OK.");
                 Response response = messageFactory.createResponse(200, request);
                 serverTransactionId.sendResponse(response);
                 System.out.println("Dialog State is "
@@ -671,6 +734,7 @@ public class SimpleDialogRecoveryTest extends TestCase {
             stopSipStack(sipStack, this);
         }
 
+
     }
     class Shootist implements SipListener {
 
@@ -725,6 +789,8 @@ public class SimpleDialogRecoveryTest extends TestCase {
             // We are the UAC so the only request we get is the BYE.
             if (request.getMethod().equals(Request.BYE))
                 processBye(request, serverTransactionId);
+            else if (request.getMethod().equals(Request.NOTIFY))
+                processNotify(request, serverTransactionId);            
             else {
                 try {
                     serverTransactionId.sendResponse( messageFactory.createResponse(202,request) );
@@ -749,6 +815,42 @@ public class SimpleDialogRecoveryTest extends TestCase {
                 Response response = messageFactory.createResponse(200, request);
                 serverTransactionId.sendResponse(response);
                 System.out.println("shootist:  Sending OK.");
+                System.out.println("Dialog State = " + dialog.getState());
+
+            } catch (Exception ex) {
+                fail("Unexpected exception");
+
+            }
+        }
+        
+        public void processNotify(Request request,
+                ServerTransaction serverTransactionId) {
+            try {
+                System.out.println("shootist:  got a " + request);
+                if (serverTransactionId == null) {
+                    System.out.println("shootist:  null TID.");
+                    return;
+                }
+                Dialog dialog = serverTransactionId.getDialog();
+                System.out.println("Dialog :  localParty " + dialog.getLocalParty().getURI());
+                System.out.println("Dialog :  remoteParty " + dialog.getRemoteParty().getURI());
+                
+                System.out.println("request :  localParty " + ((MessageExt)request).getFromHeader().getAddress().getURI());
+                System.out.println("request :  remoteParty " + ((MessageExt)request).getToHeader().getAddress().getURI());
+                
+                int statusCode = Response.OK;
+                
+                if(dialog.getLocalParty().getURI().equals(((MessageExt)request).getToHeader().getAddress().getURI()) && dialog.getRemoteParty().getURI().equals(((MessageExt)request).getFromHeader().getAddress().getURI())) {
+                	statusCode = Response.OK;
+                } else {
+                	statusCode = Response.CALL_OR_TRANSACTION_DOES_NOT_EXIST;
+                }
+                
+                
+                System.out.println("Dialog State = " + dialog.getState());
+                Response response = messageFactory.createResponse(statusCode, request);
+                serverTransactionId.sendResponse(response);
+                System.out.println("shootist:  Sending "+ statusCode);
                 System.out.println("Dialog State = " + dialog.getState());
 
             } catch (Exception ex) {
@@ -854,7 +956,7 @@ public class SimpleDialogRecoveryTest extends TestCase {
             }
         }
 
-        public void init() {
+        public void init(String method) {
             SipFactory sipFactory = null;
             sipStack = null;
             sipFactory = SipFactory.getInstance();
@@ -957,7 +1059,7 @@ public class SimpleDialogRecoveryTest extends TestCase {
 
                 // Create a new Cseq header
                 CSeqHeader cSeqHeader = headerFactory.createCSeqHeader(1L,
-                        Request.INVITE);
+                        method);
 
                 // Create a new MaxForwardsHeader
                 MaxForwardsHeader maxForwards = headerFactory
@@ -965,7 +1067,7 @@ public class SimpleDialogRecoveryTest extends TestCase {
 
                 // Create the request.
                 Request request = messageFactory.createRequest(requestURI,
-                        Request.INVITE, callIdHeader, cSeqHeader, fromHeader,
+                        method, callIdHeader, cSeqHeader, fromHeader,
                         toHeader, viaHeaders, maxForwards);
                 // Create contact headers
                 String host = IP_ADDRESS;
@@ -1092,7 +1194,7 @@ public class SimpleDialogRecoveryTest extends TestCase {
 
         Thread.sleep(5000);
 
-        shootist.init();
+        shootist.init(Request.INVITE);
         
         Thread.sleep(10000);
         
@@ -1100,6 +1202,37 @@ public class SimpleDialogRecoveryTest extends TestCase {
         shootmeRecoveryNode.stop();
         stopSipStack(balancer.sipStack, balancer);
         assertTrue(shootist.okToByeReceived);
+    }
+    
+    // http://code.google.com/p/mobicents/issues/detail?id=2942
+	// 	From and To Uris switch places in certain conditions
+    public void testSubscribeDialogFailover() throws Exception {
+
+        balancer = new Balancer(IP_ADDRESS, BALANCER_PORT);
+        balancer.start();
+
+        shootist = new Shootist(false);
+        
+        shootme = new Shootme("shootme", 5070, true);
+        shootmeRecoveryNode = new Shootme("shootme_recovery", 5080, true);
+        shootme.init();
+        shootmeRecoveryNode.init();        
+
+        Thread.sleep(5000);
+
+        shootist.init(Request.SUBSCRIBE);
+        
+        Thread.sleep(10000);
+        
+        shootmeRecoveryNode.sendNotify(SubscriptionStateHeader.ACTIVE);
+        
+        Thread.sleep(5000);
+        
+        shootist.stop();
+        shootmeRecoveryNode.stop();
+        stopSipStack(balancer.sipStack, balancer);
+        assertEquals(200, shootme.lastNotifyResponse.getStatusCode());
+        assertEquals(200, shootmeRecoveryNode.lastNotifyResponse.getStatusCode());
     }
 
 //    public void testDialogIdentityCalleeSendsBye() throws Exception {

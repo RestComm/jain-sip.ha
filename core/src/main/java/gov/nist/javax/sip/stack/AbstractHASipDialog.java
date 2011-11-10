@@ -42,6 +42,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import javax.sip.DialogState;
 import javax.sip.PeerUnavailableException;
+import javax.sip.ServerTransaction;
 import javax.sip.SipException;
 import javax.sip.SipFactory;
 import javax.sip.address.Address;
@@ -69,6 +70,7 @@ public abstract class AbstractHASipDialog extends SIPDialog implements HASipDial
 	public static final String IS_REINVITE = "ir";
 	public static final String LAST_RESPONSE = "lr";
 	public static final String IS_SERVER = "is";
+	public static final String IS_LATEST_TX_SERVER = "ilts";
 	public static final String FIRST_TX_METHOD = "ftm";
 	public static final String FIRST_TX_ID = "ftid";
 	public static final String FIRST_TX_PORT = "ftp";
@@ -90,6 +92,7 @@ public abstract class AbstractHASipDialog extends SIPDialog implements HASipDial
 	public boolean isReinviteChanged;	
 	public boolean storeFirstTxChanged;
 	public boolean dialogStateChanged;	
+	public boolean isLatestTxServer;
 	
 	static AddressFactory addressFactory = null;
 	static HeaderFactory headerFactory = null;		
@@ -241,10 +244,10 @@ public abstract class AbstractHASipDialog extends SIPDialog implements HASipDial
 			if (logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
 				logger.logDebug(getDialogIdToReplicate() + " : firstTransactionId " + firstTransactionId);
 			}
-		dialogMetaData.put(ENABLE_CSEQ_VALIDATION, isSequnceNumberValidation());
-		if (logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
-			logger.logDebug(getDialogIdToReplicate() + " : CSeq validation is " + isSequnceNumberValidation());
-		}
+			dialogMetaData.put(ENABLE_CSEQ_VALIDATION, isSequnceNumberValidation());
+			if (logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+				logger.logDebug(getDialogIdToReplicate() + " : CSeq validation is " + isSequnceNumberValidation());
+			}
 			dialogMetaData.put(FIRST_TX_METHOD, firstTransactionMethod);
 			if (logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
 				logger.logDebug(getDialogIdToReplicate() + " : firstTransactionMethod " + firstTransactionMethod);
@@ -256,6 +259,10 @@ public abstract class AbstractHASipDialog extends SIPDialog implements HASipDial
 				logger.logDebug(getDialogIdToReplicate() + " : contactHeader " + contactHeader);
 			}
 			storeFirstTxChanged = false;
+		}		
+		dialogMetaData.put(IS_LATEST_TX_SERVER, Boolean.valueOf(isLatestTxServer));
+		if (logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+			logger.logDebug(getDialogIdToReplicate() + " : isLatestTxServer " + isLatestTxServer);
 		}
 		dialogMetaData.put(REMOTE_TAG, getRemoteTag());
 		if (logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
@@ -377,7 +384,7 @@ public abstract class AbstractHASipDialog extends SIPDialog implements HASipDial
 		if(isServer != null) {
 			firstTransactionSeen = true;
 			firstTransactionIsServerTransaction = isServer.booleanValue();
-			setServerTransactionFlag(isServer.booleanValue());
+			super.setServerTransactionFlag(isServer.booleanValue());
 			if (logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
 				logger.logDebug(getDialogIdToReplicate() + " : isServer " + isServer.booleanValue());
 			}
@@ -404,17 +411,25 @@ public abstract class AbstractHASipDialog extends SIPDialog implements HASipDial
 			}
 		}
 		if(recreation && isServer()) {
+			isLatestTxServer = (Boolean) metaData.get(IS_LATEST_TX_SERVER);
 			if(logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
-				logger.logDebug("HA SIP Dialog is Server ? " + isServer() + ", thus switching parties on recreation");
+				logger.logDebug("HA SIP Dialog is Server ? " + isServer() + ", isLatestTxServer ? " + isLatestTxServer);
 			}
-			Address remoteParty = getLocalParty();
-			Address localParty = getRemoteParty();
-			setLocalPartyInternal(localParty);
-			setRemotePartyInternal(remoteParty);
-			long remoteCSeq = getLocalSeqNumber();
-			long localCSeq = getRemoteSeqNumber();
-			localSequenceNumber = localCSeq;
-			remoteSequenceNumber = remoteCSeq;
+			// http://code.google.com/p/mobicents/issues/detail?id=2942
+			// 	From and To Uris switch places in certain conditions
+			if(isLatestTxServer) {
+				if(logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+					logger.logDebug("switching parties on recreation");
+				}
+				Address remoteParty = getLocalParty();
+				Address localParty = getRemoteParty();
+				setLocalPartyInternal(localParty);
+				setRemotePartyInternal(remoteParty);
+				long remoteCSeq = getLocalSeqNumber();
+				long localCSeq = getRemoteSeqNumber();
+				localSequenceNumber = localCSeq;
+				remoteSequenceNumber = remoteCSeq;
+			}
 		}					
 		String remoteTag = (String) metaData.get(REMOTE_TAG);
 		setRemoteTagInternal(remoteTag);
@@ -620,6 +635,18 @@ public abstract class AbstractHASipDialog extends SIPDialog implements HASipDial
 	protected void storeFirstTransactionInfo(SIPDialog dialog, SIPTransaction transaction) {
 		super.storeFirstTransactionInfo(dialog, transaction);
 		storeFirstTxChanged = true;
+	}
+	
+	// http://code.google.com/p/mobicents/issues/detail?id=2942
+	// 	From and To Uris switch places in certain conditions
+	@Override
+	public boolean addTransaction(SIPTransaction transaction) {		
+		if(transaction instanceof ServerTransaction) {
+			 isLatestTxServer = true;
+		} else {
+			 isLatestTxServer = false;
+		}
+		return super.addTransaction(transaction);
 	}
 	
 	@Override
