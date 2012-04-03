@@ -8,6 +8,10 @@
 	</parent>
 
 	<artifactId>mobicents-jain-sip-ha-core</artifactId>
+	
+	<name>Mobicents JAIN SIP HA Core</name>
+	<description>Mobicents JAIN SIP HA Core</description>
+	<url>http://code.google.com/p/jain-sip.ha</url>
 
 	<dependencies>		
 		<dependency>
@@ -18,7 +22,7 @@
 		<dependency>
 			<groupId>org.mobicents.tools</groupId>
 			<artifactId>sip-balancer-jar</artifactId>
-			<version>1.4</version>
+			<version>1.5.0.FINAL</version>
 			<scope>provided</scope>
 		</dependency>
 	</dependencies>
@@ -78,22 +82,31 @@
 
 	<repositories>
 		<repository>
-			<id>jboss</id>
-			<name>JBoss Repository</name>
-			<url>http://repository.jboss.org/maven2</url>
-			<snapshots>
-				<enabled>false</enabled>
-			</snapshots>
+			  <id>mobicents-public-repository-group</id>
+			  <name>Mobicens Public Maven Repository Group</name>
+			  <url>https://oss.sonatype.org/content/groups/public</url>
+			  <layout>default</layout>
+			  <releases>
+			    <enabled>true</enabled>
+			    <updatePolicy>never</updatePolicy>
+			  </releases>
+			  <snapshots>
+			    <enabled>true</enabled>
+			    <updatePolicy>never</updatePolicy>
+			  </snapshots>
 		</repository>
 		<repository>
-			<id>jboss-snapshots</id>
-			<name>JBoss Snapshot Repository</name>
-			<url>http://snapshots.jboss.org/maven2</url>
+			<id>jboss-public-repository-group</id>
+			<name>JBoss Public Maven Repository Group</name>
+			<url>https://repository.jboss.org/nexus/content/groups/public</url>
+			<layout>default</layout>
 			<releases>
-				<enabled>false</enabled>
+				<enabled>true</enabled>
+				<updatePolicy>never</updatePolicy>
 			</releases>
 			<snapshots>
 				<enabled>true</enabled>
+				<updatePolicy>never</updatePolicy>
 			</snapshots>
 		</repository>
 	</repositories>

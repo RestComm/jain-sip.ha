@@ -11,6 +11,10 @@
 	
 	<packaging>jar</packaging>		
 	
+	<name>Mobicents JAIN SIP HA JBoss 5</name>
+	<description>Mobicents JAIN SIP HA JBoss 5</description>
+	<url>http://code.google.com/p/jain-sip.ha</url>
+
 	<properties>
 		<IP_ADDRESS>192.168.0.11</IP_ADDRESS>
 		<maven.test.skip>true</maven.test.skip>
@@ -25,7 +29,7 @@
 		<dependency>
 			<groupId>org.mobicents.ha.javax.sip</groupId>
 			<artifactId>mobicents-jain-sip-ha-core</artifactId>
-			<version>${version}</version>
+			<version>${project.version}</version>
 		</dependency>
 	
 		<!-- test deps -->
@@ -135,22 +139,31 @@
 
 	<repositories>
 		<repository>
-			<id>jboss</id>
-			<name>JBoss Repository</name>
-			<url>http://repository.jboss.org/maven2</url>
-			<snapshots>
-				<enabled>false</enabled>
-			</snapshots>
+			  <id>mobicents-public-repository-group</id>
+			  <name>Mobicens Public Maven Repository Group</name>
+			  <url>https://oss.sonatype.org/content/groups/public</url>
+			  <layout>default</layout>
+			  <releases>
+			    <enabled>true</enabled>
+			    <updatePolicy>never</updatePolicy>
+			  </releases>
+			  <snapshots>
+			    <enabled>true</enabled>
+			    <updatePolicy>never</updatePolicy>
+			  </snapshots>
 		</repository>
 		<repository>
-			<id>jboss-snapshots</id>
-			<name>JBoss Snapshot Repository</name>
-			<url>http://snapshots.jboss.org/maven2</url>
+			<id>jboss-public-repository-group</id>
+			<name>JBoss Public Maven Repository Group</name>
+			<url>https://repository.jboss.org/nexus/content/groups/public</url>
+			<layout>default</layout>
 			<releases>
-				<enabled>false</enabled>
+				<enabled>true</enabled>
+				<updatePolicy>never</updatePolicy>
 			</releases>
 			<snapshots>
 				<enabled>true</enabled>
+				<updatePolicy>never</updatePolicy>
 			</snapshots>
 		</repository>
 	</repositories>
