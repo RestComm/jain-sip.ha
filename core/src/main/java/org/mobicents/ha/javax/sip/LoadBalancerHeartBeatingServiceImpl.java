@@ -484,6 +484,7 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 		Thread.currentThread().setContextClassLoader(NodeRegisterRMIStub.class.getClassLoader());
 		for(SipLoadBalancer  balancerDescription:new HashSet<SipLoadBalancer>(register.values())) {
 			try {
+				long startTime = System.currentTimeMillis();
 				Registry registry = LocateRegistry.getRegistry(balancerDescription.getAddress().getHostAddress(), balancerDescription.getRmiPort());
 				NodeRegisterRMIStub reg=(NodeRegisterRMIStub) registry.lookup("SIPBalancer");
 				ArrayList<SIPNode> reachableInfo = getReachableSIPNodeInfo(balancerDescription.getAddress(), info);
@@ -497,10 +498,14 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 					logger.logInfo("Keepalive: SIP Load Balancer Found! " + balancerDescription);
 				}
 				balancerDescription.setAvailable(true);
+				startTime = System.currentTimeMillis() - startTime;
+				if(startTime>200)
+					logger.logWarning("Heartbeat sent too slow in " + startTime + " millis at " + System.currentTimeMillis());
+
 			} catch (Exception e) {
 				balancerDescription.setAvailable(false);
 				if(balancerDescription.isDisplayWarning()) {
-					logger.logWarning("Cannot access the SIP load balancer RMI registry: " + e.getMessage() +
+					logger.logWarning("sendKeepAlive: Cannot access the SIP load balancer RMI registry: " + e.getMessage() +
 						"\nIf you need a cluster configuration make sure the SIP load balancer is running. Host " + balancerDescription.toString());
 				}
 				balancerDescription.setDisplayWarning(false);
