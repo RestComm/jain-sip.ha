@@ -470,7 +470,7 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 			if(jvmRoute != null) node.getProperties().put("jvmRoute", jvmRoute);
 			//, port,
 			//		transports, jvmRoute, httpPort, sslPort, null);
-
+			node.getProperties().put("version", System.getProperty("org.mobicents.server.version", "0"));
 			info.add(node);
 		}		
 		
