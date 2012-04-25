@@ -502,11 +502,18 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 				if(startTime>200)
 					logger.logWarning("Heartbeat sent too slow in " + startTime + " millis at " + System.currentTimeMillis());
 
-			} catch (Exception e) {
+			} catch (IOException e) {
 				balancerDescription.setAvailable(false);
 				if(balancerDescription.isDisplayWarning()) {
 					logger.logWarning("sendKeepAlive: Cannot access the SIP load balancer RMI registry: " + e.getMessage() +
 						"\nIf you need a cluster configuration make sure the SIP load balancer is running. Host " + balancerDescription.toString());
+				}
+				balancerDescription.setDisplayWarning(false);
+			} catch (Exception e) {
+				balancerDescription.setAvailable(false);
+				if(balancerDescription.isDisplayWarning()) {
+					logger.logError("sendKeepAlive: Cannot access the SIP load balancer RMI registry: " + e.getMessage() +
+						"\nIf you need a cluster configuration make sure the SIP load balancer is running. Host " + balancerDescription.toString(), e);
 				}
 				balancerDescription.setDisplayWarning(false);
 			}
@@ -565,11 +572,17 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 					balancerDescription.setDisplayWarning(true);
 				}
 				balancerDescription.setAvailable(true);
+			} catch (IOException e) {
+				if(balancerDescription.isDisplayWarning()) {
+					logger.logWarning("remove: Cannot access the SIP load balancer RMI registry: " + e.getMessage() +
+							"\nIf you need a cluster configuration make sure the SIP load balancer is running.");
+					balancerDescription.setDisplayWarning(false);
+				}
+				balancerDescription.setAvailable(true);
 			} catch (Exception e) {
 				if(balancerDescription.isDisplayWarning()) {
-					logger.logWarning("Cannot access the SIP load balancer RMI registry: " + e.getMessage() +
-							"\nIf you need a cluster configuration make sure the SIP load balancer is running.");
-//					logger.error("Cannot access the SIP load balancer RMI registry: " , e);
+					logger.logError("remove: Cannot access the SIP load balancer RMI registry: " + e.getMessage() +
+							"\nIf you need a cluster configuration make sure the SIP load balancer is running.", e);
 					balancerDescription.setDisplayWarning(false);
 				}
 				balancerDescription.setAvailable(true);
@@ -644,12 +657,18 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 			if(!sipLoadBalancer.isAvailable()) {
 				logger.logInfo("Switchover: SIP Load Balancer Found! " + sipLoadBalancer);
 			}
-		} catch (Exception e) {
+		} catch (IOException e) {
 			sipLoadBalancer.setAvailable(false);
 			if(sipLoadBalancer.isDisplayWarning()) {
 				logger.logWarning("Cannot access the SIP load balancer RMI registry: " + e.getMessage() +
 				"\nIf you need a cluster configuration make sure the SIP load balancer is running.");
-				//					logger.error("Cannot access the SIP load balancer RMI registry: " , e);
+				sipLoadBalancer.setDisplayWarning(false);
+			}
+		} catch (Exception e) {
+			sipLoadBalancer.setAvailable(false);
+			if(sipLoadBalancer.isDisplayWarning()) {
+				logger.logError("Cannot access the SIP load balancer RMI registry: " + e.getMessage() +
+				"\nIf you need a cluster configuration make sure the SIP load balancer is running.", e);
 				sipLoadBalancer.setDisplayWarning(false);
 			}
 		} finally {
