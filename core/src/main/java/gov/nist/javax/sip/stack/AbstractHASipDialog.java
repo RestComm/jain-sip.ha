@@ -415,39 +415,24 @@ public abstract class AbstractHASipDialog extends SIPDialog implements HASipDial
 			if(logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
 				logger.logDebug("HA SIP Dialog is Server ? " + isServer() + ", isLatestTxServer ? " + isLatestTxServer);
 			}
-			if(isServer()) {
-				// http://code.google.com/p/mobicents/issues/detail?id=2942
-				// 	From and To Uris switch places in certain conditions
-				if(isLatestTxServer) {
-					if(logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
-						logger.logDebug("server dialog : switching parties on recreation " + getDialogIdToReplicate() + " localParty = " + getLocalParty());
-					}
-					Address remoteParty = getLocalParty();
-					Address localParty = getRemoteParty();
-					setLocalPartyInternal(localParty);
-					setRemotePartyInternal(remoteParty);
-					long remoteCSeq = getLocalSeqNumber();
-					long localCSeq = getRemoteSeqNumber();
-					localSequenceNumber = localCSeq;
-					remoteSequenceNumber = remoteCSeq;
+			// http://code.google.com/p/mobicents/issues/detail?id=2942
+			// 	From and To Uris switch places in certain conditions
+			if(isLatestTxServer) {
+				if(logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+					logger.logDebug("dialog : switching parties on recreation " + getDialogIdToReplicate() + " localParty = " + getLocalParty());
 				}
-			} else { // isServer() is false, this is client-initiated dialog
-				if(isLatestTxServer) {
-					if(logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
-						logger.logDebug("client dialog : switching parties on recreation " + getDialogIdToReplicate() + " localParty = " + getLocalParty());
-					}
-					Address remoteParty = getLocalParty();
-					Address localParty = getRemoteParty();
-					setLocalPartyInternal(localParty);
-					setRemotePartyInternal(remoteParty);
-					long remoteCSeq = getLocalSeqNumber();
-					long localCSeq = getRemoteSeqNumber();
-					localSequenceNumber = localCSeq;
-					remoteSequenceNumber = remoteCSeq;
-				}
+				Address remoteParty = getLocalParty();
+				Address localParty = getRemoteParty();
+				setLocalPartyInternal(localParty);
+				setRemotePartyInternal(remoteParty);
+				long remoteCSeq = getLocalSeqNumber();
+				long localCSeq = getRemoteSeqNumber();
+				localSequenceNumber = localCSeq;
+				remoteSequenceNumber = remoteCSeq;
 			}
 		}
-			
+	
+
 		String remoteTag = (String) metaData.get(REMOTE_TAG);
 		setRemoteTagInternal(remoteTag);
 		if (logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
