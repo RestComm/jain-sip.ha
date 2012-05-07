@@ -107,6 +107,8 @@ public class SIPDialogCacheData extends CacheData {
 			}			
 		} catch (Exception ex) {
 			try {
+				logger.logError("Problem taking dialog from cache. We will try to rollback the transction is any.",
+						ex);
 				if(transactionManager != null) {
 					// Let's set it no matter what.
 					transactionManager.setRollbackOnly();

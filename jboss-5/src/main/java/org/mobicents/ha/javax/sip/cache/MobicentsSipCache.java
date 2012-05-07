@@ -149,6 +149,7 @@ public abstract class MobicentsSipCache implements SipCache {
 	 * @see org.mobicents.ha.javax.sip.cache.SipCache#start()
 	 */
 	public void start() throws SipCacheException {
+		cluster.getMobicentsCache().startCache();
 		dialogsCacheData = new SIPDialogCacheData(Fqn.fromElements(name,SipCache.DIALOG_PARENT_FQN_ELEMENT),cluster.getMobicentsCache(), clusteredSipStack);
 		dialogsCacheData.create();		
 		dialogDataRemovalListener = new DialogDataRemovalListener(dialogsCacheData.getNodeFqn(), clusteredSipStack);
