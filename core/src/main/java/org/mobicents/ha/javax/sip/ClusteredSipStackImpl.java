@@ -48,9 +48,7 @@ import javax.sip.SipFactory;
 import javax.sip.SipProvider;
 import javax.sip.message.Request;
 
-import org.mobicents.ext.javax.sip.SipProviderFactory;
-import org.mobicents.ext.javax.sip.SipStackExtension;
-import org.mobicents.ext.javax.sip.TransactionFactory;
+import org.mobicents.ext.javax.sip.SipStackImpl;
 import org.mobicents.ha.javax.sip.cache.SipCache;
 import org.mobicents.ha.javax.sip.cache.SipCacheException;
 import org.mobicents.ha.javax.sip.cache.SipCacheFactory;
@@ -70,15 +68,12 @@ import org.mobicents.ha.javax.sip.cache.SipCacheFactory;
  * @author martins
  *
  */
-public abstract class ClusteredSipStackImpl extends gov.nist.javax.sip.SipStackImpl implements ClusteredSipStack, SipStackExtension {	
+public abstract class ClusteredSipStackImpl extends SipStackImpl implements ClusteredSipStack {	
 	
 	protected SipCache sipCache = null;
 	protected LoadBalancerHeartBeatingService loadBalancerHeartBeatingService = null;
 	protected ReplicationStrategy replicationStrategy = ReplicationStrategy.ConfirmedDialog;
 	protected LoadBalancerElector loadBalancerElector = null;
-	protected TransactionFactory transactionFactory = null;
-	protected SipProviderFactory sipProviderFactory = null;
-	protected boolean sendTryingRightAway;
 	private boolean replicateApplicationData = false;
 	
 	public ClusteredSipStackImpl(Properties configurationProperties) throws PeerUnavailableException {
@@ -111,36 +106,6 @@ public abstract class ClusteredSipStackImpl extends gov.nist.javax.sip.SipStackI
 		        loadBalancerElector.setService(loadBalancerHeartBeatingService);
 			}
 		}
-		
-		// allow the stack to provide its own SIPServerTransaction/SIPClientTransaction extension instances
-		String transactionFactoryClassName = configurationProperties.getProperty(TRANSACTION_FACTORY_CLASS_NAME);
-		if(transactionFactoryClassName != null) {
-			try {
-	            transactionFactory = (TransactionFactory) Class.forName(transactionFactoryClassName).newInstance();
-	            transactionFactory.setSipStack(this);	            
-	        } catch (Exception e) {
-	            String errmsg = "The TransactionFactory class name: "
-	                    + transactionFactoryClassName
-	                    + " could not be instantiated. Ensure the " + TRANSACTION_FACTORY_CLASS_NAME + " property has been set correctly and that the class is on the classpath.";
-	            throw new PeerUnavailableException(errmsg, e);
-	        }
-	    }
-		// allow the stack to provide its own SipProviderImpl extension instances
-	    String sipProviderFactoryClassName = configurationProperties.getProperty(SIP_PROVIDER_FACTORY_CLASS_NAME);
-		if(sipProviderFactoryClassName != null) {
-			try {
-	            sipProviderFactory = (SipProviderFactory) Class.forName(sipProviderFactoryClassName).newInstance();
-	            sipProviderFactory.setSipStack(this);	            
-	        } catch (Exception e) {
-	            String errmsg = "The SipProviderFactory class name: "
-	                    + sipProviderFactoryClassName
-	                    + " could not be instantiated. Ensure the " + SIP_PROVIDER_FACTORY_CLASS_NAME + " property has been set correctly and that the class is on the classpath.";
-	            throw new PeerUnavailableException(errmsg, e);
-	        }
-	    }
-		
-		this.sendTryingRightAway = Boolean.valueOf(
-			configurationProperties.getProperty(SEND_TRYING_RIGHT_AWAY,"false")).booleanValue();
 		
 		String replicationStrategyProperty = configurationProperties.getProperty(ClusteredSipStack.REPLICATION_STRATEGY_PROPERTY);
 		if(replicationStrategyProperty != null) {
@@ -608,28 +573,6 @@ public abstract class ClusteredSipStackImpl extends gov.nist.javax.sip.SipStackI
 			return super.createServerTransaction(encapsulatedMessageChannel);
 		}
 		return transactionFactory.createServerTransaction(encapsulatedMessageChannel);
-	}
-
-	/**
-	 * @param sendTryingRightAway the sendTryingRightAway to set
-	 */
-	public void setSendTryingRightAway(boolean sendTryingRightAway) {
-		this.sendTryingRightAway = sendTryingRightAway;
-	}
-
-	/**
-	 * @return the sendTryingRightAway
-	 */
-	public boolean isSendTryingRightAway() {
-		return sendTryingRightAway;
-	}
-	
-	public void addSipProvider(SipProviderImpl sipProvider) {
-		sipProviders.add(sipProvider);
-	}
-	
-	public void removeSipProvider(SipProviderImpl sipProvider) {
-		sipProviders.remove(sipProvider);
 	}
 
 	/**

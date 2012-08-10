@@ -25,13 +25,9 @@ package org.mobicents.ha.javax.sip;
 import gov.nist.core.CommonLogger;
 import gov.nist.core.StackLogger;
 import gov.nist.javax.sip.stack.MessageProcessor;
-import gov.nist.javax.sip.stack.SIPTransaction;
 
 import java.util.Properties;
 
-import javax.management.MBeanServer;
-import javax.management.MBeanServerFactory;
-import javax.management.Notification;
 import javax.management.NotificationListener;
 import javax.management.ObjectName;
 import javax.sip.PeerUnavailableException;
@@ -47,15 +43,24 @@ import org.mobicents.ha.javax.sip.cache.SipCache;
  *
  */
 public class SipStackImpl extends ClusteredSipStackImpl implements SipStackImplMBean, NotificationListener {
-	public static String JAIN_SIP_MBEAN_NAME = "org.mobicents.jain.sip:type=sip-stack,name=";
+	private static StackLogger logger = CommonLogger.getLogger(SipStackImpl.class);	
 	public static String LOG4J_SERVICE_MBEAN_NAME = "jboss.system:service=Logging,type=Log4jService";
-	private static StackLogger logger = CommonLogger.getLogger(SipStackImpl.class);
-	ObjectName oname = null;
-	MBeanServer mbeanServer = null;
-	boolean isMBeanServerNotAvailable = false;
 	
 	public SipStackImpl(Properties configurationProperties) throws PeerUnavailableException {		
 		super(updateConfigProperties(configurationProperties));		
+	}
+	
+	@Override
+	public void start() throws ProviderDoesNotExistException, SipException {
+		super.start();		
+		try {
+			if(logger.isLoggingEnabled(StackLogger.TRACE_INFO)) {
+				logger.logInfo("Adding notification listener for logging mbean \"" + LOG4J_SERVICE_MBEAN_NAME + "\" to server " + getMBeanServer());
+			}
+			getMBeanServer().addNotificationListener(new ObjectName(LOG4J_SERVICE_MBEAN_NAME), this, null, null);
+		} catch (Exception e) {
+			logger.logWarning("Could not register the stack as a Notification Listener of " + LOG4J_SERVICE_MBEAN_NAME + " runtime changes to log4j.xml won't affect SIP Stack Logging");
+		}
 	}
 	
 	private static final Properties updateConfigProperties(Properties configurationProperties) {
@@ -81,74 +86,8 @@ public class SipStackImpl extends ClusteredSipStackImpl implements SipStackImplM
 		return getServerTransactionTableSize();
 	}
 	
-	@Override
-	public void start() throws ProviderDoesNotExistException, SipException {
-		super.start();
-		String mBeanName=JAIN_SIP_MBEAN_NAME + stackName;
-		try {
-			oname = new ObjectName(mBeanName);
-			if (getMBeanServer() != null && !getMBeanServer().isRegistered(oname)) {
-				getMBeanServer().registerMBean(this, oname);
-				if(logger.isLoggingEnabled(StackLogger.TRACE_INFO)) {
-					logger.logInfo("Adding notification listener for logging mbean \"" + LOG4J_SERVICE_MBEAN_NAME + "\" to server " + getMBeanServer());
-				}
-			}
-		} catch (Exception e) {
-			logger.logError("Could not register the stack as an MBean under the following name", e);
-			throw new SipException("Could not register the stack as an MBean under the following name " + mBeanName + ", cause: " + e.getMessage(), e);
-		}
-		try {
-			if(logger.isLoggingEnabled(StackLogger.TRACE_INFO)) {
-				logger.logInfo("Adding notification listener for logging mbean \"" + LOG4J_SERVICE_MBEAN_NAME + "\" to server " + getMBeanServer());
-			}
-			getMBeanServer().addNotificationListener(new ObjectName(LOG4J_SERVICE_MBEAN_NAME), this, null, null);
-		} catch (Exception e) {
-			logger.logWarning("Could not register the stack as a Notification Listener of " + LOG4J_SERVICE_MBEAN_NAME + " runtime changes to log4j.xml won't affect SIP Stack Logging");
-		}
-	}
-	
-	@Override
-	public void stop() {
-		String mBeanName=JAIN_SIP_MBEAN_NAME + stackName;
-		try {
-			if (oname != null && getMBeanServer() != null && getMBeanServer().isRegistered(oname)) {
-				getMBeanServer().unregisterMBean(oname);
-			}
-		} catch (Exception e) {
-			logger.logError("Could not unregister the stack as an MBean under the following name" + mBeanName);
-		}
-		super.stop();
-	}
-	
-	/**
-	 * Get the current MBean Server.
-	 * 
-	 * @return
-	 * @throws Exception
-	 */
-	public MBeanServer getMBeanServer() throws Exception {
-		if (mbeanServer == null && !isMBeanServerNotAvailable) {
-			try {
-				mbeanServer = (MBeanServer) MBeanServerFactory.findMBeanServer(null).get(0);				
-			} catch (Exception e) {
-				logger.logStackTrace(StackLogger.TRACE_DEBUG);
-				logger.logWarning("No Mbean Server available, so JMX statistics won't be available");
-				isMBeanServerNotAvailable = true;
-			}
-		}
-		return mbeanServer;
-	}
-
 	public boolean isLocalMode() {
 		return getSipCache().inLocalMode();
-	}
-
-	/*
-	 * (non-Javadoc)
-	 * @see javax.management.NotificationListener#handleNotification(javax.management.Notification, java.lang.Object)
-	 */
-	public void handleNotification(Notification notification, Object handback) {
-		logger.setStackProperties(super.getConfigurationProperties());
 	}
 	
 	/*

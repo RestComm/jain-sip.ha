@@ -20,5 +20,6 @@
 	<classpathentry kind="var" path="M2_REPO/trove/trove/2.1.1/trove-2.1.1.jar"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/jain-sip"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/mobicents-jain-sip-ext"/>
 	<classpathentry kind="output" path="target/classes"/>
 </classpath>

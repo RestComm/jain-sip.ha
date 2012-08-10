@@ -25,5 +25,6 @@
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
 	<classpathentry kind="var" path="M2_REPO/org/mobicents/tools/sip-balancer-jar/1.4/sip-balancer-jar-1.4.jar"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/jain-sip"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/mobicents-jain-sip-ext"/>
 	<classpathentry kind="output" path="target/classes"/>
 </classpath>

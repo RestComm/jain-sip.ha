@@ -26,8 +26,5 @@ package org.mobicents.ha.javax.sip;
  *
  */
 public interface SipStackImplMBean {
-	public int getNumberOfClientTransactions();
-	public int getNumberOfServerTransactions();
-	public int getNumberOfDialogs();
 	public boolean isLocalMode();
 }
