@@ -54,8 +54,8 @@ public class SipStackImpl extends ClusteredSipStackImpl implements SipStackImplM
 	public void start() throws ProviderDoesNotExistException, SipException {
 		super.start();		
 		try {
-			if(logger.isLoggingEnabled(StackLogger.TRACE_INFO)) {
-				logger.logInfo("Adding notification listener for logging mbean \"" + LOG4J_SERVICE_MBEAN_NAME + "\" to server " + getMBeanServer());
+			if(logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+				logger.logDebug("Adding notification listener for logging mbean \"" + LOG4J_SERVICE_MBEAN_NAME + "\" to server " + getMBeanServer());
 			}
 			getMBeanServer().addNotificationListener(new ObjectName(LOG4J_SERVICE_MBEAN_NAME), this, null, null);
 		} catch (Exception e) {
