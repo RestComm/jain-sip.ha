@@ -62,7 +62,7 @@
 		<dependency>
 			<groupId>org.mobicents.javax.sip</groupId>
 			<artifactId>mobicents-jain-sip-ext</artifactId>
-			<version>1.2-SNAPSHOT</version>
+			<version>1.2.0.FINAL</version>
 			<scope>provided</scope>
 		</dependency>
 	</dependencies>
