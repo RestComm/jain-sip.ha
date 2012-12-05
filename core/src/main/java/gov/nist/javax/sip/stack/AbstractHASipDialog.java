@@ -253,7 +253,8 @@ public abstract class AbstractHASipDialog extends SIPDialog implements HASipDial
 				logger.logDebug(getDialogIdToReplicate() + " : firstTransactionMethod " + firstTransactionMethod);
 			}
 			if(contactHeader != null) {
-				dialogMetaData.put(CONTACT_HEADER, contactHeader.toString());
+				// http://code.google.com/p/jain-sip/issues/detail?id=38
+				dialogMetaData.put(CONTACT_HEADER, contactHeader.getHeaderValue());
 			}
 			if (logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
 				logger.logDebug(getDialogIdToReplicate() + " : contactHeader " + contactHeader);

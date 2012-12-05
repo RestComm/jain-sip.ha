@@ -298,9 +298,16 @@ public class SIPDialogCacheData extends CacheData {
 		haSipDialog.setMetaDataToReplicate(dialogMetaData, recreation);
 		haSipDialog.setApplicationDataToReplicate(dialogAppData);
 		final String contactStringified = (String) dialogMetaData.get(AbstractHASipDialog.CONTACT_HEADER);
+		if(logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+			logger.logDebug("contactStringified " + contactStringified);
+		}
 		if(contactStringified != null) {
 			Address contactAddress = SipFactory.getInstance().createAddressFactory().createAddress(contactStringified);
 			ContactHeader contactHeader = SipFactory.getInstance().createHeaderFactory().createContactHeader(contactAddress);
+			if(logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+				logger.logDebug("contactHeader " + contactHeader);
+				logger.logDebug("contactURI " + contactHeader.getAddress().getURI());
+			}
 			haSipDialog.setContactHeader(contactHeader);
 		}
 	}
