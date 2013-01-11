@@ -70,8 +70,7 @@
 	<profiles>
 		<profile>
 			<id>maven-release</id>
-			<modules>
-				<module>jboss-4</module>
+			<modules>				
 				<module>jboss-5</module>
 			</modules>
 			<build>
@@ -88,12 +87,6 @@
 			</build>
 		</profile>
 		<profile>
-			<id>jboss-4</id>
-			<modules>
-				<module>jboss-4</module>
-			</modules>
-		</profile>
-		<profile>
 			<id>jboss-5</id>
 			<activation>
 				<activeByDefault>true</activeByDefault>
@@ -104,8 +97,7 @@
 		</profile>
 		<profile>
 			<id>all</id>
-			<modules>
-				<module>jboss-4</module>
+			<modules>			
 				<module>jboss-5</module>
 			</modules>
 		</profile>

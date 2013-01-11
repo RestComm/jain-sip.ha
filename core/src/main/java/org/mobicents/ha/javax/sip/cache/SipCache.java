@@ -22,7 +22,6 @@
 
 package org.mobicents.ha.javax.sip.cache;
 
-import gov.nist.javax.sip.stack.MobicentsHASIPClientTransaction;
 import gov.nist.javax.sip.stack.SIPClientTransaction;
 import gov.nist.javax.sip.stack.SIPDialog;
 import gov.nist.javax.sip.stack.SIPServerTransaction;
