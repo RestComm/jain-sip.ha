@@ -1,8 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source
- * Copyright 2011, Red Hat, Inc. and individual contributors
- * by the @authors tag. See the copyright.txt in the distribution for a
- * full listing of individual contributors.
+ * TeleStax, Open Source Cloud Communications.
+ * Copyright 2011-2013 and individual contributors by the @authors tag. 
  *
  * This is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License as
@@ -19,7 +17,6 @@
  * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
-
 package org.mobicents.ha.balancing.only.javax.sip;
 
 import gov.nist.core.CommonLogger;
@@ -40,7 +37,6 @@ import org.mobicents.ha.javax.sip.HASipDialog;
 import org.mobicents.ha.javax.sip.LoadBalancerHeartBeatingService;
 import org.mobicents.ha.javax.sip.LoadBalancerHeartBeatingServiceImpl;
 import org.mobicents.ha.javax.sip.cache.NoCache;
-import org.mobicents.ha.javax.sip.cache.SipCache;
 
 /**
  * This class extends the ClusteredSipStack to provide an implementation backed by JBoss Cache 3.X
@@ -67,6 +63,19 @@ public class SipStackImpl extends ClusteredSipStackImpl implements SipStackImplM
 		} catch (Exception e) {
 			logger.logWarning("Could not register the stack as a Notification Listener of " + LOG4J_SERVICE_MBEAN_NAME + " runtime changes to log4j.xml won't affect SIP Stack Logging");
 		}
+	}
+	
+	@Override
+	public void stop() {
+		try {
+			if(logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+				logger.logDebug("Removing notification listener for logging mbean \"" + LOG4J_SERVICE_MBEAN_NAME + "\" to server " + getMBeanServer());
+			}
+			getMBeanServer().removeNotificationListener(new ObjectName(LOG4J_SERVICE_MBEAN_NAME), this, null, null);
+		} catch (Exception e) {
+			logger.logWarning("Could not deregister the stack as a Notification Listener of " + LOG4J_SERVICE_MBEAN_NAME + " runtime changes to log4j.xml won't affect SIP Stack Logging");
+		}
+		super.stop();
 	}
 	
 	private static final Properties updateConfigProperties(Properties configurationProperties) {

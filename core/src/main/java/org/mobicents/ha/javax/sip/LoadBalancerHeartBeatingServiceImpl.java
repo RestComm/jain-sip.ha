@@ -1,8 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source
- * Copyright 2011, Red Hat, Inc. and individual contributors
- * by the @authors tag. See the copyright.txt in the distribution for a
- * full listing of individual contributors.
+ * TeleStax, Open Source Cloud Communications.
+ * Copyright 2011-2013 and individual contributors by the @authors tag. 
  *
  * This is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License as
@@ -176,6 +174,8 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 		this.hearBeatTaskToRun = null;
 		loadBalancerHeartBeatingListeners.clear();
 		started = false;
+		
+		heartBeatTimer.cancel();
 		
 		unRegisterMBean();
 		
