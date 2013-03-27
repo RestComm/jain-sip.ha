@@ -244,9 +244,9 @@ public abstract class AbstractHASipDialog extends SIPDialog implements HASipDial
 			if (logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
 				logger.logDebug(getDialogIdToReplicate() + " : firstTransactionId " + firstTransactionId);
 			}
-			dialogMetaData.put(ENABLE_CSEQ_VALIDATION, isSequnceNumberValidation());
+			dialogMetaData.put(ENABLE_CSEQ_VALIDATION, isSequenceNumberValidation());
 			if (logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
-				logger.logDebug(getDialogIdToReplicate() + " : CSeq validation is " + isSequnceNumberValidation());
+				logger.logDebug(getDialogIdToReplicate() + " : CSeq validation is " + isSequenceNumberValidation());
 			}
 			dialogMetaData.put(FIRST_TX_METHOD, firstTransactionMethod);
 			if (logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
