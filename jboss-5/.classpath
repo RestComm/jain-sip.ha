@@ -4,7 +4,6 @@
 	<classpathentry excluding="**/*.java" kind="src" output="target/test-classes" path="src/test/resources"/>
 	<classpathentry including="**/*.java" kind="src" path="src/main/java"/>
 	<classpathentry excluding="**/*.java" kind="src" path="src/main/resources"/>
-	<classpathentry kind="var" path="M2_REPO/javax/sip/jain-sip-ri/1.2.X-SNAPSHOT/jain-sip-ri-1.2.X-SNAPSHOT.jar"/>
 	<classpathentry kind="var" path="M2_REPO/javax/sip/jain-sip-api/1.2.0/jain-sip-api-1.2.0.jar"/>
 	<classpathentry kind="var" path="M2_REPO/javax/transaction/jta/1.1/jta-1.1.jar"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
@@ -24,7 +23,8 @@
 	<classpathentry kind="var" path="M2_REPO/org/jboss/javaee/jboss-transaction-api/1.0.1.GA/jboss-transaction-api-1.0.1.GA.jar"/>
 	<classpathentry kind="var" path="M2_REPO/org/mobicents/cluster/cache/1.14.0.FINAL/cache-1.14.0.FINAL.jar"/>
 	<classpathentry kind="var" path="M2_REPO/org/mobicents/cluster/core/1.14.0.FINAL/core-1.14.0.FINAL.jar"/>
-	<classpathentry kind="var" path="M2_REPO/org/mobicents/javax/sip/mobicents-jain-sip-ext/1.2.0.FINAL/mobicents-jain-sip-ext-1.2.0.FINAL.jar"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/sip-balancer-jar"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/mobicents-jain-sip-ext"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/jain-sip"/>
 	<classpathentry kind="output" path="target/classes"/>
 </classpath>
