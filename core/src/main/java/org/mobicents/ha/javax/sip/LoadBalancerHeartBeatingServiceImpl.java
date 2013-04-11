@@ -384,6 +384,7 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 		ArrayList<SIPNode> info = new ArrayList<SIPNode>();
 		Integer sipTcpPort = null;
 		Integer sipUdpPort = null;
+		Integer sipWsPort = null;
 		String address = null;
 		String hostName = null;
 		// Gathering info about server' sip listening points
@@ -398,8 +399,10 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 			String transport = listeningPoint.getTransport();
 			if(transport.equalsIgnoreCase("tcp")) {
 				sipTcpPort = port;
-			} else if(transport.equals("udp")) {
+			} else if(transport.equalsIgnoreCase("udp")) {
 				sipUdpPort = port;
+			} else if(transport.equalsIgnoreCase("ws")) {
+				sipWsPort = port;
 			}
 			
 			try {
@@ -467,6 +470,7 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 			
 			if(sipTcpPort != null) node.getProperties().put("tcpPort", sipTcpPort);
 			if(sipUdpPort != null) node.getProperties().put("udpPort", sipUdpPort);
+			if(sipWsPort != null) node.getProperties().put("wsPort", sipWsPort);
 			if(jvmRoute != null) node.getProperties().put("jvmRoute", jvmRoute);
 			//, port,
 			//		transports, jvmRoute, httpPort, sslPort, null);
