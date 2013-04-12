@@ -21,10 +21,10 @@
 	<classpathentry kind="var" path="M2_REPO/org/jboss/cluster/jboss-ha-server-cache-spi/2.0.0.GA/jboss-ha-server-cache-spi-2.0.0.GA.jar"/>
 	<classpathentry kind="var" path="M2_REPO/org/jboss/metadata/jboss-metadata/1.0.1.GA/jboss-metadata-1.0.1.GA.jar"/>
 	<classpathentry kind="var" path="M2_REPO/org/jboss/javaee/jboss-transaction-api/1.0.1.GA/jboss-transaction-api-1.0.1.GA.jar"/>
-	<classpathentry kind="var" path="M2_REPO/org/mobicents/cluster/cache/1.14.0.FINAL/cache-1.14.0.FINAL.jar"/>
-	<classpathentry kind="var" path="M2_REPO/org/mobicents/cluster/core/1.14.0.FINAL/core-1.14.0.FINAL.jar"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/sip-balancer-jar"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/mobicents-jain-sip-ext"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/jain-sip"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/cache"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/core"/>
 	<classpathentry kind="output" path="target/classes"/>
 </classpath>
