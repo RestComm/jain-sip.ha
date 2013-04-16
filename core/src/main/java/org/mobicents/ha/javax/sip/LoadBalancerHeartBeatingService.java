@@ -72,7 +72,7 @@ public interface LoadBalancerHeartBeatingService {
 	 */
 	String[] getBalancers();
 
-	boolean addBalancer(String addr, int sipPort, int rmiPort)
+	boolean addBalancer(String addr, int sipPort, int httpPort, int rmiPort)
 			throws IllegalArgumentException, NullPointerException, IOException;
 
 	/**
@@ -91,7 +91,7 @@ public interface LoadBalancerHeartBeatingService {
 	 *            </ul>
 	 * @throws IllegalArgumentException if something goes wrong when adding the balancer address or while trying to connect to it
 	 */
-	boolean addBalancer(String hostName, int sipPort, int index, int rmiPort)
+	boolean addBalancer(String hostName, int sipPort, int httpPort, int index, int rmiPort)
 			throws IllegalArgumentException;
 	
 	/**
@@ -118,10 +118,10 @@ public interface LoadBalancerHeartBeatingService {
 	 * @throws IllegalArgumentException -
 	 *             if there is no balancer with that name on the list.
 	 */
-	boolean removeBalancer(String addr, int sipPort, int rmiPort)
+	boolean removeBalancer(String addr, int sipPort, int httpPort, int rmiPort)
 			throws IllegalArgumentException;
 
-	boolean removeBalancer(String hostName, int sipPort, int index, int rmiPort)
+	boolean removeBalancer(String hostName, int sipPort, int httpPort, int index, int rmiPort)
 			throws IllegalArgumentException;
 
 	

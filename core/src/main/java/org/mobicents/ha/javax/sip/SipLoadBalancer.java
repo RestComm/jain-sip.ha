@@ -70,6 +70,7 @@ public class SipLoadBalancer implements Serializable {
 	private static final long serialVersionUID = 1L;
 	private InetAddress address;
 	private int sipPort;
+	private int httpPort;
 	private int rmiPort;
 	private transient LoadBalancerHeartBeatingService loadBalancerHeartBeatingService;
 	private transient RouteHeader balancerRouteHeaderUdp;
@@ -82,12 +83,13 @@ public class SipLoadBalancer implements Serializable {
 	 * @param sipPort
 	 * @param hostName
 	 */
-	public SipLoadBalancer(LoadBalancerHeartBeatingService loadBalancerHeartBeatingService, InetAddress address, int sipPort, int rmiPort) {
+	public SipLoadBalancer(LoadBalancerHeartBeatingService loadBalancerHeartBeatingService, InetAddress address, int sipPort, int httpPort, int rmiPort) {
 		super();
 		this.available = false;
 		this.displayWarning = true;
 		this.address = address;
 		this.sipPort = sipPort;
+		this.httpPort = httpPort;
 		this.rmiPort = rmiPort;
 		this.loadBalancerHeartBeatingService = loadBalancerHeartBeatingService;
 		try {
@@ -139,6 +141,12 @@ public class SipLoadBalancer implements Serializable {
 	public int getSipPort() {
 		return sipPort;
 	}
+	public void setHttpPort(int httpPort){
+		this.httpPort = httpPort;
+	}
+	public int getHttpPort(){
+		return httpPort;
+	}
 	public int getRmiPort() {
 		return rmiPort;
 	}
@@ -178,6 +186,7 @@ public class SipLoadBalancer implements Serializable {
 		int result = 1;
 		result = prime * result + ((address == null) ? 0 : address.hashCode());
 		result = prime * result + sipPort;
+		result = prime * result + httpPort;
 		result = prime * result + rmiPort;
 		return result;
 	}
@@ -200,6 +209,8 @@ public class SipLoadBalancer implements Serializable {
 			return false;
 		if (sipPort != other.sipPort)
 			return false;
+		if (httpPort != other.httpPort)
+			return false;
 		if (rmiPort != other.rmiPort)
 			return false;
 		return true;
@@ -207,7 +218,7 @@ public class SipLoadBalancer implements Serializable {
 	
 	@Override
 	public String toString() {
-		return getAddress() + ":" + getSipPort() + ":" + getRmiPort();
+		return getAddress() + ":" + getSipPort() + ":" + getHttpPort()+ ":" + getRmiPort();
 	}
 
 	public void switchover(String fromJvmRoute, String toJvmRoute) {

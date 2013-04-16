@@ -68,7 +68,8 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 	public static final int DEFAULT_RMI_PORT = 2000;
 	public static final String BALANCER_SIP_PORT_CHAR_SEPARATOR = ":";
 	public static final String BALANCERS_CHAR_SEPARATOR = ";";
-	public static final int DEFAULT_LB_SIP_PORT = 5065;		
+	public static final int DEFAULT_LB_SIP_PORT = 5065;
+	public static final int DEFAULT_LB_HTTP_PORT = 2080;
 	
 	ClusteredSipStack sipStack = null;
 	//the logger
@@ -117,14 +118,19 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 				for (String balancerDescription : balancerDescriptions) {
 					String balancerAddress = balancerDescription;
 					int sipPort = DEFAULT_LB_SIP_PORT;
+					int httpPort = DEFAULT_LB_HTTP_PORT;
 					int rmiPort = DEFAULT_RMI_PORT;
 					if(balancerDescription.indexOf(BALANCER_SIP_PORT_CHAR_SEPARATOR) != -1) {
 						String[] balancerDescriptionSplitted = balancerDescription.split(BALANCER_SIP_PORT_CHAR_SEPARATOR);
 						balancerAddress = balancerDescriptionSplitted[0];
 						try {
+							//sipPort:httpPort:rmiPort
 							sipPort = Integer.parseInt(balancerDescriptionSplitted[1]);
 							if(balancerDescriptionSplitted.length>2) {
-								rmiPort = Integer.parseInt(balancerDescriptionSplitted[2]);
+								httpPort = Integer.parseInt(balancerDescriptionSplitted[2]);
+								if(balancerDescriptionSplitted.length>3){
+									rmiPort = Integer.parseInt(balancerDescriptionSplitted[3]);
+								}
 							}
 						} catch (NumberFormatException e) {
 							logger.logError("Impossible to parse the following sip balancer port " + balancerDescriptionSplitted[1], e);
@@ -132,12 +138,12 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 					} 
 					if(Inet6Util.isValidIP6Address(balancerAddress) || Inet6Util.isValidIPV4Address(balancerAddress)) {
 						try {
-							this.addBalancer(InetAddress.getByName(balancerAddress).getHostAddress(), sipPort, rmiPort);
+							this.addBalancer(InetAddress.getByName(balancerAddress).getHostAddress(), sipPort, httpPort, rmiPort);
 						} catch (UnknownHostException e) {
 							logger.logError("Impossible to parse the following sip balancer address " + balancerAddress, e);
 						}
 					} else {
-						this.addBalancer(balancerAddress, sipPort, 0, rmiPort);
+						this.addBalancer(balancerAddress, sipPort, httpPort, 0, rmiPort);
 					}
 				}
 			}		
@@ -271,7 +277,7 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 	/**
      * {@inheritDoc}
      */
-	public boolean addBalancer(String addr, int sipPort, int rmiPort) {
+	public boolean addBalancer(String addr, int sipPort, int httpPort, int rmiPort) {
 		if (addr == null)
 			throw new NullPointerException("addr cant be null!!!");
 
@@ -289,7 +295,7 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 			return false;
 		}		
 
-		SipLoadBalancer sipLoadBalancer = new SipLoadBalancer(this, address, sipPort, rmiPort);
+		SipLoadBalancer sipLoadBalancer = new SipLoadBalancer(this, address, sipPort, httpPort, rmiPort);
 		register.put(balancerName, sipLoadBalancer);
 
 		// notify the listeners
@@ -307,15 +313,15 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 	/**
      * {@inheritDoc}
      */
-	public boolean addBalancer(String hostName, int sipPort, int index, int rmiPort) {
+	public boolean addBalancer(String hostName, int sipPort, int httpPort, int index, int rmiPort) {
 		return this.addBalancer(fetchHostAddress(hostName, index)
-				.getHostAddress(), sipPort, rmiPort);
+				.getHostAddress(), sipPort, httpPort, rmiPort);
 	}
 
 	/**
      * {@inheritDoc}
      */
-	public boolean removeBalancer(String addr, int sipPort, int rmiPort) {
+	public boolean removeBalancer(String addr, int sipPort, int httpPort, int rmiPort) {
 		if (addr == null)
 			throw new NullPointerException("addr cant be null!!!");
 
@@ -327,7 +333,7 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 					"Something wrong with host creation.", e);
 		}
 
-		SipLoadBalancer sipLoadBalancer = new SipLoadBalancer(this, address, sipPort, rmiPort);
+		SipLoadBalancer sipLoadBalancer = new SipLoadBalancer(this, address, sipPort, httpPort, rmiPort);
 
 		String keyToRemove = null;
 		Iterator<String> keyIterator = register.keySet().iterator();
@@ -359,7 +365,7 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 	/**
      * {@inheritDoc}
      */
-	public boolean removeBalancer(String hostName, int sipPort, int index, int rmiPort) {
+	public boolean removeBalancer(String hostName, int sipPort, int httpPort, int index, int rmiPort) {
 		InetAddress[] hostAddr = null;
 		try {
 			hostAddr = InetAddress.getAllByName(hostName);
@@ -377,7 +383,7 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 
 		InetAddress address = hostAddr[index];
 
-		return this.removeBalancer(address.getHostAddress(), sipPort, rmiPort);
+		return this.removeBalancer(address.getHostAddress(), sipPort, httpPort, rmiPort);
 	}
 
 	protected ArrayList<SIPNode> getConnectorsAsSIPNode() {

@@ -34,8 +34,8 @@ public interface LoadBalancerHeartBeatingServiceImplMBean {
 	void stop();
 		
 	String[] getBalancers();
-	boolean addBalancer(String addr, int sipPort, int rmiPort) throws IOException;
-	boolean removeBalancer(String addr, int sipPort, int rmiPort);
+	boolean addBalancer(String addr, int sipPort, int httpPort, int rmiPort) throws IOException;
+	boolean removeBalancer(String addr, int sipPort, int httpPort, int rmiPort);
 
 	long getHeartBeatInterval();
 	void setHeartBeatInterval(long heartBeatInterval);
