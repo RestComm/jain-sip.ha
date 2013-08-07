@@ -457,6 +457,34 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 		
 		String httpPortString = System.getProperty("org.mobicents.properties.httpPort");
 		String sslPortString = System.getProperty("org.mobicents.properties.sslPort");
+
+		if(httpPortString==null && sslPortString==null){
+			logger.logWarning("HTTP or HTTPS port couldn't be retrieved from System properties, trying with JMX");
+			Integer httpPort = null;
+			Boolean httpBound = false;
+			Integer sslPort = null;
+			Boolean sslBound = false;
+
+			MBeanServer mBeanServer = ManagementFactory.getPlatformMBeanServer();
+			try {
+				ObjectName http = new ObjectName("jboss.as:socket-binding-group=standard-sockets,socket-binding=http");
+				httpPort = (Integer) mBeanServer.getAttribute(http, "boundPort");
+				httpBound = (Boolean) mBeanServer.getAttribute(http, "bound");
+
+				ObjectName https = new ObjectName("jboss.as:socket-binding-group=standard-sockets,socket-binding=https");
+				sslPort = (Integer) mBeanServer.getAttribute(https, "boundPort");
+				sslBound = (Boolean) mBeanServer.getAttribute(https, "bound");
+
+			} catch (Exception e) {} //Ignore any exceptions	
+
+			if(httpBound && httpPort!=null){
+				System.setProperty("org.mobicents.properties.httpPort", String.valueOf(httpPort));
+			} else if (sslBound && sslPort!=null){
+				System.setProperty("org.mobicents.properties.sslPort", String.valueOf(sslPort));
+			}
+		}
+		
+		Properties props = System.getProperties();
 		
 		for (String ipAddress : ipAddresses) {
 			SIPNode node = new SIPNode(hostName, ipAddress);
