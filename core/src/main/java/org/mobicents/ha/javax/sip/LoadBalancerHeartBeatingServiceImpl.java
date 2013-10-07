@@ -24,6 +24,7 @@ import gov.nist.core.CommonLogger;
 import gov.nist.core.StackLogger;
 
 import java.io.IOException;
+import java.lang.management.ManagementFactory;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.net.SocketException;
@@ -43,6 +44,7 @@ import java.util.TimerTask;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
 
+import javax.management.MBeanServer;
 import javax.management.ObjectName;
 import javax.sip.ListeningPoint;
 
