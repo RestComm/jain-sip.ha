@@ -33,6 +33,7 @@ import gov.nist.javax.sip.stack.SIPServerTransaction;
 import java.io.FileNotFoundException;
 import java.text.ParseException;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Properties;
 
 import javax.sip.PeerUnavailableException;
@@ -93,16 +94,26 @@ public class HazelcastCache implements SipCache {
 		final HASipDialog haSipDialog = (HASipDialog) dialog;
 		
 		Object dialogMetaData = haSipDialog.getMetaDataToReplicate(); 
-		if (clusteredlogger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+		/*if (clusteredlogger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
 			clusteredlogger.logDebug("HA SIP Dialog " + dialog.getDialogId() + " remoteParty  = " + ((Map<String, Object>)dialogMetaData).get(AbstractHASipDialog.REMOTE_TARGET));
 			clusteredlogger.logDebug("HA SIP Dialog " + dialog.getDialogId() + " remoteParty  = " + ((ConfirmedReplicationSipDialog)dialog).getRemoteTarget());
+		}*/
+		if (dialogMetaData != null) {
+			if (dialogs.containsKey(dialog.getDialogId())) {
+				Map<String, Object> cachedMetaData = (Map<String, Object>)dialogs.get(dialog.getDialogId());
+				Long currentVersion = (Long)((Map<String, Object>)dialogMetaData).get(AbstractHASipDialog.VERSION);
+				Long cacheVersion = (Long)((Map<String, Object>)dialogMetaData).get(AbstractHASipDialog.VERSION);
+				if ( cacheVersion.longValue() < currentVersion.longValue()) {
+					for(Entry<String, Object> e : ((Map<String, Object>)dialogMetaData).entrySet()) {
+						cachedMetaData.put(e.getKey(), e.getValue());
+					}
+					dialogs.replace(dialog.getDialogId(), cachedMetaData);
+				}
+				
+			} else {
+				dialogs.put(dialog.getDialogId(), dialogMetaData);
+			}
 		}
-		// fix error with remote contact
-		//((Map<String, Object>)dialogMetaData).put(AbstractHASipDialog.REMOTE_TARGET, ((ConfirmedReplicationSipDialog)dialog).getRemoteTarget().toString());
-		if (dialogs.containsKey(dialog.getDialogId()))
-			dialogs.replace(dialog.getDialogId(), dialogMetaData);
-		else
-			dialogs.put(dialog.getDialogId(), dialogMetaData);
 		
 		Object dialogAppData = haSipDialog.getApplicationDataToReplicate();
 		if (dialogAppData != null) {
@@ -118,26 +129,10 @@ public class HazelcastCache implements SipCache {
 			clusteredlogger.logDebug("updateDialog(" + dialog.getDialogId() + ")");
 		
 		final HASipDialog haSipDialog = (HASipDialog) dialog;
-		
-		Object dialogMetadata = haSipDialog.getMetaDataToReplicate();
-		if(clusteredlogger.isLoggingEnabled(StackLogger.TRACE_TRACE)) {
-			clusteredlogger.logDebug("HA SIP Dialog " + dialog.getDialogId() + " remoteParty  = " + ((Map<String, Object>)dialogMetadata).get(AbstractHASipDialog.REMOTE_TARGET));
-			clusteredlogger.logDebug("HA SIP Dialog " + dialog.getDialogId() + " remoteParty  = " + ((ConfirmedReplicationSipDialog)dialog).getRemoteTarget());
-		}
-		// fix an error with remote contact
-		//((Map<String, Object>)o).put(AbstractHASipDialog.REMOTE_TARGET, haSipDialog.getRemoteTarget().toString());
-		if (dialogs.containsKey(dialog.getDialogId()))
-			dialogs.replace(dialog.getDialogId(), dialogMetadata);
-		else
-			dialogs.put(dialog.getDialogId(), dialogMetadata);
-		
-		Object dialogAppData = haSipDialog.getApplicationDataToReplicate();
-		if (dialogAppData != null) {
-			if (appDataMap.containsKey(dialog.getDialogId()))
-				appDataMap.replace(dialog.getDialogId(), dialogAppData);
-			else 
-				appDataMap.put(dialog.getDialogId(), dialogAppData);
-		}
+		final Object dialogMetaData = dialogs.get(dialog.getDialogId());
+		final Object dialogAppData = appDataMap.get(dialog.getDialogId()); 
+	    
+		updateDialog(haSipDialog, (Map<String, Object>)dialogMetaData, dialogAppData);
 	}
 	
 	public void removeDialog(String dialogId) throws SipCacheException {
@@ -224,7 +219,8 @@ public class HazelcastCache implements SipCache {
 		stack = clusteredStack;
 	}
 
-	public HASipDialog createDialog(String dialogId, Map<String, Object> dialogMetaData, Object dialogAppData) throws SipCacheException {
+	public HASipDialog createDialog(String dialogId, Map<String, Object> dialogMetaData, 
+			Object dialogAppData) throws SipCacheException {
 		HASipDialog haSipDialog = null; 
 		if(dialogMetaData != null) {
 			if(clusteredlogger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
@@ -254,6 +250,34 @@ public class HazelcastCache implements SipCache {
 		}
 		
 		return haSipDialog;
+	}
+	
+	public void updateDialog(HASipDialog haSipDialog, Map<String, Object> dialogMetaData, 
+			Object dialogAppData) throws SipCacheException {
+		if(dialogMetaData != null) {			
+			final long currentVersion = haSipDialog.getVersion();
+			final Long cacheVersion = ((Long)dialogMetaData.get(AbstractHASipDialog.VERSION)); 
+			if(cacheVersion != null && currentVersion < cacheVersion.longValue()) {
+				if(clusteredlogger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+					clusteredlogger.logDebug("HA SIP Dialog " + haSipDialog + " with dialogId " + haSipDialog.getDialogIdToReplicate() + " is older " + currentVersion + " than the one in the cache " + cacheVersion + " updating it");
+				}
+				try {
+					final String lastResponseStringified = (String) dialogMetaData.get(AbstractHASipDialog.LAST_RESPONSE);				
+					final SIPResponse lastResponse = (SIPResponse) SipFactory.getInstance().createMessageFactory().createResponse(lastResponseStringified);
+					haSipDialog.setLastResponse(lastResponse);
+					updateDialogMetaData(dialogMetaData, dialogAppData, haSipDialog, false);
+				
+				}  catch (PeerUnavailableException e) {
+					throw new SipCacheException("A problem occured while retrieving the following dialog " + haSipDialog.getDialogIdToReplicate() + " from the TreeCache", e);
+				} catch (ParseException e) {
+					throw new SipCacheException("A problem occured while retrieving the following dialog " + haSipDialog.getDialogIdToReplicate() + " from the TreeCache", e);
+				}
+			} else {
+				if(clusteredlogger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+					clusteredlogger.logDebug("HA SIP Dialog " + haSipDialog + " with dialogId " + haSipDialog.getDialogIdToReplicate() + " is not older " + currentVersion + " than the one in the cache " + cacheVersion + ", not updating it");
+				}
+			}
+		}
 	}
 	
 	
