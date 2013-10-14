@@ -25,7 +25,6 @@ import gov.nist.core.StackLogger;
 import gov.nist.javax.sip.SipProviderImpl;
 import gov.nist.javax.sip.message.SIPResponse;
 import gov.nist.javax.sip.stack.AbstractHASipDialog;
-import gov.nist.javax.sip.stack.ConfirmedReplicationSipDialog;
 import gov.nist.javax.sip.stack.SIPClientTransaction;
 import gov.nist.javax.sip.stack.SIPDialog;
 import gov.nist.javax.sip.stack.SIPServerTransaction;
@@ -64,6 +63,8 @@ public class HazelcastCache implements SipCache {
 	
 	public static final String HAZELCAST_CACHE_CONFIG_PATH = "org.mobicents.ha.javax.sip.HAZELCAST_CACHE_CONFIG_PATH";
 	public static final String DEFAULT_FILE_CONFIG_PATH = "META-INF/cache-configuration.xml"; 
+	public static final String HAZELCAST_INSTANCE_NAME = "org.mobicents.ha.javax.sip.HAZELCAST_INSTANCE_NAME";
+	public static final String DEFAULT_HAZELCAST_INSTANCE_NAME = "jain-sip-ha";
 	private static StackLogger clusteredlogger = CommonLogger.getLogger(HazelcastCache.class);
 	
 	private Properties configProperties = null;
@@ -193,7 +194,9 @@ public class HazelcastCache implements SipCache {
 			cfg = new ClasspathXmlConfig(DEFAULT_FILE_CONFIG_PATH);
 			
 		}
-		cfg.setInstanceName("jain-sip-ha");
+		String instanceName = configProperties.getProperty(HAZELCAST_INSTANCE_NAME, 
+				DEFAULT_HAZELCAST_INSTANCE_NAME);
+		cfg.setInstanceName(instanceName);
         hz = Hazelcast.newHazelcastInstance(cfg);
 		dialogs = hz.getMap("cache.dialogs");
 		appDataMap = hz.getMap("cache.appdata");
