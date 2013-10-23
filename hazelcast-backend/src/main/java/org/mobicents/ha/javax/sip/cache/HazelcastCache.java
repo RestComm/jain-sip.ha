@@ -72,6 +72,8 @@ public class HazelcastCache implements SipCache {
 	private ClusteredSipStack stack;
 	private IMap<String, Object> dialogs;
 	private IMap<String, Object> appDataMap;
+	private IMap<String, Object> serverTransactions;
+	private IMap<String, Object> clientTransactions;
 	
 	public SIPDialog getDialog(String dialogId) throws SipCacheException {
 		if(clusteredlogger.isLoggingEnabled(StackLogger.TRACE_TRACE))
@@ -150,28 +152,46 @@ public class HazelcastCache implements SipCache {
 		dialogs.remove(dialogId);
 	}
 	
-	public SIPClientTransaction getClientTransaction(String arg0) throws SipCacheException {
-		return null;
+	public SIPClientTransaction getClientTransaction(String txId) 
+			throws SipCacheException {
+		if(clusteredlogger.isLoggingEnabled(StackLogger.TRACE_TRACE))
+			clusteredlogger.logDebug("getClientTransaction(" + txId + ")");
+		return (SIPClientTransaction) clientTransactions.get(txId);
 	}
 
-	public SIPServerTransaction getServerTransaction(String arg0) throws SipCacheException {
-		return null;
+	public SIPServerTransaction getServerTransaction(String txId) 
+			throws SipCacheException {
+		if(clusteredlogger.isLoggingEnabled(StackLogger.TRACE_TRACE))
+			clusteredlogger.logDebug("getServerTransaction(" + txId + ")");
+		return (SIPServerTransaction) serverTransactions.get(txId);
 	}
 	
-	public void putClientTransaction(SIPClientTransaction arg0) throws SipCacheException {
-	
-	}
-
-	public void putServerTransaction(SIPServerTransaction arg0) throws SipCacheException {
-		
-	}
-	
-	public void removeClientTransaction(String arg0) throws SipCacheException {
-	
+	public void putClientTransaction(SIPClientTransaction clientTransaction) 
+			throws SipCacheException {
+		if(clusteredlogger.isLoggingEnabled(StackLogger.TRACE_TRACE))
+			clusteredlogger.logDebug("putClientTransaction(" + clientTransaction.getTransactionId() + ")");
+		clientTransactions.put(clientTransaction.getTransactionId(), clientTransaction);
 	}
 
-	public void removeServerTransaction(String arg0) throws SipCacheException {
+	public void putServerTransaction(SIPServerTransaction serverTransaction) 
+			throws SipCacheException {
+		if(clusteredlogger.isLoggingEnabled(StackLogger.TRACE_TRACE))
+			clusteredlogger.logDebug("putServerTransaction(" + serverTransaction.getTransactionId() + ")");
+		serverTransactions.put(serverTransaction.getTransactionId(), serverTransaction);
+	}
 	
+	public void removeClientTransaction(String txId) 
+			throws SipCacheException {
+		if(clusteredlogger.isLoggingEnabled(StackLogger.TRACE_TRACE))
+			clusteredlogger.logDebug("removeClientTransaction(" + txId + ")");
+		clientTransactions.remove(txId);
+	}
+
+	public void removeServerTransaction(String txId) 
+			throws SipCacheException {
+		if(clusteredlogger.isLoggingEnabled(StackLogger.TRACE_TRACE))
+			clusteredlogger.logDebug("removeServerTransaction(" + txId + ")");
+		serverTransactions.remove(txId);
 	}
 	
 	public void init() throws SipCacheException {
@@ -202,6 +222,8 @@ public class HazelcastCache implements SipCache {
 		}
 		dialogs = hz.getMap("cache.dialogs");
 		appDataMap = hz.getMap("cache.appdata");
+		serverTransactions = hz.getMap("cache.serverTX");
+		clientTransactions = hz.getMap("cache.clientTX");
 	}
 	
 	public void start() throws SipCacheException {
