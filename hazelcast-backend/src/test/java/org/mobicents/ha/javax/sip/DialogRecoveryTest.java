@@ -56,17 +56,16 @@ import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.IMap;
 
 public class DialogRecoveryTest extends TestCase {
-
-	private static AddressFactory addressFactory;
-	private static MessageFactory messageFactory;
-	private static HeaderFactory headerFactory;
+	
+	private static final String myAddress = "127.0.0.1";
 
 	class Shootme implements SipListener {
 
 		private SipStack sipStack;
-
-		private static final String myAddress = "127.0.0.1";
-
+		private AddressFactory addressFactory;
+		private MessageFactory messageFactory;
+		private HeaderFactory headerFactory;
+		
 		private String stackName;
 
 		private String cacheName;
@@ -85,8 +84,9 @@ public class DialogRecoveryTest extends TestCase {
 
 		private SipProvider sipProvider;
 
-		private boolean firstTxComplete;
-
+		private boolean firstTxComplete = false;
+		private boolean byeComplete = false;
+		
 		public Shootme(String stackName, String cacheName, int myPort,
 				boolean callerSendsBye) {
 			this.stackName = stackName;
@@ -97,15 +97,9 @@ public class DialogRecoveryTest extends TestCase {
 		}
 
 		class ByeTask extends TimerTask {
-			Dialog dialog;
-
-			public ByeTask(Dialog dialog) {
-				this.dialog = dialog;
-			}
-
 			public void run() {
 				try {
-					Request byeRequest = this.dialog.createRequest(Request.BYE);
+					Request byeRequest = dialog.createRequest(Request.BYE);
 					ClientTransaction ct = sipProvider
 							.getNewClientTransaction(byeRequest);
 					dialog.sendRequest(ct);
@@ -193,6 +187,10 @@ public class DialogRecoveryTest extends TestCase {
 					System.out.println("Shootme: sending ACK");
 					dialog.sendAck(ackRequest);
 
+				} else if (responseEvent.getResponse().getStatusCode() == 200
+						&& cSeqHeader.getMethod().equalsIgnoreCase(
+								Request.BYE)) {
+					byeComplete = true;
 				}
 			} catch (SipException e) {
 				// TODO Auto-generated catch block
@@ -386,10 +384,8 @@ public class DialogRecoveryTest extends TestCase {
 				ListeningPoint lp = sipStack.createListeningPoint(myAddress,
 						myPort, ListeningPoint.UDP);
 
-				Shootme listener = this;
-
 				sipProvider = sipStack.createSipProvider(lp);
-				sipProvider.addSipListener(listener);
+				sipProvider.addSipListener(this);
 				sipStack.start();
 				if (!callerSendsBye && this.dialog != null) {
 					try {
@@ -434,6 +430,22 @@ public class DialogRecoveryTest extends TestCase {
 			else
 				fail("firstTxComplete " + firstTxComplete);
 		}
+		
+		public void checkByeState() {
+			if (byeComplete)
+				System.out.println("Shootme: BYE completed. State OK.");
+			else
+				fail("No BYE response received, byeComplete=" + byeComplete);
+		}
+		
+		public void recoverDialog(String id) {
+			dialog = ((SipStackImpl)sipStack).getDialog(id);
+		}
+		
+		public void sendBye() {
+			System.out.println("Shootme: sending bye");
+			new Timer().schedule(new ByeTask(), 0);
+		}
 
 	}
 
@@ -442,6 +454,9 @@ public class DialogRecoveryTest extends TestCase {
 		private SipProvider sipProvider;
 
 		private SipStack sipStack;
+		private AddressFactory addressFactory;
+		private MessageFactory messageFactory;
+		private HeaderFactory headerFactory;
 
 		private ContactHeader contactHeader;
 
@@ -456,8 +471,6 @@ public class DialogRecoveryTest extends TestCase {
 		private boolean byeTaskRunning;
 
 		public boolean callerSendsBye = true;
-
-		private static final String myAddress = "127.0.0.1";
 
 		public int myPort = 5050;
 
@@ -593,20 +606,25 @@ public class DialogRecoveryTest extends TestCase {
 			}
 		}
 
-		public void processBye(Request request,
-				ServerTransaction serverTransactionId) {
+		public void processBye(Request request,	ServerTransaction serverTransactionId) {
 			try {
-				System.out.println("shootist:  got a bye .");
+				System.out.println("Shootist:  got a bye .");
 				if (serverTransactionId == null) {
-					System.out.println("shootist:  null TID.");
+					System.out.println("Shootist:  null TID.");
 					return;
 				}
 				Dialog dialog = serverTransactionId.getDialog();
 				System.out.println("Dialog State = " + dialog.getState());
+				// check route
+				if (recordRouteAddr != null) {
+					RouteHeader route = (RouteHeader)request.getHeader(RouteHeader.NAME);
+					assertNotNull(route);
+					assertEquals(recordRouteAddr, route.getAddress().getURI().toString());
+				}
+				System.out.println("Shootist:  Sending OK.");
+				System.out.println("Dialog State = " + dialog.getState());
 				Response response = messageFactory.createResponse(200, request);
 				serverTransactionId.sendResponse(response);
-				System.out.println("shootist:  Sending OK.");
-				System.out.println("Dialog State = " + dialog.getState());
 
 			} catch (Exception ex) {
 				fail("Unexpected exception");
@@ -910,16 +928,17 @@ public class DialogRecoveryTest extends TestCase {
 	 * 	 <---------------- 200 OK 
 	 * ACK -------------------> 
 	 *              stop #1 & create #2 
-	 *         put dialog metadata into cache 
 	 * BYE ----------------------------------->
 	 * <--------------------------------- 200 OK
 	 */
-	public void testDialogWithRecordRouteReplication() throws Exception {
+	public void testByeFromShootist() throws Exception {
 		
 		BasicConfigurator.configure();
 		Logger.getRootLogger().removeAllAppenders();
+		
+		System.out.println(">>>>>>>>>> Shootist sends BYE <<<<<<<<<<<");
 
-		String recordRoute = "sip:some.domain.com:5090";
+		String recordRoute = "sip:some.domain.com:5090;lr";
 		// create invite initiator
 		Shootist shootist = new Shootist("shootist", true);
 		shootist.addRecordRoute(recordRoute);
@@ -989,5 +1008,97 @@ public class DialogRecoveryTest extends TestCase {
 		// clean resources
 		shootist.stop();
 		shootme2.stop();
+		Thread.sleep(1000);
+	}
+
+	/**
+	 * SHOTIST1           SHOOTME1         SHOOTME2 
+	 * INVITE ----------------> 
+	 * 	 <---------------- 200 OK 
+	 * ACK -------------------> 
+	 *              stop #1 & create #2 
+	 *   <----------------------------------- BYE
+	 * 200 OK --------------------------------->
+	 */
+	public void testByeFromShootme() throws Exception {
+		
+		BasicConfigurator.configure();
+		Logger.getRootLogger().removeAllAppenders();
+		
+		System.out.println(">>>>>>>>>> Shootme sends BYE <<<<<<<<<<<");
+
+		String recordRoute = "sip:127.0.0.1:5050;lr";
+		// create invite initiator
+		Shootist shootist = new Shootist("shootist2", true);
+		shootist.addRecordRoute(recordRoute);
+
+		// create and start first receiver
+		Shootme shootme1 = new Shootme("shootme3", "jain-sip-ha", 5070, true);
+		System.out.println(">>>> Start Shootme1");
+		shootme1.init();
+
+		// get dialogs cache created by shootme1
+		HazelcastInstance hz = Hazelcast
+				.getHazelcastInstanceByName("jain-sip-ha");
+		IMap<String, Object> dialogs = hz.getMap("cache.dialogs");
+
+		// start test sending an invite
+		System.out.println(">>>> Start Shootist");
+		shootist.init("shootist", "127.0.0.1:5070"); // shoot peer1
+
+		Thread.sleep(2000);
+		
+		// check first transacion completed
+		shootme1.checkState();
+		
+		// compare dialog metadata with cache metadata
+		String dialogId = shootme1.dialog.getDialogId();
+		Map<String, Object> cachedMetaData = (Map<String, Object>) dialogs
+				.get(shootme1.dialog.getDialogId());
+
+		assertNotNull(dialogId);
+		assertNotNull(cachedMetaData);
+		assertEquals(shootme1.dialog.getLocalTag(),
+				cachedMetaData.get(AbstractHASipDialog.LOCAL_TAG));
+		assertEquals(shootme1.dialog.getRemoteTag(),
+				cachedMetaData.get(AbstractHASipDialog.REMOTE_TAG));
+		assertEquals(shootme1.dialog.getRemoteTarget().toString(),
+				cachedMetaData.get(AbstractHASipDialog.REMOTE_TARGET));
+		String [] routeList = (String[])cachedMetaData.get(AbstractHASipDialog.ROUTE_LIST);
+		assertNotNull(routeList);
+		assertEquals(1, routeList.length);
+		assertEquals("<"+recordRoute+">", routeList[0]);
+
+		// kill shootme
+		shootme1.stop();
+		
+		System.out.println(">>>> Kill Shootme1. Dialog cached succesfully.");
+		
+		Thread.sleep(2000);
+		
+		// ---- Recover dialog in new shootme instance ----
+		Shootme shootme2 = new Shootme("shootme4", "jain-sip-ha", 5070, true);
+
+		// start shootme2
+		System.out.println(">>>> Start Shootme2");
+		shootme2.init();
+
+		Thread.sleep(1000);
+
+		// send bye should recover dialog and send 200 ok response
+		shootme2.recoverDialog(dialogId);
+		shootme2.sendBye();
+
+		Thread.sleep(1000);
+
+		// check successfull bye
+		shootme2.checkByeState();
+		
+		System.out.println(">>>> Call recovered succesfully.");
+
+		// clean resources
+		shootist.stop();
+		shootme2.stop();
+		Thread.sleep(1000);
 	}
 }
