@@ -176,28 +176,30 @@ public class HazelcastCache implements SipCache {
 	
 	public void init() throws SipCacheException {
 		Config cfg = null;
-		
-		String pojoConfigurationPath = configProperties.getProperty(HAZELCAST_CACHE_CONFIG_PATH);
-		if (pojoConfigurationPath != null) {
-			if (clusteredlogger.isLoggingEnabled(StackLogger.TRACE_INFO)) {
-				clusteredlogger.logInfo(
-						"Mobicents JAIN SIP Hazelcast Cache Configuration path is : " + pojoConfigurationPath);
-			}
-			try {
-				cfg = new XmlConfigBuilder(pojoConfigurationPath).build();
-				
-			} catch (FileNotFoundException e) {
-				e.printStackTrace();
-			}
-			
-		} else {
-			cfg = new ClasspathXmlConfig(DEFAULT_FILE_CONFIG_PATH);
-			
-		}
 		String instanceName = configProperties.getProperty(HAZELCAST_INSTANCE_NAME, 
 				DEFAULT_HAZELCAST_INSTANCE_NAME);
-		cfg.setInstanceName(instanceName);
-        hz = Hazelcast.newHazelcastInstance(cfg);
+		hz = Hazelcast.getHazelcastInstanceByName(instanceName);
+		if (hz == null) {
+			String pojoConfigurationPath = configProperties.getProperty(HAZELCAST_CACHE_CONFIG_PATH);
+			if (pojoConfigurationPath != null) {
+				if (clusteredlogger.isLoggingEnabled(StackLogger.TRACE_INFO)) {
+					clusteredlogger.logInfo(
+							"Mobicents JAIN SIP Hazelcast Cache Configuration path is : " + pojoConfigurationPath);
+				}
+				try {
+					cfg = new XmlConfigBuilder(pojoConfigurationPath).build();
+					
+				} catch (FileNotFoundException e) {
+					e.printStackTrace();
+				}
+				
+			} else {
+				cfg = new ClasspathXmlConfig(DEFAULT_FILE_CONFIG_PATH);
+				
+			}
+			cfg.setInstanceName(instanceName);
+	        hz = Hazelcast.newHazelcastInstance(cfg);
+		}
 		dialogs = hz.getMap("cache.dialogs");
 		appDataMap = hz.getMap("cache.appdata");
 	}
