@@ -25,11 +25,18 @@ import gov.nist.core.StackLogger;
 import gov.nist.javax.sip.SipProviderImpl;
 import gov.nist.javax.sip.message.SIPResponse;
 import gov.nist.javax.sip.stack.AbstractHASipDialog;
+import gov.nist.javax.sip.stack.MessageChannel;
+import gov.nist.javax.sip.stack.MessageProcessor;
+import gov.nist.javax.sip.stack.MobicentsHASIPClientTransaction;
+import gov.nist.javax.sip.stack.MobicentsHASIPServerTransaction;
 import gov.nist.javax.sip.stack.SIPClientTransaction;
 import gov.nist.javax.sip.stack.SIPDialog;
 import gov.nist.javax.sip.stack.SIPServerTransaction;
+import gov.nist.javax.sip.stack.SIPTransactionStack;
 
 import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.net.InetAddress;
 import java.text.ParseException;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -73,7 +80,9 @@ public class HazelcastCache implements SipCache {
 	private IMap<String, Object> dialogs;
 	private IMap<String, Object> appDataMap;
 	private IMap<String, Object> serverTransactions;
+	private IMap<String, Object> serverTransactionsApp;
 	private IMap<String, Object> clientTransactions;
+	private IMap<String, Object> clientTransactionsApp;
 	
 	public SIPDialog getDialog(String dialogId) throws SipCacheException {
 		if(clusteredlogger.isLoggingEnabled(StackLogger.TRACE_TRACE))
@@ -154,30 +163,84 @@ public class HazelcastCache implements SipCache {
 	
 	public SIPClientTransaction getClientTransaction(String txId) 
 			throws SipCacheException {
+		SIPClientTransaction haSipClientTransaction = null;
 		if(clusteredlogger.isLoggingEnabled(StackLogger.TRACE_TRACE))
-			clusteredlogger.logDebug("getClientTransaction(" + txId + ")");
-		return (SIPClientTransaction) clientTransactions.get(txId);
+			clusteredlogger.logDebug("getServerTransaction(" + txId + ")");
+		
+		try {
+			final Map<String, Object> transactionMetaData = (Map<String, Object>)clientTransactions.get(txId);		
+			final Object txAppData = clientTransactionsApp.get(txId);
+				
+			haSipClientTransaction = createClientTransaction(txId, transactionMetaData, txAppData);
+			
+		} catch (Exception e) {
+			throw new SipCacheException(e);
+		}
+		
+		return haSipClientTransaction;
 	}
 
 	public SIPServerTransaction getServerTransaction(String txId) 
 			throws SipCacheException {
+		SIPServerTransaction haSipServerTransaction = null;
 		if(clusteredlogger.isLoggingEnabled(StackLogger.TRACE_TRACE))
 			clusteredlogger.logDebug("getServerTransaction(" + txId + ")");
-		return (SIPServerTransaction) serverTransactions.get(txId);
+		
+		try {
+			final Map<String, Object> transactionMetaData = (Map<String, Object>)serverTransactions.get(txId);		
+			final Object txAppData = serverTransactionsApp.get(txId);
+				
+			haSipServerTransaction = createServerTransaction(txId, transactionMetaData, txAppData);
+			
+		} catch (Exception e) {
+			throw new SipCacheException(e);
+		}
+		
+		return haSipServerTransaction;
 	}
 	
 	public void putClientTransaction(SIPClientTransaction clientTransaction) 
 			throws SipCacheException {
 		if(clusteredlogger.isLoggingEnabled(StackLogger.TRACE_TRACE))
 			clusteredlogger.logDebug("putClientTransaction(" + clientTransaction.getTransactionId() + ")");
-		clientTransactions.put(clientTransaction.getTransactionId(), clientTransaction);
+		
+		try {
+			final MobicentsHASIPClientTransaction haClientTransaction = (MobicentsHASIPClientTransaction) clientTransaction;
+			
+			// metadata
+			Map<String, Object> metaData = haClientTransaction.getMetaDataToReplicate();
+			clientTransactions.put(clientTransaction.getTransactionId(), metaData);
+			
+			// app data
+			final Object transactionAppData = haClientTransaction.getApplicationDataToReplicate();
+			if(transactionAppData != null) {
+				clientTransactionsApp.put(clientTransaction.getTransactionId(), transactionAppData);
+			}
+		} catch (Exception e) {
+			throw new SipCacheException(e);
+		}
 	}
 
 	public void putServerTransaction(SIPServerTransaction serverTransaction) 
 			throws SipCacheException {
 		if(clusteredlogger.isLoggingEnabled(StackLogger.TRACE_TRACE))
 			clusteredlogger.logDebug("putServerTransaction(" + serverTransaction.getTransactionId() + ")");
-		serverTransactions.put(serverTransaction.getTransactionId(), serverTransaction);
+		
+		try {
+			final MobicentsHASIPServerTransaction haServerTransaction = (MobicentsHASIPServerTransaction) serverTransaction;
+			
+			// meta data
+			Map<String, Object> metaData = haServerTransaction.getMetaDataToReplicate();
+			serverTransactions.put(serverTransaction.getTransactionId(), metaData);
+			
+			// app data
+			final Object transactionAppData = haServerTransaction.getApplicationDataToReplicate();
+			if(transactionAppData != null) {
+				serverTransactionsApp.put(serverTransaction.getTransactionId(), transactionAppData);
+			}
+		} catch (Exception e) {
+			throw new SipCacheException(e);
+		}
 	}
 	
 	public void removeClientTransaction(String txId) 
@@ -185,6 +248,7 @@ public class HazelcastCache implements SipCache {
 		if(clusteredlogger.isLoggingEnabled(StackLogger.TRACE_TRACE))
 			clusteredlogger.logDebug("removeClientTransaction(" + txId + ")");
 		clientTransactions.remove(txId);
+		clientTransactionsApp.remove(txId);
 	}
 
 	public void removeServerTransaction(String txId) 
@@ -192,6 +256,7 @@ public class HazelcastCache implements SipCache {
 		if(clusteredlogger.isLoggingEnabled(StackLogger.TRACE_TRACE))
 			clusteredlogger.logDebug("removeServerTransaction(" + txId + ")");
 		serverTransactions.remove(txId);
+		serverTransactionsApp.remove(txId);
 	}
 	
 	public void init() throws SipCacheException {
@@ -223,7 +288,9 @@ public class HazelcastCache implements SipCache {
 		dialogs = hz.getMap("cache.dialogs");
 		appDataMap = hz.getMap("cache.appdata");
 		serverTransactions = hz.getMap("cache.serverTX");
+		serverTransactionsApp = hz.getMap("cache.serverTXApp");
 		clientTransactions = hz.getMap("cache.clientTX");
+		clientTransactionsApp = hz.getMap("cache.clientTXApp");
 	}
 	
 	public void start() throws SipCacheException {
@@ -334,5 +401,144 @@ public class HazelcastCache implements SipCache {
 			}
 			haSipDialog.setContactHeader(contactHeader);
 		}
+	}
+	
+	public MobicentsHASIPServerTransaction createServerTransaction(String txId, Map<String, Object> transactionMetaData, Object transactionAppData) throws SipCacheException {
+		MobicentsHASIPServerTransaction haServerTransaction = null; 
+		if(transactionMetaData != null) {
+			if(clusteredlogger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+				clusteredlogger.logDebug("sipStack " + this + " server transaction " + txId + " is present in the distributed cache, recreating it locally");
+			}
+			String channelTransport = (String) transactionMetaData.get(MobicentsHASIPServerTransaction.TRANSPORT);
+			if (clusteredlogger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+				clusteredlogger.logDebug(txId + " : transport " + channelTransport);
+			}
+			InetAddress channelIp = (InetAddress) transactionMetaData.get(MobicentsHASIPServerTransaction.PEER_IP);
+			if (clusteredlogger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+				clusteredlogger.logDebug(txId + " : channel peer Ip address " + channelIp);
+			}
+			Integer channelPort = (Integer) transactionMetaData.get(MobicentsHASIPServerTransaction.PEER_PORT);
+			if (clusteredlogger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+				clusteredlogger.logDebug(txId + " : channel peer port " + channelPort);
+			}
+			Integer myPort = (Integer) transactionMetaData.get(MobicentsHASIPServerTransaction.MY_PORT);
+			if (clusteredlogger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+				clusteredlogger.logDebug(txId + " : my port " + myPort);
+			}
+			MessageChannel messageChannel = null;
+			MessageProcessor[] messageProcessors = stack.getStackMessageProcessors();
+			for (MessageProcessor messageProcessor : messageProcessors) {
+				if(messageProcessor.getTransport().equalsIgnoreCase(channelTransport)) {
+					try {
+						messageChannel = messageProcessor.createMessageChannel(channelIp, channelPort);
+					} catch (IOException e) {
+						clusteredlogger.logError("couldn't recreate the message channel on ip address " 
+								+ channelIp + " and port " + channelPort, e);
+					}
+					break;
+				}
+			}
+			
+			haServerTransaction = new MobicentsHASIPServerTransaction((SIPTransactionStack) stack, messageChannel);
+			haServerTransaction.setBranch(txId);
+			try {
+				updateServerTransactionMetaData(transactionMetaData, transactionAppData, haServerTransaction, true);						
+			} catch (PeerUnavailableException e) {
+				throw new SipCacheException("A problem occured while retrieving the following transaction " + txId + " from the Cache", e);
+			} catch (ParseException e) {
+				throw new SipCacheException("A problem occured while retrieving the following transaction " + txId + " from the Cache", e);
+			}
+		} else {
+			if(clusteredlogger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+				clusteredlogger.logDebug("sipStack " + this + " server transaction " + txId + " not found in the distributed cache");
+			}
+		}
+		
+		return haServerTransaction;
+	}
+
+	/**
+	 * Update the haSipDialog passed in param with the dialogMetaData and app meta data
+	 * @param transactionMetaData
+	 * @param transactionAppData
+	 * @param haServerTransaction
+	 * @throws ParseException
+	 * @throws PeerUnavailableException
+	 */
+	private void updateServerTransactionMetaData(Map<String, Object> transactionMetaData, Object transactionAppData, MobicentsHASIPServerTransaction haServerTransaction, boolean recreation) throws ParseException,
+			PeerUnavailableException {
+		haServerTransaction.setMetaDataToReplicate(transactionMetaData, recreation);
+		haServerTransaction.setApplicationDataToReplicate(transactionAppData);		
+	}
+	
+	public MobicentsHASIPClientTransaction createClientTransaction(String txId, Map<String, Object> transactionMetaData, Object transactionAppData) throws SipCacheException {
+		MobicentsHASIPClientTransaction haClientTransaction = null; 
+		if(transactionMetaData != null) {
+			if(clusteredlogger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+				clusteredlogger.logDebug("sipStack " + this + " client transaction " + txId + " is present in the distributed cache, recreating it locally");
+			}
+			String channelTransport = (String) transactionMetaData.get(MobicentsHASIPClientTransaction.TRANSPORT);
+			if (clusteredlogger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+				clusteredlogger.logDebug(txId + " : transport " + channelTransport);
+			}
+			InetAddress channelIp = (InetAddress) transactionMetaData.get(MobicentsHASIPClientTransaction.PEER_IP);
+			if (clusteredlogger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+				clusteredlogger.logDebug(txId + " : channel peer Ip address " + channelIp);
+			}
+			Integer channelPort = (Integer) transactionMetaData.get(MobicentsHASIPClientTransaction.PEER_PORT);
+			if (clusteredlogger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+				clusteredlogger.logDebug(txId + " : channel peer port " + channelPort);
+			}
+			Integer myPort = (Integer) transactionMetaData.get(MobicentsHASIPClientTransaction.MY_PORT);
+			if (clusteredlogger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+				clusteredlogger.logDebug(txId + " : my port " + myPort);
+			}
+			MessageChannel messageChannel = null;
+			MessageProcessor[] messageProcessors = stack.getStackMessageProcessors();
+			for (MessageProcessor messageProcessor : messageProcessors) {
+				if(messageProcessor.getTransport().equalsIgnoreCase(channelTransport)) {
+					try {
+						messageChannel = messageProcessor.createMessageChannel(channelIp, channelPort);
+					} catch (IOException e) {
+						clusteredlogger.logError("couldn't recreate the message channel on ip address " 
+								+ channelIp + " and port " + channelPort, e);
+					}
+					break;
+				}
+			}
+			
+			haClientTransaction = new MobicentsHASIPClientTransaction((SIPTransactionStack) stack, messageChannel);
+			haClientTransaction.setBranch(txId);
+			try {
+				updateClientTransactionMetaData(transactionMetaData, transactionAppData, haClientTransaction, true);						
+			} catch (PeerUnavailableException e) {
+				throw new SipCacheException("A problem occured while retrieving the following transaction " + txId + " from the Cache", e);
+			} catch (ParseException e) {
+				throw new SipCacheException("A problem occured while retrieving the following transaction " + txId + " from the Cache", e);
+			}
+		} else {
+			if(clusteredlogger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+				clusteredlogger.logDebug("sipStack " + this + " client transaction " + txId + " not found in the distributed cache");
+			}
+		}
+		
+		return haClientTransaction;
+	}
+
+	/**
+	 * Update the haSipDialog passed in param with the dialogMetaData and app meta data
+	 * @param transactionMetaData
+	 * @param transactionAppData
+	 * @param haClientTransaction
+	 * @throws ParseException
+	 * @throws PeerUnavailableException
+	 */
+	private void updateClientTransactionMetaData(Map<String, Object> transactionMetaData, Object transactionAppData, MobicentsHASIPClientTransaction haClientTransaction, boolean recreation) throws ParseException,
+			PeerUnavailableException {
+		haClientTransaction.setMetaDataToReplicate(transactionMetaData, recreation);
+		if(clusteredlogger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+			clusteredlogger.logDebug("updating application data with the one from cache " + transactionAppData);
+		}
+		haClientTransaction.setApplicationDataToReplicate(transactionAppData);		
 	}
 }
