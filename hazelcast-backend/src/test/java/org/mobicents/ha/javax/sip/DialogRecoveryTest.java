@@ -355,7 +355,9 @@ public class DialogRecoveryTest extends TestCase {
 					+ stackName + "debug.txt");
 			properties.setProperty("gov.nist.javax.sip.SERVER_LOG", "logs/"
 					+ stackName + "log.xml");
-			properties.setProperty(
+			properties.setProperty("org.mobicents.ha.javax.sip.REPLICATION_STRATEGY", 
+					ReplicationStrategy.ConfirmedDialog.toString());
+	        properties.setProperty(
 					"org.mobicents.ha.javax.sip.CACHE_CLASS_NAME",
 					"org.mobicents.ha.javax.sip.cache.HazelcastCache");
 			properties.setProperty(
@@ -944,8 +946,9 @@ public class DialogRecoveryTest extends TestCase {
 		shootist.addRecordRoute(recordRoute);
 
 		// create and start first receiver
-		Shootme shootme1 = new Shootme("shootme", "jain-sip-ha", 5070, true);
+		Shootme shootme1 = new Shootme("shootme1", "jain-sip-ha", 5070, true);
 		System.out.println(">>>> Start Shootme1");
+		Thread.sleep(1000);
 		shootme1.init();
 
 		// get dialogs cache created by shootme1
@@ -985,12 +988,12 @@ public class DialogRecoveryTest extends TestCase {
 		
 		System.out.println(">>>> Kill Shootme1. Dialog cached succesfully.");
 		
-		Thread.sleep(1000);
 		// ---- Recover dialog in new shootme instance ----
 		Shootme shootme2 = new Shootme("shootme2", "jain-sip-ha", 5070, true);
-
-		// start shootme2
 		System.out.println(">>>> Start Shootme2");
+		Thread.sleep(1000);
+		
+		// start shootme2
 		shootme2.init();
 
 		Thread.sleep(1000);
@@ -1008,7 +1011,7 @@ public class DialogRecoveryTest extends TestCase {
 		// clean resources
 		shootist.stop();
 		shootme2.stop();
-		Thread.sleep(1000);
+		Thread.sleep(2000);
 	}
 
 	/**
@@ -1099,6 +1102,6 @@ public class DialogRecoveryTest extends TestCase {
 		// clean resources
 		shootist.stop();
 		shootme2.stop();
-		Thread.sleep(1000);
+		Thread.sleep(2000);
 	}
 }
