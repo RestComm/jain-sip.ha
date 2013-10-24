@@ -508,8 +508,6 @@ public class DialogRecoveryTest extends TestCase {
 
 		private boolean byeTaskRunning;
 
-		public boolean callerSendsBye = true;
-
 		public int myPort = 5050;
 
 		private boolean okToByeReceived;
@@ -519,21 +517,19 @@ public class DialogRecoveryTest extends TestCase {
 		private String stackName;
 
 		class ByeTask extends TimerTask {
-			Dialog dialog;
-
-			public ByeTask(Dialog dialog) {
-				this.dialog = dialog;
-			}
-
+			
 			public void run() {
 				try {
-					Request byeRequest = this.dialog.createRequest(Request.BYE);
-					if (byeRequest.getHeader(RouteHeader.NAME) != null) {
-						byeRequest.removeHeader(RouteHeader.NAME);
+					if (dialog != null && dialog.getState() != DialogState.TERMINATED) {
+						Request byeRequest = dialog.createRequest(Request.BYE);
+						if (byeRequest.getHeader(RouteHeader.NAME) != null) {
+							byeRequest.removeHeader(RouteHeader.NAME);
+						}
+						ClientTransaction ct = sipProvider
+								.getNewClientTransaction(byeRequest);
+						dialog.sendRequest(ct);
 					}
-					ClientTransaction ct = sipProvider
-							.getNewClientTransaction(byeRequest);
-					dialog.sendRequest(ct);
+					
 				} catch (Exception ex) {
 					ex.printStackTrace();
 					fail("Unexpected exception ");
@@ -543,8 +539,7 @@ public class DialogRecoveryTest extends TestCase {
 
 		}
 
-		public Shootist(String stackName, boolean callerSendsBye) {
-			this.callerSendsBye = callerSendsBye;
+		public Shootist(String stackName) {
 			this.stackName = stackName;
 		}
 
@@ -694,11 +689,6 @@ public class DialogRecoveryTest extends TestCase {
 				}
 				return;
 			}
-			// If the caller is supposed to send the bye
-			if (callerSendsBye && !byeTaskRunning) {
-				byeTaskRunning = true;
-				new Timer().schedule(new ByeTask(dialog), 50000);
-			}
 			System.out.println("Shootist: dialog State is " + tid.getDialog().getState());
 
 			assertSame("Checking dialog identity", tid.getDialog(), this.dialog);
@@ -759,7 +749,7 @@ public class DialogRecoveryTest extends TestCase {
 
 		public void sendBye() {
 			System.out.println("Shootist: sending bye");
-			new Timer().schedule(new ByeTask(dialog), 0);
+			new Timer().schedule(new ByeTask(), 100);
 		}
 
 		public void init(String from, String peer) {
@@ -978,7 +968,7 @@ public class DialogRecoveryTest extends TestCase {
 
 		String recordRoute = "sip:some.domain.com:5090;lr";
 		// create invite initiator
-		Shootist shootist = new Shootist("shootist", true);
+		Shootist shootist = new Shootist("shootist");
 		shootist.addRecordRoute(recordRoute);
 
 		// create and start first receiver
@@ -1029,6 +1019,7 @@ public class DialogRecoveryTest extends TestCase {
 
 		// kill shootme
 		shootme1.stop();
+		shootme1 = null;
 		
 		System.out.println(">>>> Kill Shootme1. Dialog cached succesfully.");
 		
@@ -1055,7 +1046,9 @@ public class DialogRecoveryTest extends TestCase {
 		// clean resources
 		shootist.stop();
 		shootme2.stop();
-		Thread.sleep(2000);
+		shootme2 = null;
+		shootist = null;
+		Thread.sleep(5000);
 	}
 
 	/**
@@ -1076,12 +1069,13 @@ public class DialogRecoveryTest extends TestCase {
 
 		String recordRoute = "sip:127.0.0.1:5050;lr";
 		// create invite initiator
-		Shootist shootist = new Shootist("shootist2", true);
+		Shootist shootist = new Shootist("shootist2");
 		shootist.addRecordRoute(recordRoute);
 
 		// create and start first receiver
 		Shootme shootme1 = new Shootme("shootme3", "jain-sip-ha", 5070, true);
 		System.out.println(">>>> Start Shootme1");
+		Thread.sleep(1000);
 		shootme1.init();
 
 		// get dialogs cache created by shootme1
@@ -1118,6 +1112,7 @@ public class DialogRecoveryTest extends TestCase {
 
 		// kill shootme
 		shootme1.stop();
+		shootme1 = null;
 		
 		System.out.println(">>>> Kill Shootme1. Dialog cached succesfully.");
 		
@@ -1146,17 +1141,20 @@ public class DialogRecoveryTest extends TestCase {
 		// clean resources
 		shootist.stop();
 		shootme2.stop();
-		Thread.sleep(2000);
+		shootme2 = null;
+		shootist = null;
+		Thread.sleep(5000);
 	}
 
 	/**
 	 * SHOTIST1           SHOOTME1         SHOOTME2 
 	 * INVITE ----------------> 
-	 * 	 <---------------- 200 OK 
-	 * ACK -------------------> 
+	 * 	 <---------------- 180 OK
 	 *              stop #1 & create #2 
-	 *   <----------------------------------- BYE
-	 * 200 OK --------------------------------->
+	 * 	 <--------------------------------- 200 OK
+	 * ACK ------------------------------------> 
+	 * BYE ------------------------------------> 
+	 *   <--------------------------------- 200 OK
 	 */
 	public void testEarlyDialog() throws Exception {
 		
@@ -1165,16 +1163,15 @@ public class DialogRecoveryTest extends TestCase {
 		
 		System.out.println(">>>>>>>>>> Early dialog <<<<<<<<<<<");
 
-		String recordRoute = "sip:127.0.0.1:5050;lr";
 		// create invite initiator
-		Shootist shootist = new Shootist("shootist2", true);
-		shootist.addRecordRoute(recordRoute);
-
+		Shootist shootist = new Shootist("shootist3");
+		
 		// create and start first receiver
-		Shootme shootme1 = new Shootme("shootme3", "jain-sip-ha", 5070, false, ReplicationStrategy.EarlyDialog);
+		Shootme shootme1 = new Shootme("shootme5", "jain-sip-ha", 5080, false, ReplicationStrategy.EarlyDialog);
 		System.out.println(">>>> Start Shootme1");
+		Thread.sleep(1000);
 		shootme1.init();
-
+		
 		// get dialogs cache created by shootme1
 		HazelcastInstance hz = Hazelcast
 				.getHazelcastInstanceByName("jain-sip-ha");
@@ -1184,7 +1181,7 @@ public class DialogRecoveryTest extends TestCase {
 
 		// start test sending an invite
 		System.out.println(">>>> Start Shootist");
-		shootist.init("shootist", "127.0.0.1:5070"); // shoot peer1
+		shootist.init("shootist", "127.0.0.1:5080"); // shoot peer1
 
 		Thread.sleep(2000);
 		
@@ -1206,13 +1203,14 @@ public class DialogRecoveryTest extends TestCase {
 		
 		// kill shootme
 		shootme1.stop();
+		shootme1 = null;
 		
 		System.out.println(">>>> Kill Shootme1. Dialog cached succesfully.");
 		
 		Thread.sleep(2000);
 		
 		// ---- Recover dialog in new shootme instance ----
-		Shootme shootme2 = new Shootme("shootme4", "jain-sip-ha", 5070, false, ReplicationStrategy.EarlyDialog);
+		Shootme shootme2 = new Shootme("shootme6", "jain-sip-ha", 5080, false, ReplicationStrategy.EarlyDialog);
 
 		// start shootme2
 		System.out.println(">>>> Start Shootme2");
@@ -1232,7 +1230,7 @@ public class DialogRecoveryTest extends TestCase {
 		
 		shootme2.checkState();
 
-		Thread.sleep(2000);
+		Thread.sleep(1000);
 		
 		shootist.sendBye();
 
@@ -1252,6 +1250,8 @@ public class DialogRecoveryTest extends TestCase {
 		// clean resources
 		shootist.stop();
 		shootme2.stop();
+		shootme2 = null;
+		shootist = null;
 		Thread.sleep(2000);
 	}
 
