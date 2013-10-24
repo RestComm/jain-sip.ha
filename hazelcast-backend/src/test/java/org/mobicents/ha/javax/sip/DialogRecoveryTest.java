@@ -1,6 +1,7 @@
 package org.mobicents.ha.javax.sip;
 
 import gov.nist.javax.sip.stack.AbstractHASipDialog;
+import gov.nist.javax.sip.stack.SIPDialog;
 
 import java.text.ParseException;
 import java.util.ArrayList;
@@ -80,19 +81,32 @@ public class DialogRecoveryTest extends TestCase {
 
 		protected Dialog dialog;
 
-		public boolean callerSendsBye = true;
+		public boolean immediateAnswer = true;
 
 		private SipProvider sipProvider;
 
 		private boolean firstTxComplete = false;
 		private boolean byeComplete = false;
+		private boolean dialogRemoved = false;
 		
-		public Shootme(String stackName, String cacheName, int myPort,
-				boolean callerSendsBye) {
+		private ReplicationStrategy replicationStrategy;
+		
+		public Shootme(String stackName, String cacheName, int myPort, boolean immediateAnswer) {
 			this.stackName = stackName;
 			this.cacheName = cacheName;
 			this.myPort = myPort;
-			this.callerSendsBye = callerSendsBye;
+			this.immediateAnswer = immediateAnswer;
+			this.replicationStrategy = ReplicationStrategy.ConfirmedDialog;
+			System.setProperty("java.net.preferIPv4Stack", "true");
+		}
+		
+		public Shootme(String stackName, String cacheName, int myPort,
+				boolean immediateAnswer, ReplicationStrategy rs) {
+			this.stackName = stackName;
+			this.cacheName = cacheName;
+			this.myPort = myPort;
+			this.immediateAnswer = immediateAnswer;
+			this.replicationStrategy = rs;
 			System.setProperty("java.net.preferIPv4Stack", "true");
 		}
 
@@ -228,10 +242,8 @@ public class DialogRecoveryTest extends TestCase {
 			Request request = requestEvent.getRequest();
 			try {
 				System.out.println("Shootme: got an Invite sending Trying");
-				Response response = messageFactory.createResponse(
-						Response.RINGING, request);
-				ToHeader toHeader = (ToHeader) response
-						.getHeader(ToHeader.NAME);
+				Response response = messageFactory.createResponse(Response.RINGING, request);
+				ToHeader toHeader = (ToHeader) response.getHeader(ToHeader.NAME);
 				toHeader.setTag("4321"); // Application is supposed to set.
 
 				ServerTransaction st = requestEvent.getServerTransaction();
@@ -240,27 +252,29 @@ public class DialogRecoveryTest extends TestCase {
 					st = sipProvider.getNewServerTransaction(request);
 				}
 				dialog = st.getDialog();
+				inviteTid = st;
+				inviteRequest = request;
+				dialog.setApplicationData(st.getBranchId());
 
 				st.sendResponse(response);
 
 				Thread.sleep(1000);
-
-				this.okResponse = messageFactory.createResponse(Response.OK,
-						request);
-				Address address = addressFactory.createAddress("Shootme <sip:"
-						+ myAddress + ":" + myPort + ">");
-				ContactHeader contactHeader = headerFactory
-						.createContactHeader(address);
-				response.addHeader(contactHeader);
-				toHeader = (ToHeader) okResponse.getHeader(ToHeader.NAME);
-				toHeader.setTag("4321"); // Application is supposed to set.
-				okResponse.addHeader(contactHeader);
-				this.inviteTid = st;
-				// Defer sending the OK to simulate the phone ringing.
-				// Answered in 1 second ( this guy is fast at taking calls)
-				this.inviteRequest = request;
-
-				sendInviteOK();
+				
+				if (this.immediateAnswer) {
+					this.okResponse = messageFactory.createResponse(Response.OK,
+							request);
+					Address address = addressFactory.createAddress("Shootme <sip:"
+							+ myAddress + ":" + myPort + ">");
+					ContactHeader contactHeader = headerFactory
+							.createContactHeader(address);
+					response.addHeader(contactHeader);
+					toHeader = (ToHeader) okResponse.getHeader(ToHeader.NAME);
+					toHeader.setTag("4321"); // Application is supposed to set.
+					okResponse.addHeader(contactHeader);
+					
+					sendInviteOK();
+				}
+				
 			} catch (Exception ex) {
 				ex.printStackTrace();
 				System.exit(0);
@@ -356,13 +370,14 @@ public class DialogRecoveryTest extends TestCase {
 			properties.setProperty("gov.nist.javax.sip.SERVER_LOG", "logs/"
 					+ stackName + "log.xml");
 			properties.setProperty("org.mobicents.ha.javax.sip.REPLICATION_STRATEGY", 
-					ReplicationStrategy.ConfirmedDialog.toString());
+					replicationStrategy.toString());
 	        properties.setProperty(
 					"org.mobicents.ha.javax.sip.CACHE_CLASS_NAME",
 					"org.mobicents.ha.javax.sip.cache.HazelcastCache");
 			properties.setProperty(
 					"org.mobicents.ha.javax.sip.HAZELCAST_INSTANCE_NAME",
 					cacheName);
+			properties.setProperty("org.mobicents.ha.javax.sip.REPLICATE_APPLICATION_DATA", "true");
 
 			try {
 				// Create SipStack object
@@ -389,19 +404,7 @@ public class DialogRecoveryTest extends TestCase {
 				sipProvider = sipStack.createSipProvider(lp);
 				sipProvider.addSipListener(this);
 				sipStack.start();
-				if (!callerSendsBye && this.dialog != null) {
-					try {
-						Request byeRequest = this.dialog
-								.createRequest(Request.BYE);
-						ClientTransaction ct = sipProvider
-								.getNewClientTransaction(byeRequest);
-						System.out.println("Shootme: sending BYE " + byeRequest);
-						dialog.sendRequest(ct);
-					} catch (Exception ex) {
-						ex.printStackTrace();
-						fail("Shootme: Unexpected exception ");
-					}
-				}
+				
 			} catch (Exception ex) {
 				ex.printStackTrace();
 				fail("Shootme: unexpected exception");
@@ -415,11 +418,19 @@ public class DialogRecoveryTest extends TestCase {
 
 		public void processTransactionTerminated(
 				TransactionTerminatedEvent transactionTerminatedEvent) {
-
+			if (transactionTerminatedEvent.isServerTransaction())
+				System.out.println("Shootme: transaction terminated -> " 
+						+ transactionTerminatedEvent.getServerTransaction().getBranchId());
+			else
+				System.out.println("Shootme: transaction terminated -> " 
+						+ transactionTerminatedEvent.getClientTransaction().getBranchId());
 		}
 
 		public void processDialogTerminated(
 				DialogTerminatedEvent dialogTerminatedEvent) {
+			dialogRemoved = true;
+			System.out.println("Shootme: dialog terminated -> " 
+					+ dialogTerminatedEvent.getDialog().getDialogId());
 		}
 
 		public void stop() {
@@ -431,6 +442,11 @@ public class DialogRecoveryTest extends TestCase {
 				System.out.println("Shootme: first transaction completed. State OK.");
 			else
 				fail("firstTxComplete " + firstTxComplete);
+		}
+		
+		public void checkDialogRemoved() {
+			if (!dialogRemoved)
+				fail("dialog not removed");
 		}
 		
 		public void checkByeState() {
@@ -448,7 +464,27 @@ public class DialogRecoveryTest extends TestCase {
 			System.out.println("Shootme: sending bye");
 			new Timer().schedule(new ByeTask(), 0);
 		}
-
+		
+		public void send200Invite() {
+			System.out.println("Shootme: sending 200 OK");
+			String txId = (String)dialog.getApplicationData();
+			inviteTid = (ServerTransaction)((ClusteredSipStack)sipStack).findTransaction(txId, true);
+			try {
+				okResponse = messageFactory.createResponse(Response.OK, inviteTid.getRequest());
+				Address address = addressFactory.createAddress("Shootme <sip:"+ myAddress + ":" + myPort + ">");
+				ContactHeader contactHeader = headerFactory
+						.createContactHeader(address);
+				okResponse.addHeader(contactHeader);
+				ToHeader toHeader = (ToHeader) okResponse.getHeader(ToHeader.NAME);
+				toHeader.setTag("4321"); // Application is supposed to set.
+				okResponse.addHeader(contactHeader);
+				
+				sendInviteOK();
+				
+			} catch (ParseException e) {
+				e.printStackTrace();
+			}
+		}
 	}
 
 	class Shootist implements SipListener {
@@ -955,6 +991,8 @@ public class DialogRecoveryTest extends TestCase {
 		HazelcastInstance hz = Hazelcast
 				.getHazelcastInstanceByName("jain-sip-ha");
 		IMap<String, Object> dialogs = hz.getMap("cache.dialogs");
+		IMap<String, Object> appData = hz.getMap("cache.appdata");
+
 
 		// start test sending an invite
 		System.out.println(">>>> Start Shootist");
@@ -969,6 +1007,7 @@ public class DialogRecoveryTest extends TestCase {
 		String dialogId = shootme1.dialog.getDialogId();
 		Map<String, Object> cachedMetaData = (Map<String, Object>) dialogs
 				.get(shootme1.dialog.getDialogId());
+		Object data = appData.get(shootme1.dialog.getDialogId());
 
 		assertNotNull(dialogId);
 		assertNotNull(cachedMetaData);
@@ -982,6 +1021,11 @@ public class DialogRecoveryTest extends TestCase {
 		assertNotNull(routeList);
 		assertEquals(1, routeList.length);
 		assertEquals("<"+recordRoute+">", routeList[0]);
+		
+		String txId = (String)shootme1.dialog.getApplicationData();
+		assertNotNull(txId);
+		assertNotNull(data);
+		assertEquals(txId, (String)data);
 
 		// kill shootme
 		shootme1.stop();
@@ -1104,4 +1148,111 @@ public class DialogRecoveryTest extends TestCase {
 		shootme2.stop();
 		Thread.sleep(2000);
 	}
+
+	/**
+	 * SHOTIST1           SHOOTME1         SHOOTME2 
+	 * INVITE ----------------> 
+	 * 	 <---------------- 200 OK 
+	 * ACK -------------------> 
+	 *              stop #1 & create #2 
+	 *   <----------------------------------- BYE
+	 * 200 OK --------------------------------->
+	 */
+	public void testEarlyDialog() throws Exception {
+		
+		BasicConfigurator.configure();
+		Logger.getRootLogger().removeAllAppenders();
+		
+		System.out.println(">>>>>>>>>> Early dialog <<<<<<<<<<<");
+
+		String recordRoute = "sip:127.0.0.1:5050;lr";
+		// create invite initiator
+		Shootist shootist = new Shootist("shootist2", true);
+		shootist.addRecordRoute(recordRoute);
+
+		// create and start first receiver
+		Shootme shootme1 = new Shootme("shootme3", "jain-sip-ha", 5070, false, ReplicationStrategy.EarlyDialog);
+		System.out.println(">>>> Start Shootme1");
+		shootme1.init();
+
+		// get dialogs cache created by shootme1
+		HazelcastInstance hz = Hazelcast
+				.getHazelcastInstanceByName("jain-sip-ha");
+		IMap<String, Object> dialogs = hz.getMap("cache.dialogs");
+		IMap<String, Object> serverTXs = hz.getMap("cache.serverTX");
+		IMap<String, Object> appData = hz.getMap("cache.appdata");
+
+		// start test sending an invite
+		System.out.println(">>>> Start Shootist");
+		shootist.init("shootist", "127.0.0.1:5070"); // shoot peer1
+
+		Thread.sleep(2000);
+		
+		// compare dialog metadata with cache metadata
+		String dialogId = shootme1.dialog.getDialogId();
+		Map<String, Object> cachedMetaData = (Map<String, Object>) dialogs
+				.get(shootme1.dialog.getDialogId());
+		Object data = appData.get(shootme1.dialog.getDialogId());
+
+		assertNotNull(dialogId);
+		assertNotNull(cachedMetaData);
+		
+		assertEquals(((SIPDialog)shootme1.dialog).getState(), DialogState.EARLY);
+		
+		String txId = (String)shootme1.dialog.getApplicationData();
+		assertNotNull(txId);
+		assertNotNull(data);
+		assertEquals(txId, (String)data);
+		
+		// kill shootme
+		shootme1.stop();
+		
+		System.out.println(">>>> Kill Shootme1. Dialog cached succesfully.");
+		
+		Thread.sleep(2000);
+		
+		// ---- Recover dialog in new shootme instance ----
+		Shootme shootme2 = new Shootme("shootme4", "jain-sip-ha", 5070, false, ReplicationStrategy.EarlyDialog);
+
+		// start shootme2
+		System.out.println(">>>> Start Shootme2");
+		shootme2.init();
+
+		Thread.sleep(1000);
+
+		shootme2.recoverDialog(dialogId);
+		String txId2 = (String)shootme2.dialog.getApplicationData();
+		assertNotNull(txId2);
+		assertEquals(txId, txId2);
+		//assertEquals(((SIPDialog)shootme2.dialog).getState(), DialogState.EARLY);
+		
+		shootme2.send200Invite();
+		
+		Thread.sleep(1000);
+		
+		shootme2.checkState();
+
+		Thread.sleep(2000);
+		
+		shootist.sendBye();
+
+		Thread.sleep(2000);
+
+		shootist.checkState();
+		
+		// wait for dialog and transaction removal
+		System.out.println(">>>> Wait for dialog to terminate on Shootme2");
+		Thread.sleep(7000);
+		shootme2.checkDialogRemoved();
+		assertNull(dialogs.get(dialogId));
+		assertNull(serverTXs.get(txId));
+		
+		System.out.println(">>>> Call recovered succesfully.");
+
+		// clean resources
+		shootist.stop();
+		shootme2.stop();
+		Thread.sleep(2000);
+	}
+
 }
