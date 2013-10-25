@@ -972,7 +972,7 @@ public class DialogRecoveryTest extends TestCase {
 		shootist.addRecordRoute(recordRoute);
 
 		// create and start first receiver
-		Shootme shootme1 = new Shootme("shootme1", "jain-sip-ha", 5070, true);
+		Shootme shootme1 = new Shootme("shootme1", "jain-sip-ha", 5070, true, ReplicationStrategy.ConfirmedDialog);
 		System.out.println(">>>> Start Shootme1");
 		Thread.sleep(1000);
 		shootme1.init();
@@ -1024,7 +1024,7 @@ public class DialogRecoveryTest extends TestCase {
 		System.out.println(">>>> Kill Shootme1. Dialog cached succesfully.");
 		
 		// ---- Recover dialog in new shootme instance ----
-		Shootme shootme2 = new Shootme("shootme2", "jain-sip-ha", 5070, true);
+		Shootme shootme2 = new Shootme("shootme2", "jain-sip-ha", 5070, true, ReplicationStrategy.ConfirmedDialog);
 		System.out.println(">>>> Start Shootme2");
 		Thread.sleep(1000);
 		
@@ -1073,7 +1073,7 @@ public class DialogRecoveryTest extends TestCase {
 		shootist.addRecordRoute(recordRoute);
 
 		// create and start first receiver
-		Shootme shootme1 = new Shootme("shootme3", "jain-sip-ha", 5070, true);
+		Shootme shootme1 = new Shootme("shootme3", "jain-sip-ha", 5070, true, ReplicationStrategy.ConfirmedDialog);
 		System.out.println(">>>> Start Shootme1");
 		Thread.sleep(1000);
 		shootme1.init();
@@ -1119,7 +1119,7 @@ public class DialogRecoveryTest extends TestCase {
 		Thread.sleep(2000);
 		
 		// ---- Recover dialog in new shootme instance ----
-		Shootme shootme2 = new Shootme("shootme4", "jain-sip-ha", 5070, true);
+		Shootme shootme2 = new Shootme("shootme4", "jain-sip-ha", 5070, true, ReplicationStrategy.ConfirmedDialog);
 
 		// start shootme2
 		System.out.println(">>>> Start Shootme2");
@@ -1195,6 +1195,8 @@ public class DialogRecoveryTest extends TestCase {
 		assertNotNull(cachedMetaData);
 		
 		assertEquals(((SIPDialog)shootme1.dialog).getState(), DialogState.EARLY);
+		assertEquals(((SIPDialog)shootme1.dialog).getState().getValue(), 
+				cachedMetaData.get(AbstractHASipDialog.DIALOG_STATE));
 		
 		String txId = (String)shootme1.dialog.getApplicationData();
 		assertNotNull(txId);
@@ -1222,7 +1224,9 @@ public class DialogRecoveryTest extends TestCase {
 		String txId2 = (String)shootme2.dialog.getApplicationData();
 		assertNotNull(txId2);
 		assertEquals(txId, txId2);
-		//assertEquals(((SIPDialog)shootme2.dialog).getState(), DialogState.EARLY);
+		assertEquals(((SIPDialog)shootme2.dialog).getState(), DialogState.EARLY);
+		assertEquals(((SIPDialog)shootme2.dialog).getState().getValue(), 
+				cachedMetaData.get(AbstractHASipDialog.DIALOG_STATE));
 		
 		shootme2.send200Invite();
 		
@@ -1254,5 +1258,4 @@ public class DialogRecoveryTest extends TestCase {
 		shootist = null;
 		Thread.sleep(2000);
 	}
-
 }
