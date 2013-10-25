@@ -52,21 +52,18 @@ public class SIPDialogCacheData {
 	}
 	
 	public void putDialog(SIPDialog dialog) throws SipCacheException {
-		if(clusteredlogger.isLoggingEnabled(StackLogger.TRACE_TRACE))
+		if(clusteredlogger.isLoggingEnabled(StackLogger.TRACE_TRACE)) {
 			clusteredlogger.logDebug("putDialog(" + dialog.getDialogId() + ")");
+		}
 		
 		final HASipDialog haSipDialog = (HASipDialog) dialog;
 		
 		Object dialogMetaData = haSipDialog.getMetaDataToReplicate(); 
-		/*if (clusteredlogger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
-			clusteredlogger.logDebug("HA SIP Dialog " + dialog.getDialogId() + " remoteParty  = " + ((Map<String, Object>)dialogMetaData).get(AbstractHASipDialog.REMOTE_TARGET));
-			clusteredlogger.logDebug("HA SIP Dialog " + dialog.getDialogId() + " remoteParty  = " + ((ConfirmedReplicationSipDialog)dialog).getRemoteTarget());
-		}*/
 		if (dialogMetaData != null) {
 			if (dialogs.containsKey(dialog.getDialogId())) {
 				Map<String, Object> cachedMetaData = (Map<String, Object>)dialogs.get(dialog.getDialogId());
 				Long currentVersion = (Long)((Map<String, Object>)dialogMetaData).get(AbstractHASipDialog.VERSION);
-				Long cacheVersion = (Long)((Map<String, Object>)dialogMetaData).get(AbstractHASipDialog.VERSION);
+				Long cacheVersion = (Long)((Map<String, Object>)cachedMetaData).get(AbstractHASipDialog.VERSION);
 				if ( cacheVersion.longValue() < currentVersion.longValue()) {
 					for(Entry<String, Object> e : ((Map<String, Object>)dialogMetaData).entrySet()) {
 						cachedMetaData.put(e.getKey(), e.getValue());
@@ -134,6 +131,7 @@ public class SIPDialogCacheData {
 					clusteredlogger.logDebug("HA SIP Dialog " + dialogId + " remoteTag  = " + haSipDialog.getRemoteTag());
 					clusteredlogger.logDebug("HA SIP Dialog " + dialogId + " localParty = " + haSipDialog.getLocalParty());
 					clusteredlogger.logDebug("HA SIP Dialog " + dialogId + " remoteParty  = " + haSipDialog.getRemoteParty());
+					clusteredlogger.logDebug("HA SIP Dialog " + dialogId + " state  = " + ((SIPDialog)haSipDialog).getState());
 				}
 				
 			} catch (PeerUnavailableException e) {
