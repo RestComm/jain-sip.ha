@@ -2,6 +2,7 @@ package org.mobicents.ha.javax.sip;
 
 import gov.nist.javax.sip.stack.AbstractHASipDialog;
 import gov.nist.javax.sip.stack.SIPDialog;
+import gov.nist.javax.sip.stack.SIPServerTransaction;
 
 import java.text.ParseException;
 import java.util.ArrayList;
@@ -254,7 +255,7 @@ public class DialogRecoveryTest extends TestCase {
 				dialog = st.getDialog();
 				inviteTid = st;
 				inviteRequest = request;
-				dialog.setApplicationData(st.getBranchId());
+				dialog.setApplicationData(((SIPServerTransaction)st).getTransactionId());
 
 				st.sendResponse(response);
 
@@ -1165,7 +1166,7 @@ public class DialogRecoveryTest extends TestCase {
 		Shootist shootist = new Shootist("shootist3");
 		
 		// create and start first receiver
-		Shootme shootme1 = new Shootme("shootme5", "jain-sip-ha", 5080, false, ReplicationStrategy.EarlyDialog);
+		Shootme shootme1 = new Shootme("shootme5", "jain-sip-ha", 5085, false, ReplicationStrategy.EarlyDialog);
 		System.out.println(">>>> Start Shootme1");
 		Thread.sleep(1000);
 		shootme1.init();
@@ -1179,7 +1180,7 @@ public class DialogRecoveryTest extends TestCase {
 
 		// start test sending an invite
 		System.out.println(">>>> Start Shootist");
-		shootist.init("shootist", "127.0.0.1:5080"); // shoot peer1
+		shootist.init("shootist", "127.0.0.1:5085"); // shoot peer1
 
 		Thread.sleep(2000);
 		
@@ -1210,7 +1211,7 @@ public class DialogRecoveryTest extends TestCase {
 		Thread.sleep(2000);
 		
 		// ---- Recover dialog in new shootme instance ----
-		Shootme shootme2 = new Shootme("shootme6", "jain-sip-ha", 5080, false, ReplicationStrategy.EarlyDialog);
+		Shootme shootme2 = new Shootme("shootme6", "jain-sip-ha", 5085, false, ReplicationStrategy.EarlyDialog);
 
 		// start shootme2
 		System.out.println(">>>> Start Shootme2");
