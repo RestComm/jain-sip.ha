@@ -1,4 +1,4 @@
-package org.mobicents.ha.javax.sip.cache;
+package org.mobicents.ha.javax.sip.cache.hz;
 
 import gov.nist.core.StackLogger;
 import gov.nist.javax.sip.stack.MessageChannel;
@@ -15,6 +15,7 @@ import java.util.Map;
 import javax.sip.PeerUnavailableException;
 
 import org.mobicents.ha.javax.sip.ClusteredSipStack;
+import org.mobicents.ha.javax.sip.cache.SipCacheException;
 
 import com.hazelcast.core.IMap;
 

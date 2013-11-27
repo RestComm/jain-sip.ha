@@ -18,7 +18,7 @@
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
 
-package org.mobicents.ha.javax.sip.cache;
+package org.mobicents.ha.javax.sip.cache.hz;
 
 import gov.nist.core.CommonLogger;
 import gov.nist.core.StackLogger;
@@ -30,6 +30,8 @@ import java.io.FileNotFoundException;
 import java.util.Properties;
 
 import org.mobicents.ha.javax.sip.ClusteredSipStack;
+import org.mobicents.ha.javax.sip.cache.SipCache;
+import org.mobicents.ha.javax.sip.cache.SipCacheException;
 
 import com.hazelcast.config.ClasspathXmlConfig;
 import com.hazelcast.config.Config;
@@ -69,6 +71,9 @@ public class HazelcastCache implements SipCache {
 	private SIPClientTransactionCacheData clientTXCacheData;
 	
 	public SIPDialog getDialog(String dialogId) throws SipCacheException {
+		if (dialogId == null) 
+			throw new SipCacheException("No dialogId");
+		
 		if (dialogCacheData != null)
 			return dialogCacheData.getDialog(dialogId);
 		else
@@ -76,6 +81,9 @@ public class HazelcastCache implements SipCache {
 	}
 	
 	public void putDialog(SIPDialog dialog) throws SipCacheException {
+		if (dialog == null) 
+			throw new SipCacheException("SipDialog is null");
+		
 		if (dialogCacheData != null)
 			dialogCacheData.putDialog(dialog);
 		else
@@ -83,6 +91,9 @@ public class HazelcastCache implements SipCache {
 	}
 	
 	public void updateDialog(SIPDialog dialog) throws SipCacheException {
+		if (dialog == null) 
+			throw new SipCacheException("SipDialog is null");
+		
 		if (dialogCacheData != null)
 			dialogCacheData.updateDialog(dialog);
 		else
@@ -90,6 +101,9 @@ public class HazelcastCache implements SipCache {
 	}
 	
 	public void removeDialog(String dialogId) throws SipCacheException {
+		if (dialogId == null) 
+			throw new SipCacheException("No dialogId");
+		
 		if (dialogCacheData != null)
 			dialogCacheData.removeDialog(dialogId);
 		else
