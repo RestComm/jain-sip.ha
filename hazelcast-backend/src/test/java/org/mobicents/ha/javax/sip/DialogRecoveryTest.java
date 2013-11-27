@@ -372,7 +372,7 @@ public class DialogRecoveryTest extends TestCase {
 					replicationStrategy.toString());
 	        properties.setProperty(
 					"org.mobicents.ha.javax.sip.CACHE_CLASS_NAME",
-					"org.mobicents.ha.javax.sip.cache.HazelcastCache");
+					"org.mobicents.ha.javax.sip.cache.hz.HazelcastCache");
 			properties.setProperty(
 					"org.mobicents.ha.javax.sip.HAZELCAST_INSTANCE_NAME",
 					cacheName);

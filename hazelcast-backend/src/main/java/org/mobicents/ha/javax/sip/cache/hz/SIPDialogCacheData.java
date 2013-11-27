@@ -1,4 +1,4 @@
-package org.mobicents.ha.javax.sip.cache;
+package org.mobicents.ha.javax.sip.cache.hz;
 
 import gov.nist.core.StackLogger;
 import gov.nist.javax.sip.SipProviderImpl;
@@ -18,6 +18,7 @@ import javax.sip.header.ContactHeader;
 import org.mobicents.ha.javax.sip.ClusteredSipStack;
 import org.mobicents.ha.javax.sip.HASipDialog;
 import org.mobicents.ha.javax.sip.HASipDialogFactory;
+import org.mobicents.ha.javax.sip.cache.SipCacheException;
 
 import com.hazelcast.core.IMap;
 
