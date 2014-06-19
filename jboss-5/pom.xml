@@ -8,7 +8,7 @@
 	</parent>
 		
 	<artifactId>mobicents-jain-sip-jboss5</artifactId>
-  <version> 1.5.0-SNAPSHOT</version>
+  	<version> 1.5.0-SNAPSHOT</version>
 	
 	<packaging>jar</packaging>		
 	
@@ -110,7 +110,7 @@
 						<docletArtifact>
 							<groupId>org.jboss.apiviz</groupId>
 							<artifactId>apiviz</artifactId>
-							<version>1.3.1.GA</version>
+							<version>1.3.2.GA</version>
 						</docletArtifact>
 						<useStandardDocletOptions>true</useStandardDocletOptions>
 						<charset>UTF-8</charset>
