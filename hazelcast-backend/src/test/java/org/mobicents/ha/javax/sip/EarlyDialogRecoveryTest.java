@@ -57,7 +57,7 @@ import com.hazelcast.core.Hazelcast;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.IMap;
 
-public class DialogRecoveryTest extends TestCase {
+public class EarlyDialogRecoveryTest extends TestCase {
 	
 	private static final String myAddress = "127.0.0.1";
 
@@ -666,7 +666,8 @@ public class DialogRecoveryTest extends TestCase {
 
 		public void processResponse(ResponseEvent responseReceivedEvent) {
 			Response response = (Response) responseReceivedEvent.getResponse();
-			ClientTransaction tid = responseReceivedEvent.getClientTransaction();
+			ClientTransaction tid = responseReceivedEvent
+					.getClientTransaction();
 			CSeqHeader cseq = (CSeqHeader) response.getHeader(CSeqHeader.NAME);
 
 			System.out.println("Shootist: response received -> Status Code = "
@@ -903,8 +904,6 @@ public class DialogRecoveryTest extends TestCase {
 				inviteTid.sendRequest();
 
 				dialog = inviteTid.getDialog();
-				
-				assertNotNull(dialog);
 
 			} catch (Exception ex) {
 				System.out.println(ex.getMessage());
@@ -951,93 +950,103 @@ public class DialogRecoveryTest extends TestCase {
 	/**
 	 * SHOTIST1           SHOOTME1         SHOOTME2 
 	 * INVITE ----------------> 
-	 * 	 <---------------- 200 OK 
-	 * ACK -------------------> 
+	 * 	 <---------------- 180 OK
 	 *              stop #1 & create #2 
-	 * BYE ----------------------------------->
-	 * <--------------------------------- 200 OK
+	 * 	 <--------------------------------- 200 OK
+	 * ACK ------------------------------------> 
+	 * BYE ------------------------------------> 
+	 *   <--------------------------------- 200 OK
 	 */
-	public void testByeFromShootist() throws Exception {
+	public void testEarlyDialog() throws Exception {
 		
 		BasicConfigurator.configure();
 		Logger.getRootLogger().removeAllAppenders();
 		
-		System.out.println("\r\n>>>>>>>>>> Shootist sends BYE <<<<<<<<<<<\r\n");
+		System.out.println("\r\n>>>>>>>>>> Early dialog <<<<<<<<<<<\r\n");
 
-		String recordRoute = "sip:some.domain.com:5090;lr";
 		// create invite initiator
-		Shootist shootist = new Shootist("shootist");
-		shootist.addRecordRoute(recordRoute);
-
+		Shootist shootist = new Shootist("shootist3");
+		
 		// create and start first receiver
-		Shootme shootme1 = new Shootme("shootme1", "jain-sip-ha1", 5070, true, ReplicationStrategy.ConfirmedDialog);
+		Shootme shootme1 = new Shootme("shootme5", "jain-sip-ha3", 5085, false, ReplicationStrategy.EarlyDialog);
 		System.out.println(">>>> Start Shootme1");
 		Thread.sleep(1000);
 		shootme1.init();
-
+		
 		// get dialogs cache created by shootme1
-		HazelcastInstance hz = Hazelcast
-				.getHazelcastInstanceByName("jain-sip-ha1");
+		HazelcastInstance hz = Hazelcast.getHazelcastInstanceByName("jain-sip-ha3");
 		IMap<String, Object> dialogs = hz.getMap("cache.dialogs");
+		IMap<String, Object> serverTXs = hz.getMap("cache.serverTX");
 		IMap<String, Object> appData = hz.getMap("cache.appdata");
-
 
 		// start test sending an invite
 		System.out.println(">>>> Start Shootist");
-		shootist.init("shootist", "127.0.0.1:5070"); // shoot peer1
+		shootist.init("shootist", "127.0.0.1:5085"); // shoot peer1
 
 		Thread.sleep(2000);
 		
-		// check first transacion completed
-		shootme1.checkState();
-		
 		// compare dialog metadata with cache metadata
 		String dialogId = shootme1.dialog.getDialogId();
-		Map<String, Object> cachedMetaData = (Map<String, Object>) dialogs
-				.get(shootme1.dialog.getDialogId());
+		Map<String, Object> cachedMetaData = (Map<String, Object>) dialogs.get(shootme1.dialog.getDialogId());
 		Object data = appData.get(shootme1.dialog.getDialogId());
 
 		assertNotNull(dialogId);
 		assertNotNull(cachedMetaData);
-		assertEquals(shootme1.dialog.getLocalTag(),
-				cachedMetaData.get(AbstractHASipDialog.LOCAL_TAG));
-		assertEquals(shootme1.dialog.getRemoteTag(),
-				cachedMetaData.get(AbstractHASipDialog.REMOTE_TAG));
-		assertEquals(shootme1.dialog.getRemoteTarget().toString(),
-				cachedMetaData.get(AbstractHASipDialog.REMOTE_TARGET));
-		String [] routeList = (String[])cachedMetaData.get(AbstractHASipDialog.ROUTE_LIST);
-		assertNotNull(routeList);
-		assertEquals(1, routeList.length);
-		assertEquals("<"+recordRoute+">", routeList[0]);
+		
+		assertEquals(((SIPDialog)shootme1.dialog).getState(), DialogState.EARLY);
+		assertEquals(((SIPDialog)shootme1.dialog).getState().getValue(), 
+				cachedMetaData.get(AbstractHASipDialog.DIALOG_STATE));
 		
 		String txId = (String)shootme1.dialog.getApplicationData();
 		assertNotNull(txId);
 		assertNotNull(data);
 		assertEquals(txId, (String)data);
-
+		
 		// kill shootme
 		shootme1.stop();
 		shootme1 = null;
 		
 		System.out.println(">>>> Kill Shootme1. Dialog cached succesfully.");
 		
-		// ---- Recover dialog in new shootme instance ----
-		Shootme shootme2 = new Shootme("shootme2", "jain-sip-ha1", 5070, true, ReplicationStrategy.ConfirmedDialog);
-		System.out.println(">>>> Start Shootme2");
-		Thread.sleep(1000);
+		Thread.sleep(2000);
 		
+		// ---- Recover dialog in new shootme instance ----
+		Shootme shootme2 = new Shootme("shootme6", "jain-sip-ha3", 5085, false, ReplicationStrategy.EarlyDialog);
+
 		// start shootme2
+		System.out.println(">>>> Start Shootme2");
 		shootme2.init();
 
 		Thread.sleep(1000);
 
-		// send bye should recover dialog and send 200 ok response
-		shootist.sendBye();
+		shootme2.recoverDialog(dialogId);
+		String txId2 = (String)shootme2.dialog.getApplicationData();
+		assertNotNull(txId2);
+		assertEquals(txId, txId2);
+		assertEquals(((SIPDialog)shootme2.dialog).getState(), DialogState.EARLY);
+		assertEquals(((SIPDialog)shootme2.dialog).getState().getValue(), 
+				cachedMetaData.get(AbstractHASipDialog.DIALOG_STATE));
+		
+		shootme2.send200Invite();
+		
+		Thread.sleep(1000);
+		
+		shootme2.checkState();
 
 		Thread.sleep(1000);
+		
+		shootist.sendBye();
 
-		// check successfull bye
+		Thread.sleep(2000);
+
 		shootist.checkState();
+		
+		// wait for dialog and transaction removal
+		System.out.println(">>>> Wait for dialog to terminate on Shootme2");
+		Thread.sleep(7000);
+		shootme2.checkDialogRemoved();
+		assertNull(dialogs.get(dialogId));
+		assertNull(serverTXs.get(txId));
 		
 		System.out.println(">>>> Call recovered succesfully.");
 
@@ -1046,101 +1055,102 @@ public class DialogRecoveryTest extends TestCase {
 		shootme2.stop();
 		shootme2 = null;
 		shootist = null;
-		Thread.sleep(5000);
+		Thread.sleep(2000);
 	}
+
 
 	/**
 	 * SHOTIST1           SHOOTME1         SHOOTME2 
 	 * INVITE ----------------> 
-	 * 	 <---------------- 200 OK 
+	 * 	 <---------------- 180 OK
+	 * 	 <---------------- 200 OK
 	 * ACK -------------------> 
-	 *              stop #1 & create #2 
-	 *   <----------------------------------- BYE
-	 * 200 OK --------------------------------->
+	 * BYE -------------------> 
+	 *   <---------------- 200 OK
+	 *                        stop #1 & create #2
+	 *                               (terminate&release) 
 	 */
-	public void testByeFromShootme() throws Exception {
+	public void testTerminatedDialog() throws Exception {
 		
 		BasicConfigurator.configure();
 		Logger.getRootLogger().removeAllAppenders();
 		
-		System.out.println("\r\n>>>>>>>>>> Shootme sends BYE <<<<<<<<<<<\r\n");
+		System.out.println("\r\n>>>>>>>>>> Terminated dialog <<<<<<<<<<<\r\n");
 
-		String recordRoute = "sip:127.0.0.1:5050;lr";
 		// create invite initiator
-		Shootist shootist = new Shootist("shootist2");
-		shootist.addRecordRoute(recordRoute);
-
+		Shootist shootist = new Shootist("shootist4");
+		
 		// create and start first receiver
-		Shootme shootme1 = new Shootme("shootme3", "jain-sip-ha2", 5070, true, ReplicationStrategy.ConfirmedDialog);
+		Shootme shootme1 = new Shootme("shootme7", "jain-sip-ha4", 5080, true, ReplicationStrategy.EarlyDialog);
 		System.out.println(">>>> Start Shootme1");
 		Thread.sleep(1000);
 		shootme1.init();
-
-		// get dialogs cache created by shootme1
+		
 		HazelcastInstance hz = Hazelcast
-				.getHazelcastInstanceByName("jain-sip-ha2");
+				.getHazelcastInstanceByName("jain-sip-ha4");
 		IMap<String, Object> dialogs = hz.getMap("cache.dialogs");
-
+		
 		// start test sending an invite
 		System.out.println(">>>> Start Shootist");
-		shootist.init("shootist", "127.0.0.1:5070"); // shoot peer1
+		shootist.init("shootist", "127.0.0.1:5080"); // shoot peer1
 
 		Thread.sleep(2000);
 		
-		// check first transacion completed
-		shootme1.checkState();
-		
-		// compare dialog metadata with cache metadata
+		// hangup
+		shootist.sendBye();
+		Thread.sleep(1000);
+		shootist.checkState();
+
+		// check dialog state
+		assertNotNull(shootme1.dialog);
 		String dialogId = shootme1.dialog.getDialogId();
-		Map<String, Object> cachedMetaData = (Map<String, Object>) dialogs
-				.get(shootme1.dialog.getDialogId());
-
 		assertNotNull(dialogId);
-		assertNotNull(cachedMetaData);
-		assertEquals(shootme1.dialog.getLocalTag(),
-				cachedMetaData.get(AbstractHASipDialog.LOCAL_TAG));
-		assertEquals(shootme1.dialog.getRemoteTag(),
-				cachedMetaData.get(AbstractHASipDialog.REMOTE_TAG));
-		assertEquals(shootme1.dialog.getRemoteTarget().toString(),
-				cachedMetaData.get(AbstractHASipDialog.REMOTE_TARGET));
-		String [] routeList = (String[])cachedMetaData.get(AbstractHASipDialog.ROUTE_LIST);
-		assertNotNull(routeList);
-		assertEquals(1, routeList.length);
-		assertEquals("<"+recordRoute+">", routeList[0]);
-
+		assertEquals(shootme1.dialog.getState(), DialogState.TERMINATED);
+		
 		// kill shootme
 		shootme1.stop();
 		shootme1 = null;
+		System.out.println(">>>> Kill Shootme1. Session disconnected successfully.");
 		
-		System.out.println(">>>> Kill Shootme1. Dialog cached succesfully.");
-		
-		Thread.sleep(2000);
+		Thread.sleep(1000);
 		
 		// ---- Recover dialog in new shootme instance ----
-		Shootme shootme2 = new Shootme("shootme4", "jain-sip-ha2", 5070, true, ReplicationStrategy.ConfirmedDialog);
+		Shootme shootme2 = new Shootme("shootme8", "jain-sip-ha4", 5080, false, ReplicationStrategy.EarlyDialog);
 
 		// start shootme2
 		System.out.println(">>>> Start Shootme2");
 		shootme2.init();
-
 		Thread.sleep(1000);
-
-		// send bye should recover dialog and send 200 ok response
-		shootme2.recoverDialog(dialogId);
-		shootme2.sendBye();
-
-		Thread.sleep(1000);
-
-		// check successfull bye
-		shootme2.checkByeState();
 		
-		System.out.println(">>>> Call recovered succesfully.");
+		// check dialog metada
+		Map<String, Object> cachedMetaData = (Map<String, Object>) dialogs.get(dialogId);
+		assertNotNull(cachedMetaData);
+		assertEquals(cachedMetaData.get(AbstractHASipDialog.DIALOG_STATE), DialogState.TERMINATED.getValue());
+		
+		// recover dialog from cache
+		shootme2.recoverDialog(dialogId);
+		
+		// check dialog state
+		assertNotNull(shootme2.dialog);
+		assertEquals(((SIPDialog)shootme2.dialog).getState(), DialogState.TERMINATED);
+		assertEquals(((SIPDialog)shootme2.dialog).getState().getValue(), 
+				cachedMetaData.get(AbstractHASipDialog.DIALOG_STATE));
+				
+		// wait for dialog and transaction removal
+		System.out.println(">>>> Wait for dialog to terminate and clear from cache");
+		Thread.sleep(12000);
+		shootme2.checkDialogRemoved();
+		
+		assertNull(dialogs.get(dialogId));
+		
+		System.out.println(">>>> Dialog cleared succesfully.");
 
 		// clean resources
 		shootist.stop();
 		shootme2.stop();
 		shootme2 = null;
 		shootist = null;
-		Thread.sleep(5000);
+		Thread.sleep(2000);
 	}
+
 }
