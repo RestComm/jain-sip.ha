@@ -217,6 +217,19 @@ public class RoundRobinLoadBalancerElectorTest  extends TestCase {
 			// TODO Auto-generated method stub
 			return null;
 		}
+
+		public boolean addBalancer(String hostName, int sipPort, int httpPort,
+				int index, int rmiPort) throws IllegalArgumentException {
+			// TODO Auto-generated method stub
+			return false;
+		}
+
+		public boolean removeBalancer(String hostName, int sipPort,
+				int httpPort, int index, int rmiPort)
+				throws IllegalArgumentException {
+			// TODO Auto-generated method stub
+			return false;
+		}
 		
 	}
 	
