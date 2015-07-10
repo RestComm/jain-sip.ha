@@ -70,7 +70,7 @@ public class ConfirmedNoAppDataReplicationSipDialog extends AbstractHASipDialog 
 		if(dialogState == DialogState.CONFIRMED && (replicationStrategy == ReplicationStrategy.ConfirmedDialog|| replicationStrategy == ReplicationStrategy.ConfirmedDialogNoApplicationData)) {
 			replicationStateVsDialogStateOK = true;
 		}
-		if((dialogState == DialogState.EARLY || dialogState == DialogState.CONFIRMED) && replicationStrategy == ReplicationStrategy.EarlyDialog) {
+		if((dialogState == DialogState.EARLY || dialogState == DialogState.CONFIRMED || dialogState == DialogState.TERMINATED) && replicationStrategy == ReplicationStrategy.EarlyDialog) {
 			replicationStateVsDialogStateOK = true;
 		}
 		if (replicationStateVsDialogStateOK && isCreated && super.dialogId != null && isRemoteTagSet() && isLocalTagSet() && getStack().getDialog(getDialogIdToReplicate()) != null) {

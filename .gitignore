@@ -6,8 +6,8 @@ target
 classes
 *.zip
 # ignore eclipse files
-#.project
-#.classpath
+.project
+.classpath
 .settings
 .metadata
 # ignore IDEA files
@@ -36,6 +36,7 @@ pom.xml.versionsBackup
 # ignore 'randomly' strewn around logs
 server.log
 *.log
+/**/logs/*
 # ignore java crashes
 hs_err_pid*.log
 # H2 databases produced by tests
