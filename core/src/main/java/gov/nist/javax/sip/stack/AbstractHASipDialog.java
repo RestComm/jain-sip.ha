@@ -663,7 +663,9 @@ public abstract class AbstractHASipDialog extends SIPDialog implements HASipDial
 		DialogState oldState = this.getState();
 		super.setState(state);
 		final ReplicationStrategy replicationStrategy = ((ClusteredSipStack)getStack()).getReplicationStrategy();
-		if(replicationStrategy == ReplicationStrategy.EarlyDialog && (oldState == null  || oldState.getValue() != state /*&& state != DialogState.TERMINATED.getValue()*/)) { 
+		if(replicationStrategy == ReplicationStrategy.EarlyDialog && (oldState == null  || oldState.getValue() != state 
+			// commented as part of https://github.com/Mobicents/jain-sip.ha/pull/1
+			/*&& state != DialogState.TERMINATED.getValue()*/)) { 
 			dialogStateChanged = true;
 			if (logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
 				logger.logDebug("dialogStateChanged");
