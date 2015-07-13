@@ -70,7 +70,10 @@ public class ConfirmedNoAppDataReplicationSipDialog extends AbstractHASipDialog 
 		if(dialogState == DialogState.CONFIRMED && (replicationStrategy == ReplicationStrategy.ConfirmedDialog|| replicationStrategy == ReplicationStrategy.ConfirmedDialogNoApplicationData)) {
 			replicationStateVsDialogStateOK = true;
 		}
-		if((dialogState == DialogState.EARLY || dialogState == DialogState.CONFIRMED) && replicationStrategy == ReplicationStrategy.EarlyDialog) {
+		if((dialogState == DialogState.EARLY || dialogState == DialogState.CONFIRMED || 
+			// Added as part of https://github.com/Mobicents/jain-sip.ha/pull/1
+			dialogState == DialogState.TERMINATED) 
+			&& replicationStrategy == ReplicationStrategy.EarlyDialog) {
 			replicationStateVsDialogStateOK = true;
 		}
 		if (replicationStateVsDialogStateOK && isCreated && super.dialogId != null && isRemoteTagSet() && isLocalTagSet() && getStack().getDialog(getDialogIdToReplicate()) != null) {
