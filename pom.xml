@@ -9,25 +9,25 @@
 	</parent>
 
 	<groupId>org.mobicents.ha.javax.sip</groupId>
-	<artifactId>mobicents-jain-sip-ha</artifactId>
+	<artifactId>restcomm-jain-sip-ha</artifactId>
 	<version>1.5.0-SNAPSHOT</version>
 
-	<name>Mobicents JAIN SIP HA Parent</name>
-	<description>Mobicents JAIN SIP HA Parent</description>
-	<url>http://code.google.com/p/jain-sip.ha</url>
+	<name>Restcomm JAIN SIP HA Parent</name>
+	<description>Restcomm JAIN SIP HA Parent</description>
+	<url>https://github.com/RestComm/jain-sip.ha</url>
 
 	<packaging>pom</packaging>
 
 	<scm>
-		<connection>scm:git:https://code.google.com/p/jain-sip.ha/</connection>
-		<developerConnection>scm:git:https://code.google.com/p/jain-sip.ha/</developerConnection>
-		<url>https://code.google.com/p/jain-sip.ha/</url>
+		<connection>scm:git:https://github.com/RestComm/jain-sip.ha.git</connection>
+		<developerConnection>scm:git:git@github.com:RestComm/jain-sip.ha.git</developerConnection>
+		<url>https://github.com/RestComm/jain-sip.ha</url>
 	</scm>
 
 	<properties>
-		<mobicents.cluster.version>1.15.6</mobicents.cluster.version>
-		<mobicents.jain.sip.ext.version>1.3.1</mobicents.jain.sip.ext.version>
-		<mobicents.load.balancer.version>1.7.4</mobicents.load.balancer.version>
+		<restcomm.cluster.version>1.15.12</restcomm.cluster.version>
+		<restcomm.jain.sip.ext.version>1.3.13</restcomm.jain.sip.ext.version>
+		<restcomm.load.balancer.version>2.0.19</restcomm.load.balancer.version>
 	</properties>
 
 	<dependencyManagement>
@@ -35,19 +35,19 @@
 			<dependency>
 				<groupId>org.mobicents.cluster</groupId>
 				<artifactId>cache</artifactId>
-				<version>${mobicents.cluster.version}</version>
+				<version>${restcomm.cluster.version}</version>
 				<scope>provided</scope>
 			</dependency>
 			<dependency>
 				<groupId>org.mobicents.cluster</groupId>
 				<artifactId>core</artifactId>
-				<version>${mobicents.cluster.version}</version>
+				<version>${restcomm.cluster.version}</version>
 				<scope>provided</scope>
 			</dependency>
 			<dependency>
 				<groupId>org.mobicents.tools</groupId>
 				<artifactId>sip-balancer-jar</artifactId>
-				<version>${mobicents.load.balancer.version}</version>
+				<version>${restcomm.load.balancer.version}</version>
 				<scope>provided</scope>
 			</dependency>			
 		</dependencies>
@@ -55,8 +55,8 @@
 
 	<modules>
 		<module>core</module>
-    <module>hazelcast-backend</module>
-  </modules>
+    		<module>hazelcast-backend</module>
+  	</modules>
 
 	<dependencies>
 		<dependency>
@@ -65,8 +65,8 @@
 		</dependency>
 		<dependency>
 			<groupId>org.mobicents.javax.sip</groupId>
-			<artifactId>mobicents-jain-sip-ext</artifactId>
-			<version>${mobicents.jain.sip.ext.version}</version>
+			<artifactId>restcomm-jain-sip-ext</artifactId>
+			<version>${restcomm.jain.sip.ext.version}</version>
 			<scope>provided</scope>
 		</dependency>
 	</dependencies>
