@@ -47,6 +47,6 @@ PutObjectStoreDirHere
 /.m2
 
 #ignore autogenerate src doco folder
-docs/sources-mobicents/src/
+docs/sources-restcomm/src/
 docs/sources-telscale/src/
 

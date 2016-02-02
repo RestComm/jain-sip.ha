@@ -42,7 +42,7 @@ import java.io.IOException;
 import java.util.Properties;
 
 /**
- * Interface for services that want to ping Mobicents SIP Load Balancers through RMI to send keepalives and health status information to them
+ * Interface for services that want to ping Restcomm SIP Load Balancers through RMI to send keepalives and health status information to them
  * So that the service is started the stack configuration properties should have the following property org.mobicents.ha.javax.sip.LoadBalancerHeartBeatingServiceClassName
  * with the value of the class name implementing this interface to instantiate (a no arg construcotr will be called)
  * 

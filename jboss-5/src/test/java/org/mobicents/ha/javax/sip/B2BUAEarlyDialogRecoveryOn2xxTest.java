@@ -78,7 +78,7 @@ import javax.sip.message.Response;
 
 import junit.framework.TestCase;
 /**
- * This test aims to test Mobicents Jain Sip Early Dialog failover recovery.
+ * This test aims to test Restcomm Jain Sip Early Dialog failover recovery.
  * 
  * @author <A HREF="mailto:jean.deruelle@gmail.com">Jean Deruelle</A>
  *
@@ -1230,7 +1230,7 @@ public class B2BUAEarlyDialogRecoveryOn2xxTest extends TestCase {
         shootist.checkState(false);
         // make sure dialogs are removed on both nodes
         // non regression for Issue 1418
-        // http://code.google.com/p/mobicents/issues/detail?id=1418
+        // http://code.google.com/p/restcomm/issues/detail?id=1418
         assertTrue(b2buaNode1.checkDialogsRemoved());
         assertTrue(b2buaNode2.checkDialogsRemoved());
         

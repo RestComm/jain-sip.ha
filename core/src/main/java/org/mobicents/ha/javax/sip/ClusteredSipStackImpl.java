@@ -256,7 +256,7 @@ public abstract class ClusteredSipStackImpl extends SipStackImpl implements Clus
 			SIPDialog sipDialog = super.getDialog(dialogId);
 			int nbToken = new StringTokenizer(dialogId, Separators.COLON).countTokens();
 			// we should only check the cache for dialog Id where the remote tag is set since we support only established dialog failover
-			// Issue 1378 : http://code.google.com/p/mobicents/issues/detail?id=1378
+			// Issue 1378 : http://code.google.com/p/restcomm/issues/detail?id=1378
 			// there can be more than 3 tokens if the callid part of the dialog id contains a COLON as well
 			if(nbToken >= 3) {
 				if(sipDialog == null ) {

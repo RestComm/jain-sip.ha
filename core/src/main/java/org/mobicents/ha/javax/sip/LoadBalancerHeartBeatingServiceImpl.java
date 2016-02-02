@@ -172,7 +172,7 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
     
     public void stop() {
     	// Force removal from load balancer upon shutdown 
-    	// added for Issue 308 (http://code.google.com/p/mobicents/issues/detail?id=308)
+    	// added for Issue 308 (http://code.google.com/p/restcomm/issues/detail?id=308)
     	ArrayList<SIPNode> info = getConnectorsAsSIPNode();
     	removeNodesFromBalancers(info);
     	//cleaning 

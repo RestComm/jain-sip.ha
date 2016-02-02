@@ -45,7 +45,7 @@ import org.mobicents.ha.javax.sip.ReplicationStrategy;
 
 /**
  * Implementation of the SipCache interface, backed by a JBoss Cache 3.X Cache.
- * The configuration of JBoss Cache can be set throught the following Mobicents SIP Stack property :
+ * The configuration of JBoss Cache can be set throught the following Restcomm SIP Stack property :
  * <b>org.mobicents.ha.javax.sip.JBOSS_CACHE_CONFIG_PATH</b>
  * 
  * @author jean.deruelle@gmail.com

@@ -416,7 +416,7 @@ public abstract class AbstractHASipDialog extends SIPDialog implements HASipDial
 			if(logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
 				logger.logDebug("HA SIP Dialog is Server ? " + isServer() + ", isLatestTxServer ? " + isLatestTxServer);
 			}
-			// http://code.google.com/p/mobicents/issues/detail?id=2942
+			// http://code.google.com/p/restcomm/issues/detail?id=2942
 			// 	From and To Uris switch places in certain conditions
 			if(isLatestTxServer) {
 				if(logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
@@ -454,7 +454,7 @@ public abstract class AbstractHASipDialog extends SIPDialog implements HASipDial
 							getRemoteSeqNumber() + " while other node's remote CSeq" +
 									" number=" + cseq);
 				}
-				// No need to update the number, it is greater, http://code.google.com/p/mobicents/issues/detail?id=2051
+				// No need to update the number, it is greater, http://code.google.com/p/restcomm/issues/detail?id=2051
 			} else {
 				setRemoteSequenceNumber(cseq);
 			}
@@ -472,7 +472,7 @@ public abstract class AbstractHASipDialog extends SIPDialog implements HASipDial
 							+ localSequenceNumber+ " while other node's local CSeq" +
 									" number=" + cseq);
 				}
-				// No need to update the number, it is greater, http://code.google.com/p/mobicents/issues/detail?id=2051
+				// No need to update the number, it is greater, http://code.google.com/p/restcomm/issues/detail?id=2051
 			} else {
 				localSequenceNumber = cseq;
 			}
@@ -640,7 +640,7 @@ public abstract class AbstractHASipDialog extends SIPDialog implements HASipDial
 		storeFirstTxChanged = true;
 	}
 	
-	// http://code.google.com/p/mobicents/issues/detail?id=2942
+	// http://code.google.com/p/restcomm/issues/detail?id=2942
 	// 	From and To Uris switch places in certain conditions
 	@Override
 	public boolean addTransaction(SIPTransaction transaction) {		

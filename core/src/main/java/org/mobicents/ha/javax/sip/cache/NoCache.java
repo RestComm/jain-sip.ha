@@ -31,7 +31,7 @@ import java.util.Properties;
 import org.mobicents.ha.javax.sip.ClusteredSipStack;
 
 /**
- * Empty cache class that does nothing except returning true for inLocalMode that we can use the mobicents jain sip stack
+ * Empty cache class that does nothing except returning true for inLocalMode that we can use the restcomm jain sip stack
  * in default mode wihtout the need of jboss cache
  * 
  * @author jean.deruelle@gmail.com

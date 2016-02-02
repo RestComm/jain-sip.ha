@@ -89,7 +89,7 @@ import org.mobicents.ha.javax.sip.cache.MobicentsSipCache;
 
 import junit.framework.TestCase;
 /**
- * This test aims to test Mobicents Jain Sip failover recovery.
+ * This test aims to test Restcomm Jain Sip failover recovery.
  * Shootist on port 5060 shoots at a stateless proxy on prt 5050 (scaled down version of a balancer)
  * Stateless proxy redirect to Shootme on port 5070
  * on ACK, the Shootme stop itself and start the other shootme node on port 5080 and pass to him its current dialogs
@@ -1492,7 +1492,7 @@ public class VariableRequestDirectionRecoveryTest extends TestCase {
     	//root.addAppender(new ConsoleAppender(new PatternLayout("%-5p [%t]: %m%n")));
     }
     
-    // http://code.google.com/p/mobicents/issues/detail?id=2942
+    // http://code.google.com/p/restcomm/issues/detail?id=2942
 	// 	From and To Uris switch places in certain conditions
 
     /*

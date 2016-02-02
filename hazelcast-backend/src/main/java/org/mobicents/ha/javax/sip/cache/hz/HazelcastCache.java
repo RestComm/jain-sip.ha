@@ -42,7 +42,7 @@ import com.hazelcast.core.IMap;
 
 /**
  * Implementation of the SipCache interface, backed by a Hazelcast Cache 3.0.X
- * The configuration of Hazelcast Cache can be set throught the following Mobicents SIP Stack property :
+ * The configuration of Hazelcast Cache can be set throught the following Restcomm SIP Stack property :
  * <b>org.mobicents.ha.javax.sip.HAZELCAST_CACHE_CONFIG_PATH</b>
  * 
  * @author icivico@gmail.com

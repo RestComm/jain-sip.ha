@@ -3,17 +3,17 @@
 	
 	<parent>
 		<groupId>org.mobicents.ha.javax.sip</groupId>
-		<artifactId>mobicents-jain-sip-ha</artifactId>
+		<artifactId>restcomm-jain-sip-ha</artifactId>
 		<version>1.5.0-SNAPSHOT</version>
 	</parent>
 		
-	<artifactId>mobicents-jain-sip-jboss5</artifactId>
+	<artifactId>restcomm-jain-sip-jboss5</artifactId>
   	<version> 1.5.0-SNAPSHOT</version>
 	
 	<packaging>jar</packaging>		
 	
-	<name>Mobicents JAIN SIP HA JBoss 5</name>
-	<description>Mobicents JAIN SIP HA JBoss 5</description>
+	<name>Restcomm JAIN SIP HA JBoss 5</name>
+	<description>Restcomm JAIN SIP HA JBoss 5</description>
 	<url>http://code.google.com/p/jain-sip.ha</url>
 
 	<properties>
@@ -29,7 +29,7 @@
 		</dependency>
 		<dependency>
 			<groupId>org.mobicents.ha.javax.sip</groupId>
-			<artifactId>mobicents-jain-sip-ha-core</artifactId>
+			<artifactId>restcomm-jain-sip-ha-core</artifactId>
 			<version>${project.version}</version>
 		</dependency>
 	
@@ -88,7 +88,7 @@
 			<plugin>
 				<artifactId>maven-eclipse-plugin</artifactId>
 				<groupId>org.mobicents.tools</groupId>
-    			<version>${mobicents.tools.mavenplugin.eclipse.version}</version>
+    			<version>${restcomm.tools.mavenplugin.eclipse.version}</version>
 				<inherited>true</inherited>
 				<executions />
 				<configuration>
@@ -140,7 +140,7 @@
 
 	<repositories>
 		<repository>
-			  <id>mobicents-public-repository-group</id>
+			  <id>restcomm-public-repository-group</id>
 			  <name>Mobicens Public Maven Repository Group</name>
 			  <url>https://oss.sonatype.org/content/groups/public</url>
 			  <layout>default</layout>

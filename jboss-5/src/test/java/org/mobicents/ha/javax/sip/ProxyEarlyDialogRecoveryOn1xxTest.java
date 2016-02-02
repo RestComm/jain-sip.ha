@@ -85,7 +85,7 @@ import junit.framework.TestCase;
 
 import org.mobicents.tools.sip.balancer.BalancerRunner;
 /**
- * This test aims to test Mobicents Jain Sip Early Dialog failover recovery.
+ * This test aims to test Restcomm Jain Sip Early Dialog failover recovery.
  * 
  * @author <A HREF="mailto:jean.deruelle@gmail.com">Jean Deruelle</A>
  *

@@ -81,7 +81,7 @@ public class ServerTransactionCacheData extends CacheData {
 				transactionManager.begin();				
 				doTx = true;				
 	        }
-			// Issue 1517 : http://code.google.com/p/mobicents/issues/detail?id=1517
+			// Issue 1517 : http://code.google.com/p/restcomm/issues/detail?id=1517
 			// Adding code to handle Buddy replication to force data gravitation   
 			if(isBuddyReplicationEnabled) {     
 				if(clusteredlogger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
