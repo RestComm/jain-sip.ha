@@ -12,7 +12,7 @@
 	
 	<name>Restcomm JAIN SIP HA Core</name>
 	<description>Restcomm JAIN SIP HA Core</description>
-	<url>http://code.google.com/p/jain-sip.ha</url>
+	<url>https://github.com/RestComm/jain-sip.ha</url>
 
 	<dependencies>		
 		<dependency>

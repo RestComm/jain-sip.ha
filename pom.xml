@@ -14,19 +14,19 @@
 
 	<name>Restcomm JAIN SIP HA Parent</name>
 	<description>Restcomm JAIN SIP HA Parent</description>
-	<url>http://code.google.com/p/jain-sip.ha</url>
+	<url>https://github.com/RestComm/jain-sip.ha</url>
 
 	<packaging>pom</packaging>
 
 	<scm>
-		<connection>scm:git:https://code.google.com/p/jain-sip.ha/</connection>
-		<developerConnection>scm:git:https://code.google.com/p/jain-sip.ha/</developerConnection>
-		<url>https://code.google.com/p/jain-sip.ha/</url>
+		<connection>scm:git:https://github.com/RestComm/jain-sip.ha.git</connection>
+		<developerConnection>scm:git:git@github.com:RestComm/jain-sip.ha.git</developerConnection>
+		<url>https://github.com/RestComm/jain-sip.ha</url>
 	</scm>
 
 	<properties>
-		<restcomm.cluster.version>1.15.6</restcomm.cluster.version>
-		<restcomm.jain.sip.ext.version>1.3.1</restcomm.jain.sip.ext.version>
+		<restcomm.cluster.version>1.15.12</restcomm.cluster.version>
+		<restcomm.jain.sip.ext.version>1.3.13</restcomm.jain.sip.ext.version>
 		<restcomm.load.balancer.version>2.0.19</restcomm.load.balancer.version>
 	</properties>
 
@@ -55,8 +55,8 @@
 
 	<modules>
 		<module>core</module>
-    <module>hazelcast-backend</module>
-  </modules>
+    		<module>hazelcast-backend</module>
+  	</modules>
 
 	<dependencies>
 		<dependency>
