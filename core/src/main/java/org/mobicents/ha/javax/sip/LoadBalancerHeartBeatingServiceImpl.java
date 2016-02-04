@@ -91,11 +91,16 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 	protected boolean started = false;
   
 	protected Set<LoadBalancerHeartBeatingListener> loadBalancerHeartBeatingListeners;
+	// https://github.com/RestComm/jain-sip.ha/issues/3
+	protected boolean useLoadBalancerForAllConnectors;
+	protected Set<ListeningPoint> sipConnectors;
     
 	ObjectName oname = null;
 	
     public LoadBalancerHeartBeatingServiceImpl() {
 		loadBalancerHeartBeatingListeners = new CopyOnWriteArraySet<LoadBalancerHeartBeatingListener>();
+		sipConnectors = new CopyOnWriteArraySet<ListeningPoint>();
+		useLoadBalancerForAllConnectors = true;
 	}
     
 	public void init(ClusteredSipStack clusteredSipStack,
@@ -398,7 +403,12 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 		String address = null;
 		String hostName = null;
 		// Gathering info about server' sip listening points
-		Iterator<ListeningPoint> listeningPointIterator = sipStack.getListeningPoints();
+		Iterator<ListeningPoint> listeningPointIterator = null;
+		if(useLoadBalancerForAllConnectors) {
+			listeningPointIterator = sipStack.getListeningPoints();
+		} else {
+			listeningPointIterator = sipConnectors.iterator();
+		}
 		while (listeningPointIterator.hasNext()) {
 			ListeningPoint listeningPoint = listeningPointIterator.next();
 			address = listeningPoint.getIPAddress();
@@ -685,7 +695,9 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 	 * @param info
 	 */
 	public void sendSwitchoverInstruction(SipLoadBalancer sipLoadBalancer, String fromJvmRoute, String toJvmRoute) {
-		logger.logInfo("switching over from " + fromJvmRoute + " to " + toJvmRoute);
+		if(logger.isLoggingEnabled(StackLogger.TRACE_INFO)) {
+			logger.logInfo("switching over from " + fromJvmRoute + " to " + toJvmRoute);
+		}
 		if(fromJvmRoute == null || toJvmRoute == null) {
 			return;
 		}	
@@ -696,7 +708,7 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 			NodeRegisterRMIStub reg=(NodeRegisterRMIStub) registry.lookup("SIPBalancer");
 			reg.switchover(fromJvmRoute, toJvmRoute);
 			sipLoadBalancer.setDisplayWarning(true);
-			if(!sipLoadBalancer.isAvailable()) {
+			if(logger.isLoggingEnabled(StackLogger.TRACE_INFO) && !sipLoadBalancer.isAvailable()) {
 				logger.logInfo("Switchover: SIP Load Balancer Found! " + sipLoadBalancer);
 			}
 		} catch (IOException e) {
@@ -721,5 +733,21 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 	public SipLoadBalancer[] getLoadBalancers() {
 		// This is slow, but it is called rarely, so no prob
 		return register.values().toArray(new SipLoadBalancer[] {});
+	}
+
+	public void addSipConnector(ListeningPoint listeningPoint) {
+		if(logger.isLoggingEnabled(StackLogger.TRACE_INFO)){
+			logger.logInfo("Adding Listening Point to be using the Load Balancer for outbound traffic " + listeningPoint);
+		}
+		// https://github.com/RestComm/jain-sip.ha/issues/3 we restrict only if one connector is passed forcefully this way
+		useLoadBalancerForAllConnectors = false;
+		sipConnectors.add(listeningPoint);
+	}
+
+	public void removeSipConnector(ListeningPoint listeningPoint) {
+		if(logger.isLoggingEnabled(StackLogger.TRACE_INFO)){
+			logger.logInfo("Removing Listening Point to be using the Load Balancer for outbound traffic " + listeningPoint);
+		}
+		sipConnectors.remove(listeningPoint);
 	}
 }

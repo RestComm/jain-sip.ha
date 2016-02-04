@@ -41,6 +41,8 @@ package org.mobicents.ha.javax.sip;
 import java.io.IOException;
 import java.util.Properties;
 
+import javax.sip.ListeningPoint;
+
 /**
  * Interface for services that want to ping Restcomm SIP Load Balancers through RMI to send keepalives and health status information to them
  * So that the service is started the stack configuration properties should have the following property org.mobicents.ha.javax.sip.LoadBalancerHeartBeatingServiceClassName
@@ -138,4 +140,13 @@ public interface LoadBalancerHeartBeatingService {
 	
 	void addLoadBalancerHeartBeatingListener(LoadBalancerHeartBeatingListener loadBalancerHeartBeatingListener);
 	void removeLoadBalancerHeartBeatingListener(LoadBalancerHeartBeatingListener loadBalancerHeartBeatingListener);
+
+	/**
+	 * Notify the JAIN SIP HA stack to shutdown Gracefully and notify the Load Balancer
+	 * The action can be reverted through setting of the boolean to false
+	 */
+	void setGracefulShutdown(SipLoadBalancer sipLoadBalancer, boolean gracefullyShuttingDown);
+	// https://github.com/RestComm/jain-sip.ha/issues/3
+	void addSipConnector(ListeningPoint listeningPoint);
+	void removeSipConnector(ListeningPoint listeningPoint);
 }
