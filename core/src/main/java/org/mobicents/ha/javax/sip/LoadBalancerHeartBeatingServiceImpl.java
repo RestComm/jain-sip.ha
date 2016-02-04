@@ -24,6 +24,7 @@ import gov.nist.core.CommonLogger;
 import gov.nist.core.StackLogger;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.lang.management.ManagementFactory;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
@@ -46,8 +47,6 @@ import java.util.concurrent.CopyOnWriteArraySet;
 
 import javax.management.MBeanServer;
 import javax.management.ObjectName;
-import javax.management.MBeanServer;
-import java.lang.management.ManagementFactory;
 import javax.sip.ListeningPoint;
 
 import org.mobicents.ha.javax.sip.util.Inet6Util;
@@ -68,14 +67,19 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 
 	private static StackLogger logger = CommonLogger.getLogger(LoadBalancerHeartBeatingServiceImpl.class);
 	public static String LB_HB_SERVICE_MBEAN_NAME = "org.mobicents.jain.sip:type=load-balancer-heartbeat-service,name=";
+    public final static String REACHABLE_CHECK = "org.mobicents.ha.javax.sip.REACHABLE_CHECK";
+    public final static String LOCAL_HTTP_PORT = "org.mobicents.ha.javax.sip.LOCAL_HTTP_PORT";
+    public final static String LOCAL_SSL_PORT = "org.mobicents.ha.javax.sip.LOCAL_SSL_PORT";
+    public final static String SOCKET_BINDING_GROUP = "org.mobicents.ha.javax.sip.SOCKET_BINDING_GROUP";
 	
 	public static final int DEFAULT_RMI_PORT = 2000;
 	public static final String BALANCER_SIP_PORT_CHAR_SEPARATOR = ":";
 	public static final String BALANCERS_CHAR_SEPARATOR = ";";
-	public static final int DEFAULT_LB_SIP_PORT = 5065;
+	public static final int DEFAULT_LB_SIP_PORT = 5065;		
 	public static final int DEFAULT_LB_HTTP_PORT = 2080;
 	
 	ClusteredSipStack sipStack = null;
+    Properties sipStackProperties = null;
 	//the logger
     //the balancers to send heartbeat to and our health info
 	protected String balancers;
@@ -89,7 +93,9 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 	protected TimerTask hearBeatTaskToRun = null;
 	protected List<String> cachedAnyLocalAddresses = new ArrayList<String>();
 	protected boolean started = false;
-  
+    protected boolean gracefullyShuttingDown = false;
+    protected boolean reachableCheck = true;
+
 	protected Set<LoadBalancerHeartBeatingListener> loadBalancerHeartBeatingListeners;
 	// https://github.com/RestComm/jain-sip.ha/issues/3
 	protected boolean useLoadBalancerForAllConnectors;
@@ -106,8 +112,14 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 	public void init(ClusteredSipStack clusteredSipStack,
 			Properties stackProperties) {
 		sipStack = clusteredSipStack;
+        sipStackProperties = stackProperties;
 		balancers = stackProperties.getProperty(BALANCERS);
 		heartBeatInterval = Integer.parseInt(stackProperties.getProperty(HEARTBEAT_INTERVAL, "5000"));
+        String reachableCheckString = sipStackProperties.getProperty(REACHABLE_CHECK);
+        if(reachableCheckString != null) {
+            reachableCheck = Boolean.parseBoolean(reachableCheckString);
+        }
+        logger.logInfo("Reachable checks " + reachableCheck);
 	}
 	
 	public void stopBalancer() {
@@ -118,7 +130,8 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
       	Runtime.getRuntime().addShutdownHook(new Thread() {
     	    public void run() {
     	    	stopBalancer();
-    	    	logger.logInfo("Shutting down the Load Balancer Link");}
+    	    	logger.logInfo("Shutting down the Load Balancer Link");
+            }
     	});
 
     	if (!started) {
@@ -469,8 +482,8 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 			ipAddresses.add(address);
 		}		 
 		
-		String httpPortString = System.getProperty("org.mobicents.properties.httpPort");
-		String sslPortString = System.getProperty("org.mobicents.properties.sslPort");
+		String httpPortString = sipStackProperties.getProperty(LOCAL_HTTP_PORT);
+		String sslPortString = sipStackProperties.getProperty(LOCAL_SSL_PORT);
 
 		if(httpPortString==null && sslPortString==null){
 			logger.logWarning("HTTP or HTTPS port couldn't be retrieved from System properties, trying with JMX");
@@ -481,49 +494,62 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 
 			MBeanServer mBeanServer = ManagementFactory.getPlatformMBeanServer();
 			try {
-				ObjectName http = new ObjectName("jboss.as:socket-binding-group=standard-sockets,socket-binding=http");
+                // https://telestax.atlassian.net/browse/JSIPHA-4 defaulting to standard-sockets
+                String socketBindingGroup = sipStackProperties.getProperty(SOCKET_BINDING_GROUP, "standard-sockets");
+				ObjectName http = new ObjectName("jboss.as:socket-binding-group=" + socketBindingGroup + ",socket-binding=http");
 				httpPort = (Integer) mBeanServer.getAttribute(http, "boundPort");
 				httpBound = (Boolean) mBeanServer.getAttribute(http, "bound");
 
-				ObjectName https = new ObjectName("jboss.as:socket-binding-group=standard-sockets,socket-binding=https");
+				ObjectName https = new ObjectName("jboss.as:socket-binding-group=" + socketBindingGroup + ",socket-binding=https");
 				sslPort = (Integer) mBeanServer.getAttribute(https, "boundPort");
 				sslBound = (Boolean) mBeanServer.getAttribute(https, "bound");
 
-			} catch (Exception e) {} //Ignore any exceptions	
+			} catch (Exception e) {} //Ignore any exceptions
 
 			if(httpBound && httpPort!=null){
-				System.setProperty("org.mobicents.properties.httpPort", String.valueOf(httpPort));
+				sipStackProperties.setProperty(LOCAL_HTTP_PORT, String.valueOf(httpPort));
 			} else if (sslBound && sslPort!=null){
-				System.setProperty("org.mobicents.properties.sslPort", String.valueOf(sslPort));
+                sipStackProperties.setProperty(LOCAL_SSL_PORT, String.valueOf(sslPort));
 			}
 		}
 		
-		Properties props = System.getProperties();
-		
 		for (String ipAddress : ipAddresses) {
-			SIPNode node = new SIPNode(hostName, ipAddress);
+			if(ipAddress == null) {
+				if(logger.isLoggingEnabled(StackLogger.TRACE_TRACE)) {
+					logger.logTrace("Following IpAddress [" + ipAddress + "] is null not pinging the LB for that null IP or it will cause routing issues");
+				}				
+			} else {
+				SIPNode node = new SIPNode(hostName, ipAddress);			
+
+				int httpPort = 0;
+				int sslPort = 0;
 			
-			int httpPort = 0;
-			int sslPort = 0;
+				if(httpPortString != null) {
+					httpPort = Integer.parseInt(httpPortString);
+					node.getProperties().put("httpPort", httpPort);
+				}
+				if(sslPortString != null) {
+					sslPort = Integer.parseInt(sslPortString);
+					node.getProperties().put("sslPort", sslPort);
+				}
 			
-			if(httpPortString != null) {
-				httpPort = Integer.parseInt(httpPortString);
-				node.getProperties().put("httpPort", httpPort);
+			
+				if(sipTcpPort != null) node.getProperties().put("tcpPort", sipTcpPort);
+				if(sipUdpPort != null) node.getProperties().put("udpPort", sipUdpPort);
+				if(sipWsPort != null) node.getProperties().put("wsPort", sipWsPort);
+				if(jvmRoute != null) node.getProperties().put("jvmRoute", jvmRoute);
+				//, port,
+				//		transports, jvmRoute, httpPort, sslPort, null);
+				node.getProperties().put("version", System.getProperty("org.mobicents.server.version", "0"));
+				if(gracefullyShuttingDown) {
+					if(logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+						logger.logDebug("Adding GRACEFUL_SHUTDOWN prop to following SIP Node " + node);
+					}
+					Map<String, Serializable> properties = node.getProperties();
+					properties.put("GRACEFUL_SHUTDOWN", "true");
+				}
+				info.add(node);
 			}
-			if(sslPortString != null) {
-				sslPort = Integer.parseInt(sslPortString);
-				node.getProperties().put("sslPort", sslPort);
-			}
-			
-			
-			if(sipTcpPort != null) node.getProperties().put("tcpPort", sipTcpPort);
-			if(sipUdpPort != null) node.getProperties().put("udpPort", sipUdpPort);
-			if(sipWsPort != null) node.getProperties().put("wsPort", sipWsPort);
-			if(jvmRoute != null) node.getProperties().put("jvmRoute", jvmRoute);
-			//, port,
-			//		transports, jvmRoute, httpPort, sslPort, null);
-			node.getProperties().put("version", System.getProperty("org.mobicents.server.version", "0"));
-			info.add(node);
 		}		
 		
 		return info;
@@ -539,12 +565,22 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 				long startTime = System.currentTimeMillis();
 				Registry registry = LocateRegistry.getRegistry(balancerDescription.getAddress().getHostAddress(), balancerDescription.getRmiPort());
 				NodeRegisterRMIStub reg=(NodeRegisterRMIStub) registry.lookup("SIPBalancer");
-				ArrayList<SIPNode> reachableInfo = getReachableSIPNodeInfo(balancerDescription.getAddress(), info);
-				if(reachableInfo.isEmpty()) {
-					logger.logWarning("All connectors are unreachable from the balancer");
-				}
+                if(reachableCheck) {
+                    ArrayList<SIPNode> reachableInfo = getReachableSIPNodeInfo(balancerDescription.getAddress(), info);
+                    info = reachableInfo;
+                    if(reachableInfo.isEmpty()) {
+                        logger.logWarning("All connectors are unreachable from the balancer");
+                    }
+                }
+                if(logger.isLoggingEnabled(StackLogger.TRACE_TRACE)) {
+                    logger.logTrace("Pinging balancers with info[" + info + "]");
+                }
 				
-				reg.handlePing(reachableInfo);
+				if(logger.isLoggingEnabled(StackLogger.TRACE_TRACE)) {
+				    logger.logTrace("Pinging the LB with the following Node Info [" + info + "]");
+				}
+				reg.handlePing(info);
+				
 				balancerDescription.setDisplayWarning(true);
 				if(!balancerDescription.isAvailable()) {
 					logger.logInfo("Keepalive: SIP Load Balancer Found! " + balancerDescription);
@@ -667,32 +703,43 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 		this.balancers = balancers;
 	}
 
-	/**
-	 * @return the jvmRoute
+	/*
+	 * (non-Javadoc)
+	 * @see org.mobicents.ha.javax.sip.LoadBalancerHeartBeatingService#getJvmRoute()
 	 */
 	public String getJvmRoute() {
 		return jvmRoute;
 	}
 
-	/**
-	 * @param jvmRoute the jvmRoute to set
+	/*
+	 * (non-Javadoc)
+	 * @see org.mobicents.ha.javax.sip.LoadBalancerHeartBeatingService#setJvmRoute(java.lang.String)
 	 */
 	public void setJvmRoute(String jvmRoute) {
 		this.jvmRoute = jvmRoute;
 	}
 
+	/*
+	 * (non-Javadoc)
+	 * @see org.mobicents.ha.javax.sip.LoadBalancerHeartBeatingService#addLoadBalancerHeartBeatingListener(org.mobicents.ha.javax.sip.LoadBalancerHeartBeatingListener)
+	 */
 	public void addLoadBalancerHeartBeatingListener(
 			LoadBalancerHeartBeatingListener loadBalancerHeartBeatingListener) {
 		loadBalancerHeartBeatingListeners.add(loadBalancerHeartBeatingListener);
 	}
 
+	/*
+	 * (non-Javadoc)
+	 * @see org.mobicents.ha.javax.sip.LoadBalancerHeartBeatingService#removeLoadBalancerHeartBeatingListener(org.mobicents.ha.javax.sip.LoadBalancerHeartBeatingListener)
+	 */
 	public void removeLoadBalancerHeartBeatingListener(
 			LoadBalancerHeartBeatingListener loadBalancerHeartBeatingListener) {
 		loadBalancerHeartBeatingListeners.remove(loadBalancerHeartBeatingListener);
 	}
 	
-	/**
-	 * @param info
+	/*
+	 * (non-Javadoc)
+	 * @see org.mobicents.ha.javax.sip.LoadBalancerHeartBeatingService#sendSwitchoverInstruction(org.mobicents.ha.javax.sip.SipLoadBalancer, java.lang.String, java.lang.String)
 	 */
 	public void sendSwitchoverInstruction(SipLoadBalancer sipLoadBalancer, String fromJvmRoute, String toJvmRoute) {
 		if(logger.isLoggingEnabled(StackLogger.TRACE_INFO)) {
@@ -728,6 +775,18 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 		} finally {
 			Thread.currentThread().setContextClassLoader(oldClassLoader);
 		}
+	}
+	
+	/*
+	 * (non-Javadoc)
+	 * @see org.mobicents.ha.javax.sip.LoadBalancerHeartBeatingService#setGracefulShutdown(org.mobicents.ha.javax.sip.SipLoadBalancer, boolean)
+	 */
+	public void setGracefulShutdown(SipLoadBalancer sipLoadBalancer, boolean gracefullyShuttingDown) {
+		this.gracefullyShuttingDown = gracefullyShuttingDown;
+		// forcing keep alive sending to update the nodes in the LB with the info
+		// that the nodes are shutting down 
+		ArrayList<SIPNode> sipNodes = getConnectorsAsSIPNode();		
+		sendKeepAliveToBalancers(sipNodes);
 	}
 
 	public SipLoadBalancer[] getLoadBalancers() {
