@@ -1,8 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source
- * Copyright 2011, Red Hat, Inc. and individual contributors
- * by the @authors tag. See the copyright.txt in the distribution for a
- * full listing of individual contributors.
+ * TeleStax, Open Source Cloud Communications.
+ * Copyright 2012 and individual contributors by the @authors tag. 
  *
  * This is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License as
@@ -20,22 +18,6 @@
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
 
-/*
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
- */
 package org.mobicents.ha.javax.sip;
 
 import java.io.Serializable;
@@ -43,6 +25,7 @@ import java.net.InetAddress;
 
 import javax.sip.PeerUnavailableException;
 import javax.sip.SipFactory;
+import javax.sip.SipProvider;
 import javax.sip.address.Address;
 import javax.sip.address.AddressFactory;
 import javax.sip.address.SipURI;
@@ -78,6 +61,7 @@ public class SipLoadBalancer implements Serializable {
 	private transient boolean available;
 	private transient boolean displayWarning;
 	private transient Address sipAddress;
+    private transient SipProvider localSipProvider;
 	/**
 	 * @param address
 	 * @param sipPort
@@ -117,7 +101,21 @@ public class SipLoadBalancer implements Serializable {
 			throw new RuntimeException(e);
 		}
 	}
-	/**
+
+    /**
+     *
+     * @param loadBalancerHeartBeatingService
+     * @param address
+     * @param lbSipPort
+     * @param httpPort
+     * @param sipProvider
+     */
+    public SipLoadBalancer(LoadBalancerHeartBeatingService loadBalancerHeartBeatingService, InetAddress address, int lbSipPort, int httpPort, SipProvider sipProvider) {
+        this(loadBalancerHeartBeatingService, address, lbSipPort, httpPort, -1);
+        localSipProvider = sipProvider;
+    }
+
+    /**
 	 * @param address the address to set
 	 */
 	public void setAddress(InetAddress address) {
@@ -230,4 +228,18 @@ public class SipLoadBalancer implements Serializable {
 	public void setSipAddress(Address sipAddress) {
 		this.sipAddress = sipAddress;
 	}
+	/**
+	 * Notify the Balancer that we are gracefully shutting down (or not anymore)
+	 */
+	public void setGracefulShutdown(boolean shuttingDownGracefully) {
+		loadBalancerHeartBeatingService.setGracefulShutdown(this, shuttingDownGracefully);
+	}
+
+    public SipProvider getLocalSipProvider() {
+        return localSipProvider;
+    }
+
+    public void setLocalSipProvider(SipProvider localSipProvider) {
+        this.localSipProvider = localSipProvider;
+    }
 }
