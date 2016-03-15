@@ -100,6 +100,9 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 	// https://github.com/RestComm/jain-sip.ha/issues/3
 	protected boolean useLoadBalancerForAllConnectors;
 	protected Set<ListeningPoint> sipConnectors;
+	// https://github.com/RestComm/jain-sip.ha/issues/4 : 
+	// Caching the sipNodes to send to the LB as there is no reason for them to change often or at all after startup
+	ArrayList<SIPNode> sipNodes = null;
     
 	ObjectName oname = null;
 	
@@ -171,14 +174,18 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 			}		
 			started = true;
 		}
+    	if(sipNodes == null) {
+    		logger.logInfo("Computing SIP Nodes to be sent to the LB");
+			sipNodes = getConnectorsAsSIPNode();
+		}
 		this.hearBeatTaskToRun = new BalancerPingTimerTask();
 		
 		// Delay the start with 2 seconds so nodes joining under load are really ready to serve requests
 		// Otherwise one of the listeneing points comes a bit later and results in errors.
-		this.heartBeatTimer.scheduleAtFixedRate(this.hearBeatTaskToRun, 2000,
+		this.heartBeatTimer.scheduleAtFixedRate(this.hearBeatTaskToRun, this.heartBeatInterval,
 				this.heartBeatInterval);
 		if(logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
-			logger.logDebug("Created and scheduled tasks for sending heartbeats to the sip balancer.");
+			logger.logDebug("Created and scheduled tasks for sending heartbeats to the sip balancer every " + heartBeatInterval + "ms.");
 		}
 		
 		registerMBean();
@@ -190,9 +197,8 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
     
     public void stop() {
     	// Force removal from load balancer upon shutdown 
-    	// added for Issue 308 (http://code.google.com/p/restcomm/issues/detail?id=308)
-    	ArrayList<SIPNode> info = getConnectorsAsSIPNode();
-    	removeNodesFromBalancers(info);
+    	// added for Issue 308 (http://code.google.com/p/mobicents/issues/detail?id=308)
+    	removeNodesFromBalancers(sipNodes);
     	//cleaning 
 //    	balancerNames.clear();
     	register.clear();
@@ -253,6 +259,10 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 		}
 		
 		this.heartBeatInterval = heartBeatInterval;
+		if(sipNodes == null) {
+			logger.logInfo("Computing SIP Nodes to be sent to the LB");
+			sipNodes = getConnectorsAsSIPNode();
+		}
 		this.hearBeatTaskToRun.cancel();
 		this.hearBeatTaskToRun = new BalancerPingTimerTask();
 		this.heartBeatTimer.scheduleAtFixedRate(this.hearBeatTaskToRun, 0,
@@ -409,6 +419,9 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 	}
 
 	protected ArrayList<SIPNode> getConnectorsAsSIPNode() {
+		if(logger.isLoggingEnabled(StackLogger.TRACE_TRACE)) {
+			logger.logTrace("Gathering all SIP Connectors information");
+		}
 		ArrayList<SIPNode> info = new ArrayList<SIPNode>();
 		Integer sipTcpPort = null;
 		Integer sipUdpPort = null;
@@ -439,8 +452,14 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 			}
 			
 			try {
+				if(logger.isLoggingEnabled(StackLogger.TRACE_TRACE)) {
+					logger.logTrace("Trying to find address array for address " + address);
+				}
 				InetAddress[] aArray = InetAddress
 						.getAllByName(address);
+				if(logger.isLoggingEnabled(StackLogger.TRACE_TRACE)) {
+					logger.logTrace("Found " + aArray);
+				}
 				if (aArray != null && aArray.length > 0) {
 					// Damn it, which one we should pick?
 					hostName = aArray[0].getCanonicalHostName();
@@ -453,7 +472,13 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 		List<String> ipAddresses = new ArrayList<String>();
 		boolean isAnyLocalAddress = false;
 		try {
-			isAnyLocalAddress = InetAddress.getByName(address).isAnyLocalAddress();						
+			if(logger.isLoggingEnabled(StackLogger.TRACE_TRACE)) {
+				logger.logTrace("Trying to find if address " + address + " is an AnyLocalAddress");
+			}
+			isAnyLocalAddress = InetAddress.getByName(address).isAnyLocalAddress();
+			if(logger.isLoggingEnabled(StackLogger.TRACE_TRACE)) {
+				logger.logTrace(address + " is an AnyLocalAddress ? " + isAnyLocalAddress);
+			}
 		} catch (UnknownHostException e) {
 			logger.logWarning("Unable to enumerate mapped interfaces. Binding to 0.0.0.0 may not work.");
 			isAnyLocalAddress = false;			
@@ -461,7 +486,13 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 		if(isAnyLocalAddress) {
 			if(cachedAnyLocalAddresses.isEmpty()) {
 				try{
+					if(logger.isLoggingEnabled(StackLogger.TRACE_TRACE)) {
+						logger.logTrace("Gathering all network interfaces");
+					}
 					Enumeration<NetworkInterface> networkInterfaces = NetworkInterface.getNetworkInterfaces();
+					if(logger.isLoggingEnabled(StackLogger.TRACE_TRACE)) {
+						logger.logTrace("network interfaces gathered " + networkInterfaces);
+					}
 					while(networkInterfaces.hasMoreElements()) {
 						NetworkInterface networkInterface = networkInterfaces.nextElement();
 						Enumeration<InetAddress> bindings = networkInterface.getInetAddresses();
@@ -476,9 +507,15 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 					logger.logWarning("Unable to enumerate network interfaces. Binding to 0.0.0.0 may not work.");
 				}
 			} else {
+				if(logger.isLoggingEnabled(StackLogger.TRACE_TRACE)) {
+					logger.logTrace("Adding " + cachedAnyLocalAddresses + " to the list of IPs to send");
+				}
 				ipAddresses.addAll(cachedAnyLocalAddresses);
 			}
 		} else {
+			if(logger.isLoggingEnabled(StackLogger.TRACE_TRACE)) {
+				logger.logTrace("Adding " + address + " to the list of IPs to send");
+			}
 			ipAddresses.add(address);
 		}		 
 		
@@ -503,7 +540,9 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 				ObjectName https = new ObjectName("jboss.as:socket-binding-group=" + socketBindingGroup + ",socket-binding=https");
 				sslPort = (Integer) mBeanServer.getAttribute(https, "boundPort");
 				sslBound = (Boolean) mBeanServer.getAttribute(https, "bound");
-
+				if(logger.isLoggingEnabled(StackLogger.TRACE_TRACE)) {
+					logger.logTrace("Dound httpPort " + httpPort + " and sslPort " + sslPort);
+				}
 			} catch (Exception e) {} //Ignore any exceptions
 
 			if(httpBound && httpPort!=null){
@@ -519,6 +558,9 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 					logger.logTrace("Following IpAddress [" + ipAddress + "] is null not pinging the LB for that null IP or it will cause routing issues");
 				}				
 			} else {
+				if(logger.isLoggingEnabled(StackLogger.TRACE_TRACE)) {
+					logger.logTrace("Creating new SIP Node for [" + ipAddress + "] to be added to the list for pinging the LB");
+				}	
 				SIPNode node = new SIPNode(hostName, ipAddress);			
 
 				int httpPort = 0;
@@ -549,6 +591,9 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 					properties.put("GRACEFUL_SHUTDOWN", "true");
 				}
 				info.add(node);
+				if(logger.isLoggingEnabled(StackLogger.TRACE_TRACE)) {
+					logger.logTrace("Added node [" + node + "] to the list for pinging the LB");
+				}	
 			}
 		}		
 		
@@ -559,6 +604,9 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 	 * @param info
 	 */
 	protected void sendKeepAliveToBalancers(ArrayList<SIPNode> info) {
+		if(logger.isLoggingEnabled(StackLogger.TRACE_TRACE)) {
+            logger.logTrace("Pinging balancers with info[" + info + "]");
+        }
 		Thread.currentThread().setContextClassLoader(NodeRegisterRMIStub.class.getClassLoader());
 		for(SipLoadBalancer  balancerDescription:new HashSet<SipLoadBalancer>(register.values())) {
 			try {
@@ -580,7 +628,9 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 				    logger.logTrace("Pinging the LB with the following Node Info [" + info + "]");
 				}
 				reg.handlePing(info);
-				
+				if(logger.isLoggingEnabled(StackLogger.TRACE_TRACE)) {
+				    logger.logTrace("Pinged the LB with the following Node Info [" + info + "]");
+				}
 				balancerDescription.setDisplayWarning(true);
 				if(!balancerDescription.isAvailable()) {
 					logger.logInfo("Keepalive: SIP Load Balancer Found! " + balancerDescription);
@@ -625,11 +675,16 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 
 		ArrayList<SIPNode> rv = new ArrayList<SIPNode>();
 		for(SIPNode node: info) {
+			if(logger.isLoggingEnabled(StackLogger.TRACE_TRACE)) {
+				logger.logTrace("Checking if " + node + " is reachable");
+			}
 			try {
 				NetworkInterface ni = NetworkInterface.getByInetAddress(InetAddress.getByName(node.getIp()));
 				// FIXME How can I determine the ttl?
 				boolean b = balancerAddr.isReachable(ni, 5, 900);
-				
+				if(logger.isLoggingEnabled(StackLogger.TRACE_TRACE)) {
+					logger.logTrace(node + " is reachable ? " + b);
+				}
 				if(b) {
 					rv.add(node);
 				}
@@ -691,8 +746,7 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 		@SuppressWarnings("unchecked")
 		@Override
 		public void run() {			
-			ArrayList<SIPNode> info = getConnectorsAsSIPNode();						
-			sendKeepAliveToBalancers(info);
+			sendKeepAliveToBalancers(sipNodes);
 		}
 	}
 
@@ -785,7 +839,6 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 		this.gracefullyShuttingDown = gracefullyShuttingDown;
 		// forcing keep alive sending to update the nodes in the LB with the info
 		// that the nodes are shutting down 
-		ArrayList<SIPNode> sipNodes = getConnectorsAsSIPNode();		
 		sendKeepAliveToBalancers(sipNodes);
 	}
 
@@ -797,16 +850,20 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 	public void addSipConnector(ListeningPoint listeningPoint) {
 		if(logger.isLoggingEnabled(StackLogger.TRACE_INFO)){
 			logger.logInfo("Adding Listening Point to be using the Load Balancer for outbound traffic " + listeningPoint);
+			logger.logInfo("Recomputing SIP Nodes to be sent to the LB");
 		}
 		// https://github.com/RestComm/jain-sip.ha/issues/3 we restrict only if one connector is passed forcefully this way
 		useLoadBalancerForAllConnectors = false;
+		sipNodes = getConnectorsAsSIPNode();
 		sipConnectors.add(listeningPoint);
 	}
 
 	public void removeSipConnector(ListeningPoint listeningPoint) {
 		if(logger.isLoggingEnabled(StackLogger.TRACE_INFO)){
 			logger.logInfo("Removing Listening Point to be using the Load Balancer for outbound traffic " + listeningPoint);
+			logger.logInfo("Recomputing SIP Nodes to be sent to the LB");
 		}
+		sipNodes = getConnectorsAsSIPNode();
 		sipConnectors.remove(listeningPoint);
 	}
 }
