@@ -424,8 +424,10 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 		}
 		ArrayList<SIPNode> info = new ArrayList<SIPNode>();
 		Integer sipTcpPort = null;
+		Integer sipTlsPort = null;
 		Integer sipUdpPort = null;
 		Integer sipWsPort = null;
+		Integer sipWssPort = null;
 		String address = null;
 		String hostName = null;
 		// Gathering info about server' sip listening points
@@ -449,6 +451,12 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 				sipUdpPort = port;
 			} else if(transport.equalsIgnoreCase("ws")) {
 				sipWsPort = port;
+			} else if(transport.equalsIgnoreCase("wss")) {
+				// https://github.com/RestComm/jain-sip.ha/issues/5
+				sipWssPort = port;
+			} else if(transport.equalsIgnoreCase("tls")) {
+				// https://github.com/RestComm/jain-sip.ha/issues/5
+				sipTlsPort = port;
 			}
 			
 			try {
@@ -579,6 +587,10 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 				if(sipTcpPort != null) node.getProperties().put("tcpPort", sipTcpPort);
 				if(sipUdpPort != null) node.getProperties().put("udpPort", sipUdpPort);
 				if(sipWsPort != null) node.getProperties().put("wsPort", sipWsPort);
+				// https://github.com/RestComm/jain-sip.ha/issues/5
+				if(sipWssPort != null) node.getProperties().put("wssPort", sipWssPort);
+				if(sipTlsPort != null) node.getProperties().put("tlsPort", sipTlsPort);
+				
 				if(jvmRoute != null) node.getProperties().put("jvmRoute", jvmRoute);
 				//, port,
 				//		transports, jvmRoute, httpPort, sslPort, null);
