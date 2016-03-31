@@ -22,6 +22,7 @@ package org.mobicents.ha.javax.sip;
 
 import gov.nist.core.CommonLogger;
 import gov.nist.core.StackLogger;
+import gov.nist.javax.sip.ListeningPointExt;
 
 import java.io.IOException;
 import java.io.Serializable;
@@ -33,6 +34,7 @@ import java.net.UnknownHostException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -102,7 +104,7 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 	protected Set<ListeningPoint> sipConnectors;
 	// https://github.com/RestComm/jain-sip.ha/issues/4 : 
 	// Caching the sipNodes to send to the LB as there is no reason for them to change often or at all after startup
-	ArrayList<SIPNode> sipNodes = null;
+	ConcurrentHashMap<String, SIPNode> sipNodes = new ConcurrentHashMap<String, SIPNode>();
     
 	ObjectName oname = null;
 	
@@ -174,9 +176,9 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 			}		
 			started = true;
 		}
-    	if(sipNodes == null) {
+    	if(sipNodes.isEmpty()) {
     		logger.logInfo("Computing SIP Nodes to be sent to the LB");
-			sipNodes = getConnectorsAsSIPNode();
+    		updateConnectorsAsSIPNode();
 		}
 		this.hearBeatTaskToRun = new BalancerPingTimerTask();
 		
@@ -198,7 +200,7 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
     public void stop() {
     	// Force removal from load balancer upon shutdown 
     	// added for Issue 308 (http://code.google.com/p/mobicents/issues/detail?id=308)
-    	removeNodesFromBalancers(sipNodes);
+    	removeNodesFromBalancers();
     	//cleaning 
 //    	balancerNames.clear();
     	register.clear();
@@ -259,9 +261,9 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 		}
 		
 		this.heartBeatInterval = heartBeatInterval;
-		if(sipNodes == null) {
+		if(sipNodes.isEmpty()) {
 			logger.logInfo("Computing SIP Nodes to be sent to the LB");
-			sipNodes = getConnectorsAsSIPNode();
+			updateConnectorsAsSIPNode();
 		}
 		this.hearBeatTaskToRun.cancel();
 		this.hearBeatTaskToRun = new BalancerPingTimerTask();
@@ -418,18 +420,10 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 		return this.removeBalancer(address.getHostAddress(), sipPort, httpPort, rmiPort);
 	}
 
-	protected ArrayList<SIPNode> getConnectorsAsSIPNode() {
+	protected void updateConnectorsAsSIPNode() {
 		if(logger.isLoggingEnabled(StackLogger.TRACE_TRACE)) {
-			logger.logTrace("Gathering all SIP Connectors information");
+			logger.logTrace("Gathering all SIP Connectors information. UseLoadBalancer for all connectors: " + useLoadBalancerForAllConnectors);
 		}
-		ArrayList<SIPNode> info = new ArrayList<SIPNode>();
-		Integer sipTcpPort = null;
-		Integer sipTlsPort = null;
-		Integer sipUdpPort = null;
-		Integer sipWsPort = null;
-		Integer sipWssPort = null;
-		String address = null;
-		String hostName = null;
 		// Gathering info about server' sip listening points
 		Iterator<ListeningPoint> listeningPointIterator = null;
 		if(useLoadBalancerForAllConnectors) {
@@ -438,184 +432,219 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 			listeningPointIterator = sipConnectors.iterator();
 		}
 		while (listeningPointIterator.hasNext()) {
+			
+			Integer sipTcpPort = null;
+			Integer sipTlsPort = null;
+			Integer sipSctpPort = null;
+			Integer sipUdpPort = null;
+			Integer sipWsPort = null;
+			Integer sipWssPort = null;
+			String address = null;
+			String hostName = null;
+
 			ListeningPoint listeningPoint = listeningPointIterator.next();
 			address = listeningPoint.getIPAddress();
-			// From Vladimir: for some reason I get "localhost" here instead of IP and this confiuses the LB
-			if(address.equals("localhost")) address = "127.0.0.1";
 			
-			int port = listeningPoint.getPort();
-			String transport = listeningPoint.getTransport();
-			if(transport.equalsIgnoreCase("tcp")) {
-				sipTcpPort = port;
-			} else if(transport.equalsIgnoreCase("udp")) {
-				sipUdpPort = port;
-			} else if(transport.equalsIgnoreCase("ws")) {
-				sipWsPort = port;
-			} else if(transport.equalsIgnoreCase("wss")) {
-				// https://github.com/RestComm/jain-sip.ha/issues/5
-				sipWssPort = port;
-			} else if(transport.equalsIgnoreCase("tls")) {
-				// https://github.com/RestComm/jain-sip.ha/issues/5
-				sipTlsPort = port;
-			}
-			
-			try {
+			if(address == null) {
 				if(logger.isLoggingEnabled(StackLogger.TRACE_TRACE)) {
-					logger.logTrace("Trying to find address array for address " + address);
+					logger.logTrace("Address is null");
 				}
-				InetAddress[] aArray = InetAddress
-						.getAllByName(address);
+			} else {
+				// From Vladimir: for some reason I get "localhost" here instead of IP and this confuses the LB
+				if(address.equals("localhost")) address = "127.0.0.1";
+				
+				int port = listeningPoint.getPort();
+				String transport = listeningPoint.getTransport();
 				if(logger.isLoggingEnabled(StackLogger.TRACE_TRACE)) {
-					logger.logTrace("Found " + aArray);
+					logger.logTrace("connector: " + address + ", port: " + port + ", transport: " + transport);
 				}
-				if (aArray != null && aArray.length > 0) {
-					// Damn it, which one we should pick?
-					hostName = aArray[0].getCanonicalHostName();
+				if(transport.equalsIgnoreCase(ListeningPoint.TCP)) {
+					sipTcpPort = port;
+				} else if(transport.equalsIgnoreCase(ListeningPoint.UDP)) {
+					sipUdpPort = port;
+				} else if(transport.equalsIgnoreCase(ListeningPointExt.WS)) {
+					sipWsPort = port;
+				} else if(transport.equalsIgnoreCase(ListeningPointExt.WSS)) {
+					// https://github.com/RestComm/jain-sip.ha/issues/5
+					sipWssPort = port;
+				} else if(transport.equalsIgnoreCase(ListeningPoint.TLS)) {
+					// https://github.com/RestComm/jain-sip.ha/issues/5
+					sipTlsPort = port;
+				} else if(transport.equalsIgnoreCase(ListeningPoint.SCTP)) {
+					// https://github.com/RestComm/jain-sip.ha/issues/5
+					sipSctpPort = port;
 				}
-			} catch (UnknownHostException e) {
-				logger.logError("An exception occurred while trying to retrieve the hostname of a sip connector", e);
-			}
-		}
-		
-		List<String> ipAddresses = new ArrayList<String>();
-		boolean isAnyLocalAddress = false;
-		try {
-			if(logger.isLoggingEnabled(StackLogger.TRACE_TRACE)) {
-				logger.logTrace("Trying to find if address " + address + " is an AnyLocalAddress");
-			}
-			isAnyLocalAddress = InetAddress.getByName(address).isAnyLocalAddress();
-			if(logger.isLoggingEnabled(StackLogger.TRACE_TRACE)) {
-				logger.logTrace(address + " is an AnyLocalAddress ? " + isAnyLocalAddress);
-			}
-		} catch (UnknownHostException e) {
-			logger.logWarning("Unable to enumerate mapped interfaces. Binding to 0.0.0.0 may not work.");
-			isAnyLocalAddress = false;			
-		}	
-		if(isAnyLocalAddress) {
-			if(cachedAnyLocalAddresses.isEmpty()) {
-				try{
+				
+				try {
 					if(logger.isLoggingEnabled(StackLogger.TRACE_TRACE)) {
-						logger.logTrace("Gathering all network interfaces");
+						logger.logTrace("Trying to find address array for address " + address);
 					}
-					Enumeration<NetworkInterface> networkInterfaces = NetworkInterface.getNetworkInterfaces();
+					InetAddress[] aArray = InetAddress
+							.getAllByName(address);
 					if(logger.isLoggingEnabled(StackLogger.TRACE_TRACE)) {
-						logger.logTrace("network interfaces gathered " + networkInterfaces);
-					}
-					while(networkInterfaces.hasMoreElements()) {
-						NetworkInterface networkInterface = networkInterfaces.nextElement();
-						Enumeration<InetAddress> bindings = networkInterface.getInetAddresses();
-						while(bindings.hasMoreElements()) {
-							InetAddress addr = bindings.nextElement();
-							String networkInterfaceIpAddress = addr.getHostAddress();
-							// we cache the look up to speed up the next time
-							cachedAnyLocalAddresses.add(networkInterfaceIpAddress);
+						for (int i = 0; i < aArray.length; i++) {
+							logger.logTrace("Found " + aArray[i].getHostAddress());	
 						}
 					}
-				} catch (SocketException e) {
-					logger.logWarning("Unable to enumerate network interfaces. Binding to 0.0.0.0 may not work.");
+					if (aArray != null && aArray.length > 0) {
+						// Damn it, which one we should pick?
+						hostName = aArray[0].getCanonicalHostName();
+					}
+				} catch (UnknownHostException e) {
+					logger.logError("An exception occurred while trying to retrieve the hostname of a sip connector", e);
 				}
-			} else {
-				if(logger.isLoggingEnabled(StackLogger.TRACE_TRACE)) {
-					logger.logTrace("Adding " + cachedAnyLocalAddresses + " to the list of IPs to send");
+				
+				List<String> ipAddresses = new ArrayList<String>();
+				boolean isAnyLocalAddress = false;
+				try {
+					if(logger.isLoggingEnabled(StackLogger.TRACE_TRACE)) {
+						logger.logTrace("Trying to find if address " + address + " is an AnyLocalAddress");
+					}
+					isAnyLocalAddress = InetAddress.getByName(address).isAnyLocalAddress();
+					if(logger.isLoggingEnabled(StackLogger.TRACE_TRACE)) {
+						logger.logTrace(address + " is an AnyLocalAddress ? " + isAnyLocalAddress);
+					}
+				} catch (UnknownHostException e) {
+					logger.logWarning("Unable to enumerate mapped interfaces. Binding to 0.0.0.0 may not work.");
+					isAnyLocalAddress = false;			
+				}	
+				if(isAnyLocalAddress) {
+					if(cachedAnyLocalAddresses.isEmpty()) {
+						try{
+							if(logger.isLoggingEnabled(StackLogger.TRACE_TRACE)) {
+								logger.logTrace("Gathering all network interfaces");
+							}
+							Enumeration<NetworkInterface> networkInterfaces = NetworkInterface.getNetworkInterfaces();
+							if(logger.isLoggingEnabled(StackLogger.TRACE_TRACE)) {
+								logger.logTrace("network interfaces gathered " + networkInterfaces);
+							}
+							while(networkInterfaces.hasMoreElements()) {
+								NetworkInterface networkInterface = networkInterfaces.nextElement();
+								Enumeration<InetAddress> bindings = networkInterface.getInetAddresses();
+								while(bindings.hasMoreElements()) {
+									InetAddress addr = bindings.nextElement();
+									String networkInterfaceIpAddress = addr.getHostAddress();
+									// we cache the look up to speed up the next time
+									cachedAnyLocalAddresses.add(networkInterfaceIpAddress);
+								}
+							}
+						} catch (SocketException e) {
+							logger.logWarning("Unable to enumerate network interfaces. Binding to 0.0.0.0 may not work.");
+						}
+					} else {
+						if(logger.isLoggingEnabled(StackLogger.TRACE_TRACE)) {
+							logger.logTrace("Adding " + cachedAnyLocalAddresses + " to the list of IPs to send");
+						}
+						ipAddresses.addAll(cachedAnyLocalAddresses);
+					}
+				} else {
+					if(logger.isLoggingEnabled(StackLogger.TRACE_TRACE)) {
+						logger.logTrace("Adding " + address + " to the list of IPs to send");
+					}
+					ipAddresses.add(address);
+				}	
+				
+				String httpPortString = sipStackProperties.getProperty(LOCAL_HTTP_PORT);
+				String sslPortString = sipStackProperties.getProperty(LOCAL_SSL_PORT);
+
+				if(httpPortString == null && sslPortString == null) {
+					logger.logWarning("HTTP or HTTPS port couldn't be retrieved from System properties, trying with JMX");
+					Integer httpPort = null;
+					Boolean httpBound = false;
+					Integer sslPort = null;
+					Boolean sslBound = false;
+
+					MBeanServer mBeanServer = ManagementFactory.getPlatformMBeanServer();
+					try {
+		                // https://telestax.atlassian.net/browse/JSIPHA-4 defaulting to standard-sockets
+		                String socketBindingGroup = sipStackProperties.getProperty(SOCKET_BINDING_GROUP, "standard-sockets");
+						ObjectName http = new ObjectName("jboss.as:socket-binding-group=" + socketBindingGroup + ",socket-binding=http");
+						httpPort = (Integer) mBeanServer.getAttribute(http, "boundPort");
+						httpBound = (Boolean) mBeanServer.getAttribute(http, "bound");
+
+						ObjectName https = new ObjectName("jboss.as:socket-binding-group=" + socketBindingGroup + ",socket-binding=https");
+						sslPort = (Integer) mBeanServer.getAttribute(https, "boundPort");
+						sslBound = (Boolean) mBeanServer.getAttribute(https, "bound");
+						if(logger.isLoggingEnabled(StackLogger.TRACE_TRACE)) {
+							logger.logTrace("Dound httpPort " + httpPort + " and sslPort " + sslPort);
+						}
+					} catch (Exception e) {} //Ignore any exceptions
+
+					if(httpBound && httpPort!=null){
+						sipStackProperties.setProperty(LOCAL_HTTP_PORT, String.valueOf(httpPort));
+					} else if (sslBound && sslPort!=null){
+		                sipStackProperties.setProperty(LOCAL_SSL_PORT, String.valueOf(sslPort));
+					}
 				}
-				ipAddresses.addAll(cachedAnyLocalAddresses);
-			}
-		} else {
-			if(logger.isLoggingEnabled(StackLogger.TRACE_TRACE)) {
-				logger.logTrace("Adding " + address + " to the list of IPs to send");
-			}
-			ipAddresses.add(address);
-		}		 
-		
-		String httpPortString = sipStackProperties.getProperty(LOCAL_HTTP_PORT);
-		String sslPortString = sipStackProperties.getProperty(LOCAL_SSL_PORT);
+				
+				for (String ipAddress : ipAddresses) {
+					if(ipAddress == null) {
+						if(logger.isLoggingEnabled(StackLogger.TRACE_TRACE)) {
+							logger.logTrace("Following IpAddress [" + ipAddress + "] is null not pinging the LB for that null IP or it will cause routing issues");
+						}				
+					} else {
+						if(logger.isLoggingEnabled(StackLogger.TRACE_TRACE)) {
+							logger.logTrace("Creating new SIP Node for [" + ipAddress + "] to be added to the list for pinging the LB");
+						}	
+						SIPNode node = new SIPNode(hostName, ipAddress);
+						SIPNode previousValue = sipNodes.putIfAbsent(ipAddress, node);
+						if(previousValue == null) {
+							if(logger.isLoggingEnabled(StackLogger.TRACE_TRACE)) {
+								logger.logTrace("Added a sip Node with the key [" + ipAddress + "]");
+							}
+						} else {
+							node = previousValue;
+							if(logger.isLoggingEnabled(StackLogger.TRACE_TRACE)) {
+								logger.logTrace("SIPNode " + node +  " was already present");
+							}
+						}
 
-		if(httpPortString==null && sslPortString==null){
-			logger.logWarning("HTTP or HTTPS port couldn't be retrieved from System properties, trying with JMX");
-			Integer httpPort = null;
-			Boolean httpBound = false;
-			Integer sslPort = null;
-			Boolean sslBound = false;
-
-			MBeanServer mBeanServer = ManagementFactory.getPlatformMBeanServer();
-			try {
-                // https://telestax.atlassian.net/browse/JSIPHA-4 defaulting to standard-sockets
-                String socketBindingGroup = sipStackProperties.getProperty(SOCKET_BINDING_GROUP, "standard-sockets");
-				ObjectName http = new ObjectName("jboss.as:socket-binding-group=" + socketBindingGroup + ",socket-binding=http");
-				httpPort = (Integer) mBeanServer.getAttribute(http, "boundPort");
-				httpBound = (Boolean) mBeanServer.getAttribute(http, "bound");
-
-				ObjectName https = new ObjectName("jboss.as:socket-binding-group=" + socketBindingGroup + ",socket-binding=https");
-				sslPort = (Integer) mBeanServer.getAttribute(https, "boundPort");
-				sslBound = (Boolean) mBeanServer.getAttribute(https, "bound");
-				if(logger.isLoggingEnabled(StackLogger.TRACE_TRACE)) {
-					logger.logTrace("Dound httpPort " + httpPort + " and sslPort " + sslPort);
-				}
-			} catch (Exception e) {} //Ignore any exceptions
-
-			if(httpBound && httpPort!=null){
-				sipStackProperties.setProperty(LOCAL_HTTP_PORT, String.valueOf(httpPort));
-			} else if (sslBound && sslPort!=null){
-                sipStackProperties.setProperty(LOCAL_SSL_PORT, String.valueOf(sslPort));
+						int httpPort = 0;
+						int sslPort = 0;
+					
+						if(httpPortString != null) {
+							httpPort = Integer.parseInt(httpPortString);
+							node.getProperties().put("httpPort", httpPort);
+						}
+						if(sslPortString != null) {
+							sslPort = Integer.parseInt(sslPortString);
+							node.getProperties().put("sslPort", sslPort);
+						}
+					
+						if(sipTcpPort != null) node.getProperties().put("tcpPort", sipTcpPort);
+						if(sipUdpPort != null) node.getProperties().put("udpPort", sipUdpPort);
+						if(sipWsPort != null) node.getProperties().put("wsPort", sipWsPort);
+						// https://github.com/RestComm/jain-sip.ha/issues/5
+						if(sipWssPort != null) node.getProperties().put("wssPort", sipWssPort);
+						if(sipTlsPort != null) node.getProperties().put("tlsPort", sipTlsPort);
+						if(sipSctpPort != null) node.getProperties().put("sctpPort", sipTlsPort);
+						
+						if(jvmRoute != null) node.getProperties().put("jvmRoute", jvmRoute);
+						
+						node.getProperties().put("version", System.getProperty("org.mobicents.server.version", "0"));
+						
+						if(gracefullyShuttingDown) {
+							if(logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+								logger.logDebug("Adding GRACEFUL_SHUTDOWN prop to following SIP Node " + node);
+							}
+							Map<String, Serializable> properties = node.getProperties();
+							properties.put("GRACEFUL_SHUTDOWN", "true");
+						}
+						
+						if(logger.isLoggingEnabled(StackLogger.TRACE_TRACE)) {
+							logger.logTrace("Added node [" + node + "] to the list for pinging the LB");
+						}	
+					}
+				}		
 			}
 		}
-		
-		for (String ipAddress : ipAddresses) {
-			if(ipAddress == null) {
-				if(logger.isLoggingEnabled(StackLogger.TRACE_TRACE)) {
-					logger.logTrace("Following IpAddress [" + ipAddress + "] is null not pinging the LB for that null IP or it will cause routing issues");
-				}				
-			} else {
-				if(logger.isLoggingEnabled(StackLogger.TRACE_TRACE)) {
-					logger.logTrace("Creating new SIP Node for [" + ipAddress + "] to be added to the list for pinging the LB");
-				}	
-				SIPNode node = new SIPNode(hostName, ipAddress);			
-
-				int httpPort = 0;
-				int sslPort = 0;
-			
-				if(httpPortString != null) {
-					httpPort = Integer.parseInt(httpPortString);
-					node.getProperties().put("httpPort", httpPort);
-				}
-				if(sslPortString != null) {
-					sslPort = Integer.parseInt(sslPortString);
-					node.getProperties().put("sslPort", sslPort);
-				}
-			
-			
-				if(sipTcpPort != null) node.getProperties().put("tcpPort", sipTcpPort);
-				if(sipUdpPort != null) node.getProperties().put("udpPort", sipUdpPort);
-				if(sipWsPort != null) node.getProperties().put("wsPort", sipWsPort);
-				// https://github.com/RestComm/jain-sip.ha/issues/5
-				if(sipWssPort != null) node.getProperties().put("wssPort", sipWssPort);
-				if(sipTlsPort != null) node.getProperties().put("tlsPort", sipTlsPort);
-				
-				if(jvmRoute != null) node.getProperties().put("jvmRoute", jvmRoute);
-				//, port,
-				//		transports, jvmRoute, httpPort, sslPort, null);
-				node.getProperties().put("version", System.getProperty("org.mobicents.server.version", "0"));
-				if(gracefullyShuttingDown) {
-					if(logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
-						logger.logDebug("Adding GRACEFUL_SHUTDOWN prop to following SIP Node " + node);
-					}
-					Map<String, Serializable> properties = node.getProperties();
-					properties.put("GRACEFUL_SHUTDOWN", "true");
-				}
-				info.add(node);
-				if(logger.isLoggingEnabled(StackLogger.TRACE_TRACE)) {
-					logger.logTrace("Added node [" + node + "] to the list for pinging the LB");
-				}	
-			}
-		}		
-		
-		return info;
 	}
 	
 	/**
 	 * @param info
 	 */
-	protected void sendKeepAliveToBalancers(ArrayList<SIPNode> info) {
+	protected void sendKeepAliveToBalancers() {
+		ArrayList<SIPNode> info = new ArrayList<SIPNode>(sipNodes.values());
 		if(logger.isLoggingEnabled(StackLogger.TRACE_TRACE)) {
             logger.logTrace("Pinging balancers with info[" + info + "]");
         }
@@ -632,10 +661,6 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
                         logger.logWarning("All connectors are unreachable from the balancer");
                     }
                 }
-                if(logger.isLoggingEnabled(StackLogger.TRACE_TRACE)) {
-                    logger.logTrace("Pinging balancers with info[" + info + "]");
-                }
-				
 				if(logger.isLoggingEnabled(StackLogger.TRACE_TRACE)) {
 				    logger.logTrace("Pinging the LB with the following Node Info [" + info + "]");
 				}
@@ -715,7 +740,9 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 	/**
 	 * @param info
 	 */
-	protected void removeNodesFromBalancers(ArrayList<SIPNode> info) {
+	protected void removeNodesFromBalancers() {
+		ArrayList<SIPNode> info = new ArrayList<SIPNode>(sipNodes.values());
+		
 		Thread.currentThread().setContextClassLoader(NodeRegisterRMIStub.class.getClassLoader());
 		for(SipLoadBalancer balancerDescription:new HashSet<SipLoadBalancer>(register.values())) {
 			try {
@@ -758,7 +785,7 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 		@SuppressWarnings("unchecked")
 		@Override
 		public void run() {			
-			sendKeepAliveToBalancers(sipNodes);
+			sendKeepAliveToBalancers();
 		}
 	}
 
@@ -851,7 +878,7 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 		this.gracefullyShuttingDown = gracefullyShuttingDown;
 		// forcing keep alive sending to update the nodes in the LB with the info
 		// that the nodes are shutting down 
-		sendKeepAliveToBalancers(sipNodes);
+		sendKeepAliveToBalancers();
 	}
 
 	public SipLoadBalancer[] getLoadBalancers() {
@@ -861,21 +888,21 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 
 	public void addSipConnector(ListeningPoint listeningPoint) {
 		if(logger.isLoggingEnabled(StackLogger.TRACE_INFO)){
-			logger.logInfo("Adding Listening Point to be using the Load Balancer for outbound traffic " + listeningPoint);
+			logger.logInfo("Adding Listening Point to be using the Load Balancer for outbound traffic " + listeningPoint.getIPAddress() + ":" + listeningPoint.getPort() + "/" + listeningPoint.getTransport());
 			logger.logInfo("Recomputing SIP Nodes to be sent to the LB");
 		}
 		// https://github.com/RestComm/jain-sip.ha/issues/3 we restrict only if one connector is passed forcefully this way
 		useLoadBalancerForAllConnectors = false;
-		sipNodes = getConnectorsAsSIPNode();
 		sipConnectors.add(listeningPoint);
+		updateConnectorsAsSIPNode();
 	}
 
 	public void removeSipConnector(ListeningPoint listeningPoint) {
 		if(logger.isLoggingEnabled(StackLogger.TRACE_INFO)){
-			logger.logInfo("Removing Listening Point to be using the Load Balancer for outbound traffic " + listeningPoint);
+			logger.logInfo("Removing Listening Point to be using the Load Balancer for outbound traffic " + listeningPoint.getIPAddress() + ":" + listeningPoint.getPort() + "/" + listeningPoint.getTransport());
 			logger.logInfo("Recomputing SIP Nodes to be sent to the LB");
 		}
-		sipNodes = getConnectorsAsSIPNode();
 		sipConnectors.remove(listeningPoint);
+		updateConnectorsAsSIPNode();
 	}
 }
