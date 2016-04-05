@@ -644,6 +644,10 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 	 * @param info
 	 */
 	protected void sendKeepAliveToBalancers() {
+		if(sipNodes.isEmpty()) {
+    		logger.logInfo("Computing SIP Nodes to be sent to the LB as the list is currently empty");
+    		updateConnectorsAsSIPNode();
+		}
 		ArrayList<SIPNode> info = new ArrayList<SIPNode>(sipNodes.values());
 		if(logger.isLoggingEnabled(StackLogger.TRACE_TRACE)) {
             logger.logTrace("Pinging balancers with info[" + info + "]");
