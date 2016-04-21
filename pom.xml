@@ -55,7 +55,8 @@
 
 	<modules>
 		<module>core</module>
-    		<module>hazelcast-backend</module>
+    	<module>hazelcast-backend</module>
+		<module>infinispan-backend</module>
   	</modules>
 
 	<dependencies>
