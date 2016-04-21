@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<infinispan>
+      
+	<global>
+		<globalJmxStatistics>
+		</globalJmxStatistics>
+		<transport clusterName="jain-sip-ha-infinispan">
+			<properties>
+				<property name="configurationFile" value="jgroups-udp.xml" />
+			</properties>
+		</transport>
+	</global>
+	
+	<default>
+		<clustering mode="repl">
+			<sync/>
+		</clustering>
+	</default>
+
+</infinispan>
