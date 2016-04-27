@@ -201,6 +201,7 @@ public class SimpleB2BUA implements SipListener {
 			TransactionTerminatedEvent txTerminatedEvent) {}
 
 	public void processDialogTerminated(DialogTerminatedEvent dte) {
+		((SipStackImpl)sipStack).getStackLogger().logInfo("dialog terminated: "+dte.getDialog().getDialogId());
 		dte.getDialog().setApplicationData(null);
 	}
 	
