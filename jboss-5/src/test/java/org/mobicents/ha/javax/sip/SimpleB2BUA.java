@@ -53,7 +53,9 @@ import javax.sip.header.HeaderFactory;
 import javax.sip.message.MessageFactory;
 import javax.sip.message.Request;
 
+import org.jboss.cache.Fqn;
 import org.mobicents.ha.javax.sip.cache.ManagedMobicentsSipCache;
+import org.mobicents.ha.javax.sip.cache.MobicentsSipCache;
 import org.mobicents.tools.sip.balancer.NodeRegisterRMIStub;
 import org.mobicents.tools.sip.balancer.SIPNode;
 
@@ -233,6 +235,8 @@ public class SimpleB2BUA implements SipListener {
 	                }
                 }
                 sipProvider.removeSipListener(this);
+                ((MobicentsSipCache)((ClusteredSipStack)sipProvider.getSipStack()).getSipCache()).getMobicentsCache().getJBossCache().remove(Fqn.fromString("DIALOG_IDS"), "outgoingDialogId");
+                ((MobicentsSipCache)((ClusteredSipStack)sipProvider.getSipStack()).getSipCache()).getMobicentsCache().getJBossCache().remove(Fqn.fromString("DIALOG_IDS"), "incomingDialogId");
                 sipStack.deleteSipProvider(sipProvider);                
                 sipProviderIterator = sipStack.getSipProviders();
             }

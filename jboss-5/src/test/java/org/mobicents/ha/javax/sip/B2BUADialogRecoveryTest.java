@@ -84,9 +84,9 @@ import junit.framework.TestCase;
  * @author <A HREF="mailto:jean.deruelle@gmail.com">Jean Deruelle</A>
  *
  */
-public class B2BUADialogRecoveryTest extends TestCase {
-
-	public static final String IP_ADDRESS = "192.168.10.213";
+public class B2BUADialogRecoveryTest extends TestCase {	
+	
+	private final String IP_ADDRESS = TestConstants.getIpAddressFromProperties();
 	
     public static final int BALANCER_PORT = 5050;
 
@@ -110,7 +110,7 @@ public class B2BUADialogRecoveryTest extends TestCase {
 
         private SipStack sipStack;
 
-        private static final String myAddress = IP_ADDRESS;
+        private final String myAddress = IP_ADDRESS;
 
         private String stackName;
 
@@ -145,7 +145,7 @@ public class B2BUADialogRecoveryTest extends TestCase {
             this.stackName = stackName;
             this.myPort = myPort;
             this.callerSendsBye = callerSendsBye;
-            System.setProperty("jgroups.bind_addr", IP_ADDRESS);
+            System.setProperty("jgroups.bind_addr", TestConstants.getIpAddressFromProperties());
             System.setProperty("java.net.preferIPv4Stack", "true");
         }
 
@@ -423,7 +423,7 @@ public class B2BUADialogRecoveryTest extends TestCase {
                 notify.addHeader(headerFactory.createHeader(SubscriptionStateHeader.NAME, SubscriptionStateHeader.ACTIVE));
                 notify.addHeader(headerFactory.createHeader(EventHeader.NAME, "presence"));
                 ((SipURI)notify.getRequestURI()).setUser(null);
-                ((SipURI)notify.getRequestURI()).setHost(IP_ADDRESS);
+                ((SipURI)notify.getRequestURI()).setHost(myAddress);
                 ((SipURI)notify.getRequestURI()).setPort(5080);
                 st.getDialog().sendRequest(sipProvider.getNewClientTransaction(notify));
             } catch (Exception ex) {
@@ -632,7 +632,7 @@ public class B2BUADialogRecoveryTest extends TestCase {
 
         public boolean callerSendsBye = true;
         
-        private static final String myAddress = IP_ADDRESS;
+        private final String myAddress = IP_ADDRESS;
 
         public int myPort = 5050;
 
@@ -924,7 +924,7 @@ public class B2BUADialogRecoveryTest extends TestCase {
             Properties properties = new Properties();
             // If you want to try TCP transport change the following to
             String transport = "udp";
-            String peerHostPort = IP_ADDRESS + ":" + 5080;
+            String peerHostPort = myAddress + ":" + 5080;
             //properties.setProperty("javax.sip.OUTBOUND_PROXY", peerHostPort + "/"
             //      + transport);
             // If you want to use UDP then uncomment this.
@@ -951,7 +951,11 @@ public class B2BUADialogRecoveryTest extends TestCase {
             try {
                 // Create SipStack object
                 sipStack = sipFactory.createSipStack(properties);
-                System.out.println("createSipStack " + sipStack);
+                if(sipStack instanceof ClusteredSipStack){
+                	System.out.println("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");                	
+                }
+                System.out.println("####################################");
+                System.out.println("createSipStack " + sipStack.getClass().getName());
             } catch (PeerUnavailableException e) {
                 // could not find
                 // gov.nist.jain.protocol.ip.sip.SipStackImpl
@@ -965,7 +969,7 @@ public class B2BUADialogRecoveryTest extends TestCase {
                 headerFactory = sipFactory.createHeaderFactory();
                 addressFactory = sipFactory.createAddressFactory();
                 messageFactory = sipFactory.createMessageFactory();
-                udpListeningPoint = sipStack.createListeningPoint(IP_ADDRESS, myPort, "udp");
+                udpListeningPoint = sipStack.createListeningPoint(myAddress, myPort, "udp");
                 sipProvider = sipStack.createSipProvider(udpListeningPoint);
                 Shootist listener = this;
                 sipProvider.addSipListener(listener);
@@ -1030,7 +1034,7 @@ public class B2BUADialogRecoveryTest extends TestCase {
                         Request.INVITE, callIdHeader, cSeqHeader, fromHeader,
                         toHeader, viaHeaders, maxForwards);
                 // Create contact headers
-                String host = IP_ADDRESS;
+                String host = myAddress;
 
                 SipURI contactUrl = addressFactory.createSipURI(fromName, host);
                 contactUrl.setPort(udpListeningPoint.getPort());
@@ -1194,14 +1198,14 @@ public class B2BUADialogRecoveryTest extends TestCase {
 	 *  								BYE (CSeq 3)
 	 *  						------------------------------------->
      */
-    /*public void testDialogFailoverReInviteSubsNotify() throws Exception {
+    public void testDialogFailoverReInviteSubsNotify() throws Exception {
 
         shootist = new Shootist("shootist_subsnotify", true);
         shootme = new Shootme("shootme_subsnotify", 5070, true);
 
-        b2buaNode1 = new SimpleB2BUA("b2buaNode1_subsnotify", 5080, IP_ADDRESS, ListeningPoint.UDP, ReplicationStrategy.ConfirmedDialogNoApplicationData, false);
+        b2buaNode1 = new SimpleB2BUA("b2buaNode1_subsnotify", 5080, TestConstants.getIpAddressFromProperties(), ListeningPoint.UDP, ReplicationStrategy.ConfirmedDialogNoApplicationData, false);
         Thread.sleep(5000);
-        b2buaNode2 = new SimpleB2BUA("b2buaNode2_subsnotify", 5081, IP_ADDRESS, ListeningPoint.UDP, ReplicationStrategy.ConfirmedDialogNoApplicationData, false);
+        b2buaNode2 = new SimpleB2BUA("b2buaNode2_subsnotify", 5081, TestConstants.getIpAddressFromProperties(), ListeningPoint.UDP, ReplicationStrategy.ConfirmedDialogNoApplicationData, false);
 
         shootme.init();
         shootist.setSendSubscribe(true);
@@ -1224,8 +1228,8 @@ public class B2BUADialogRecoveryTest extends TestCase {
         shootist.stop();
         shootme.stop();
         Thread.sleep(5000);
-    }*/
-    
+    }
+   
     /**
      * UA1			B2BUA (Engine1)			B2BUA (Engine2)			UA2
 	 * INVITE (CSeq 1)
@@ -1252,9 +1256,9 @@ public class B2BUADialogRecoveryTest extends TestCase {
         shootist = new Shootist("shootist_reinvite", true);
         shootme = new Shootme("shootme_reinvite", 5070, true);
 
-        b2buaNode1 = new SimpleB2BUA("b2buaNode1_reinvite", 5080, IP_ADDRESS, ListeningPoint.UDP, ReplicationStrategy.ConfirmedDialogNoApplicationData, false);
+        b2buaNode1 = new SimpleB2BUA("b2buaNode1_reinvite", 5080, TestConstants.getIpAddressFromProperties(), ListeningPoint.UDP, ReplicationStrategy.ConfirmedDialogNoApplicationData, false);
         Thread.sleep(5000);
-        b2buaNode2 = new SimpleB2BUA("b2buaNode2_reinvite", 5081, IP_ADDRESS, ListeningPoint.UDP, ReplicationStrategy.ConfirmedDialogNoApplicationData, false);
+        b2buaNode2 = new SimpleB2BUA("b2buaNode2_reinvite", 5081, TestConstants.getIpAddressFromProperties(), ListeningPoint.UDP, ReplicationStrategy.ConfirmedDialogNoApplicationData, false);
 
         shootme.init();
         shootist.init("ReInvite");        

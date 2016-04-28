@@ -101,18 +101,9 @@ import junit.framework.TestCase;
  */
 public class VariableRequestDirectionRecoveryTest extends TestCase {
 
-	private static String getIpAddressFromProperties(){
-		Properties p = new Properties();
-		try {
-			p.load(VariableRequestDirectionRecoveryTest.class.getClassLoader().getResourceAsStream("test.properties"));
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-		return p.getProperty("IP_ADDRESS","127.0.0.1");
-	}
-	
-//	public static final String IP_ADDRESS = getIpAddressFromProperties();
-	public static final String IP_ADDRESS = "127.0.0.1";
+		
+	public static final String IP_ADDRESS = TestConstants.getIpAddressFromProperties();
+
 	public static final String TRACE_LEVEL = "32";
 	
     public static final int BALANCER_PORT = 5050;
