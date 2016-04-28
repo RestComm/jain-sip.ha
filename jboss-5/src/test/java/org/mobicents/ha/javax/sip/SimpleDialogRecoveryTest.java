@@ -108,7 +108,7 @@ public class SimpleDialogRecoveryTest extends TestCase {
 	}
 	
 //	public static final String IP_ADDRESS = getIpAddressFromProperties();
-	public static final String IP_ADDRESS = "192.168.0.10";
+	public static final String IP_ADDRESS = "192.168.10.174";
 	public static final String TRACE_LEVEL = "32";
 	
     public static final int BALANCER_PORT = 5050;

@@ -95,7 +95,7 @@ public class SimpleB2BUA implements SipListener {
         properties.setProperty("org.mobicents.ha.javax.sip.REPLICATION_STRATEGY", replicationStrategy.toString());
         properties.setProperty(ManagedMobicentsSipCache.STANDALONE, "true");
         System.setProperty("jgroups.bind_addr", ipAddress);
-        System.setProperty("jgroups.udp.mcast_addr", "FFFF::232.5.5.5");
+        System.setProperty("jgroups.udp.mcast_addr", "232.5.5.5");
         System.setProperty("jboss.server.log.threshold", "DEBUG");
         System.setProperty("jbosscache.config.validate", "false");
 		initStack(ipAddress, transport);
@@ -201,6 +201,7 @@ public class SimpleB2BUA implements SipListener {
 			TransactionTerminatedEvent txTerminatedEvent) {}
 
 	public void processDialogTerminated(DialogTerminatedEvent dte) {
+		((SipStackImpl)sipStack).getStackLogger().logInfo("dialog terminated: "+dte.getDialog().getDialogId());
 		dte.getDialog().setApplicationData(null);
 	}
 	

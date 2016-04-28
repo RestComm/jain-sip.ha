@@ -86,7 +86,7 @@ import junit.framework.TestCase;
  */
 public class B2BUADialogRecoveryTest extends TestCase {
 
-	public static final String IP_ADDRESS = "192.168.0.10";
+	public static final String IP_ADDRESS = "192.168.10.213";
 	
     public static final int BALANCER_PORT = 5050;
 
@@ -1194,7 +1194,7 @@ public class B2BUADialogRecoveryTest extends TestCase {
 	 *  								BYE (CSeq 3)
 	 *  						------------------------------------->
      */
-    public void testDialogFailoverReInviteSubsNotify() throws Exception {
+    /*public void testDialogFailoverReInviteSubsNotify() throws Exception {
 
         shootist = new Shootist("shootist_subsnotify", true);
         shootme = new Shootme("shootme_subsnotify", 5070, true);
@@ -1224,7 +1224,7 @@ public class B2BUADialogRecoveryTest extends TestCase {
         shootist.stop();
         shootme.stop();
         Thread.sleep(5000);
-    }
+    }*/
     
     /**
      * UA1			B2BUA (Engine1)			B2BUA (Engine2)			UA2

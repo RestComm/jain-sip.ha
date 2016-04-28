@@ -92,7 +92,7 @@ import org.mobicents.tools.sip.balancer.BalancerRunner;
  */
 public class ProxyEarlyDialogRecoveryOn1xxTest extends TestCase {
 
-	public static final String IP_ADDRESS = "192.168.0.10";
+	public static final String IP_ADDRESS = "192.168.10.174";
 	
     public static final int BALANCER_PORT = 5060;
 
@@ -1437,7 +1437,7 @@ public class ProxyEarlyDialogRecoveryOn1xxTest extends TestCase {
     	balancer.start(properties);
     	
         shootist = new Shootist("shootist_reinvite", true);
-        shootme = new Shootme("shootme_reinvite", 5070, true);
+        shootme = new Shootme("shootme_reinvite", 5071, true);
 
         proxyNode1 = new SimpleStatefulProxy("proxyNode1_reinvite", IP_ADDRESS, 5080, ListeningPoint.UDP, ReplicationStrategy.EarlyDialog);
         Thread.sleep(5000);

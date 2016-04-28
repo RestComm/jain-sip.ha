@@ -31,6 +31,7 @@ import gov.nist.javax.sip.address.AddressFactoryImpl;
 import java.io.IOException;
 import java.util.Properties;
 
+import javax.sip.ListeningPoint;
 import javax.sip.address.Address;
 import javax.sip.address.SipURI;
 
@@ -229,6 +230,22 @@ public class RoundRobinLoadBalancerElectorTest  extends TestCase {
 				throws IllegalArgumentException {
 			// TODO Auto-generated method stub
 			return false;
+		}
+
+		public void setGracefulShutdown(SipLoadBalancer sipLoadBalancer,
+				boolean gracefullyShuttingDown) {
+			// TODO Auto-generated method stub
+			
+		}
+
+		public void addSipConnector(ListeningPoint listeningPoint) {
+			// TODO Auto-generated method stub
+			
+		}
+
+		public void removeSipConnector(ListeningPoint listeningPoint) {
+			// TODO Auto-generated method stub
+			
 		}
 		
 	}
