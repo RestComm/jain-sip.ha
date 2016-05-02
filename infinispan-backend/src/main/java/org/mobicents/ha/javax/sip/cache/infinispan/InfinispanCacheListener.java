@@ -1,8 +1,13 @@
 package org.mobicents.ha.javax.sip.cache.infinispan;
 
 import org.infinispan.notifications.Listener;
+import org.infinispan.notifications.cachelistener.annotation.CacheEntryCreated;
 import org.infinispan.notifications.cachelistener.annotation.CacheEntryRemoved;
 import org.infinispan.notifications.cachelistener.event.CacheEntryRemovedEvent;
+//import org.infinispan.notifications.cachelistener.event.CacheEntryRemovedEvent;
+import org.infinispan.notifications.cachemanagerlistener.annotation.CacheStarted;
+import org.infinispan.notifications.cachemanagerlistener.annotation.CacheStopped;
+import org.infinispan.notifications.cachemanagerlistener.event.Event;
 import org.mobicents.ha.javax.sip.ClusteredSipStack;
 
 
@@ -27,8 +32,9 @@ public class InfinispanCacheListener {
 		if (clusteredlogger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
 			clusteredlogger.logDebug("sipStack " + clusteredSipStack + 
 					" entry removed : " + event.getKey() + " - " + event.getValue());
-		}		
+		}
 		
+		clusteredSipStack.remoteDialogRemoval((String)event.getKey());
 	}
 	
 }

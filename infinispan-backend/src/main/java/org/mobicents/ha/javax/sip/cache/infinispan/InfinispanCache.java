@@ -115,10 +115,11 @@ public class InfinispanCache implements SipCache {
 		if (dialogId == null) 
 			throw new SipCacheException("No dialogId");
 		
-		if (dialogCacheData != null)
+		if (dialogCacheData != null){
 			dialogCacheData.removeDialog(dialogId);
-		else
+		}else{
 			throw new SipCacheException("No SIPClientTransactionCache");
+		}
 	}
 	
 	public void evictDialog(String dialogId) {
@@ -198,8 +199,7 @@ public class InfinispanCache implements SipCache {
 				
 			}
 			
-			InfinispanCacheListener listener = new InfinispanCacheListener(stack);
-			cm.addListener(listener);
+			InfinispanCacheListener dialogsCacheListener = new InfinispanCacheListener(stack);
 			
 			dialogs = cm.getCache("cache.dialogs");
 			appDataMap = cm.getCache("cache.appdata");
@@ -207,6 +207,8 @@ public class InfinispanCache implements SipCache {
 			serverTransactionsApp = cm.getCache("cache.serverTXApp");
 			clientTransactions = cm.getCache("cache.clientTX");
 			clientTransactionsApp = cm.getCache("cache.clientTXApp");
+			
+			dialogs.addListener(dialogsCacheListener);
 			
 		} catch (IOException e) {
 			clusteredlogger.logError("Failed to init Inifinispan CacheManager: could not read configuration file from path \"" + configurationPath + "\"", e);
