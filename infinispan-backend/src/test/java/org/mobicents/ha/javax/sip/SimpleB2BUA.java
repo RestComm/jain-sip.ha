@@ -235,9 +235,11 @@ public class SimpleB2BUA implements SipListener {
 	                }
                 }
                 sipProvider.removeSipListener(this);
-                ((InfinispanCache)((ClusteredSipStack)sipProvider.getSipStack()).getSipCache()).getCacheManager().getCache("DIALOG_IDS").remove("outgoingDialogId");
-                ((InfinispanCache)((ClusteredSipStack)sipProvider.getSipStack()).getSipCache()).getCacheManager().getCache("DIALOG_IDS").remove("incomingDialogId");
-                ((InfinispanCache)((ClusteredSipStack)sipProvider.getSipStack()).getSipCache()).getCacheManager().getCache("STX_IDS").remove("serverTransactionId");
+                if (stopSipStack){
+                	((InfinispanCache)((ClusteredSipStack)sipProvider.getSipStack()).getSipCache()).getCacheManager().getCache("DIALOG_IDS").remove("outgoingDialogId");
+                	((InfinispanCache)((ClusteredSipStack)sipProvider.getSipStack()).getSipCache()).getCacheManager().getCache("DIALOG_IDS").remove("incomingDialogId");
+                	((InfinispanCache)((ClusteredSipStack)sipProvider.getSipStack()).getSipCache()).getCacheManager().getCache("STX_IDS").remove("serverTransactionId");
+                }
                 sipStack.deleteSipProvider(sipProvider);                
                 sipProviderIterator = sipStack.getSipProviders();
             }
