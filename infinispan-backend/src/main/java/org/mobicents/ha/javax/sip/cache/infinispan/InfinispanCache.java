@@ -195,7 +195,11 @@ public class InfinispanCache implements SipCache {
 			}
 			if (cm == null) {
 				cm = CacheManagerHolder.getManager(configurationPath);
+				
 			}
+			
+			InfinispanCacheListener listener = new InfinispanCacheListener(stack);
+			cm.addListener(listener);
 			
 			dialogs = cm.getCache("cache.dialogs");
 			appDataMap = cm.getCache("cache.appdata");
