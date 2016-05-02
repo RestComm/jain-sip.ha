@@ -29,7 +29,9 @@ import org.infinispan.configuration.cache.CacheMode;
 import org.infinispan.configuration.cache.Configuration;
 import org.infinispan.configuration.cache.ConfigurationBuilder;
 import org.infinispan.configuration.global.GlobalConfigurationBuilder;
+import org.infinispan.manager.CacheManager;
 import org.infinispan.manager.DefaultCacheManager;
+import org.infinispan.manager.EmbeddedCacheManager;
 import org.jgroups.conf.PropertyConverters.Default;
 import org.mobicents.ha.javax.sip.ClusteredSipStack;
 import org.mobicents.ha.javax.sip.cache.SipCache;
@@ -233,5 +235,9 @@ public class InfinispanCache implements SipCache {
 	
 	public void setClusteredSipStack(ClusteredSipStack clusteredStack) {
 		stack = clusteredStack;
+	}
+	
+	public EmbeddedCacheManager getCacheManager(){
+		return cm;
 	}
 }

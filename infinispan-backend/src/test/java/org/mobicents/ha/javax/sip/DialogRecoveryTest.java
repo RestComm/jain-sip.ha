@@ -394,9 +394,6 @@ public class DialogRecoveryTest extends TestCase {
 	        properties.setProperty(
 					"org.mobicents.ha.javax.sip.CACHE_CLASS_NAME",
 					"org.mobicents.ha.javax.sip.cache.infinispan.InfinispanCache");
-			properties.setProperty(
-					"org.mobicents.ha.javax.sip.HAZELCAST_INSTANCE_NAME",
-					cacheName);
 			properties.setProperty("org.mobicents.ha.javax.sip.REPLICATE_APPLICATION_DATA", "true");
 
 			try {
