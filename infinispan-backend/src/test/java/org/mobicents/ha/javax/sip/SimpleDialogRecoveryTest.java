@@ -79,9 +79,7 @@ import javax.sip.message.MessageFactory;
 import javax.sip.message.Request;
 import javax.sip.message.Response;
 
-import org.jboss.cache.Fqn;
-import org.mobicents.ha.javax.sip.cache.ManagedMobicentsSipCache;
-import org.mobicents.ha.javax.sip.cache.MobicentsSipCache;
+import org.mobicents.ha.javax.sip.cache.infinispan.InfinispanCache;
 
 import junit.framework.TestCase;
 /**
@@ -306,7 +304,7 @@ public class SimpleDialogRecoveryTest extends TestCase {
             this.myPort = myPort;
             this.callerSendsBye = callerSendsBye;
             System.setProperty("jgroups.bind_addr", IP_ADDRESS);
-            System.setProperty("jgroups.udp.mcast_addr", "FFFF::232.5.5.5");
+            System.setProperty("jgroups.udp.mcast_addr", "232.5.5.5"); //System.setProperty("jgroups.udp.mcast_addr", "FFFF::232.5.5.5");
             System.setProperty("jboss.server.log.threshold", "DEBUG");
             System.setProperty("java.net.preferIPv4Stack", "true");
             System.setProperty("jbosscache.config.validate", "false");
@@ -507,7 +505,8 @@ public class SimpleDialogRecoveryTest extends TestCase {
                 st.sendResponse(response);
 //                System.out.println("Dialog State is "
 //                        + serverTransactionId.getDialog().getState());
-                ((MobicentsSipCache)((ClusteredSipStack)sipProvider.getSipStack()).getSipCache()).getMobicentsCache().getJBossCache().put(Fqn.fromString("DIALOG_IDS"), "dialogId", dialog.getDialogId());
+                //((MobicentsSipCache)((ClusteredSipStack)sipProvider.getSipStack()).getSipCache()).getMobicentsCache().getJBossCache().put(Fqn.fromString("DIALOG_IDS"), "dialogId", dialog.getDialogId());
+                String dialogId = (String) ((InfinispanCache)((ClusteredSipStack)sipProvider.getSipStack()).getSipCache()).getCacheManager().getCache("DIALOG_IDS").put("dialogId", dialog.getDialogId());
                                 
                 sendNotify(SubscriptionStateHeader.PENDING);
                 
@@ -520,7 +519,8 @@ public class SimpleDialogRecoveryTest extends TestCase {
         
 
 		public void sendNotify(String state) {
-			String dialogId = (String) ((MobicentsSipCache)((ClusteredSipStack)sipProvider.getSipStack()).getSipCache()).getMobicentsCache().getJBossCache().get(Fqn.fromString("DIALOG_IDS"), "dialogId");
+			//String dialogId = (String) ((MobicentsSipCache)((ClusteredSipStack)sipProvider.getSipStack()).getSipCache()).getMobicentsCache().getJBossCache().get(Fqn.fromString("DIALOG_IDS"), "dialogId");
+			String dialogId = (String) ((InfinispanCache)((ClusteredSipStack)sipProvider.getSipStack()).getSipCache()).getCacheManager().getCache("DIALOG_IDS").get("dialogId");
 			Dialog dialog = ((ClusteredSipStack)sipStack).getDialog(dialogId);
 			try {
 				Request notify = dialog.createRequest(Request.NOTIFY);
@@ -605,8 +605,13 @@ public class SimpleDialogRecoveryTest extends TestCase {
             sipFactory.setPathName("org.mobicents.ha");
             Properties properties = new Properties();
             properties.setProperty("javax.sip.STACK_NAME", stackName);
-            properties.setProperty(ManagedMobicentsSipCache.STANDALONE, "true");
+            //properties.setProperty(ManagedMobicentsSipCache.STANDALONE, "true");
             properties.setProperty("org.mobicents.ha.javax.sip.REPLICATION_STRATEGY", "ConfirmedDialogNoApplicationData");
+            
+            properties.setProperty(
+    				"org.mobicents.ha.javax.sip.CACHE_CLASS_NAME",
+    				"org.mobicents.ha.javax.sip.cache.infinispan.InfinispanCache");
+            
             //properties.setProperty("javax.sip.OUTBOUND_PROXY", Integer
             //                .toString(BALANCER_PORT));
             // You need 16 for logging traces. 32 for debug + traces.
@@ -1155,7 +1160,7 @@ public class SimpleDialogRecoveryTest extends TestCase {
                 SipProvider sipProvider = sipProviderIterator.next();
                 ListeningPoint[] listeningPoints = sipProvider.getListeningPoints();
                 for (ListeningPoint listeningPoint : listeningPoints) {
-                    sipProvider.removeListeningPoint(listeningPoint);
+                	sipProvider.removeListeningPoint(listeningPoint);
                     sipStack.deleteListeningPoint(listeningPoint);
                     listeningPoints = sipProvider.getListeningPoints();
                 }
@@ -1172,7 +1177,7 @@ public class SimpleDialogRecoveryTest extends TestCase {
     }
 
     public void testDialogFailover() throws Exception {
-
+    	
         balancer = new Balancer(IP_ADDRESS, BALANCER_PORT);
         balancer.start();
 
