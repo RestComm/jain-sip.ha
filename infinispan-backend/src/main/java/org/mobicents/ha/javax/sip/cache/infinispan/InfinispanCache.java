@@ -29,6 +29,7 @@ import org.infinispan.configuration.cache.CacheMode;
 import org.infinispan.configuration.cache.Configuration;
 import org.infinispan.configuration.cache.ConfigurationBuilder;
 import org.infinispan.configuration.global.GlobalConfigurationBuilder;
+import org.infinispan.manager.CacheContainer;
 import org.infinispan.manager.CacheManager;
 import org.infinispan.manager.DefaultCacheManager;
 import org.infinispan.manager.EmbeddedCacheManager;
@@ -75,7 +76,7 @@ public class InfinispanCache implements SipCache {
 	private Cache<String, Object> clientTransactions;
 	private Cache<String, Object> clientTransactionsApp;
 	
-	private DefaultCacheManager cm;
+	private CacheContainer cm;
 	
 	private SIPDialogCacheData dialogCacheData;
 	private SIPServerTransactionCacheData serverTXCacheData;
@@ -188,7 +189,7 @@ public class InfinispanCache implements SipCache {
 				try {
 					InitialContext context = new InitialContext();
 					String cacheManagerJndiName = configProperties.getProperty(INFINISPAN_CACHEMANAGER_JNDI_NAME);
-					cm = (DefaultCacheManager) context.lookup(cacheManagerJndiName);
+					cm = (CacheContainer) context.lookup(cacheManagerJndiName);
 				} catch (NamingException e) {
 					// Inifinispan CacheManager JNDI lookup failed: could not get InitialContext or lookup failed
 					clusteredlogger.logError("Inifinispan CacheManager JNDI lookup failed: could not get InitialContext or lookup failed", e);
@@ -243,7 +244,7 @@ public class InfinispanCache implements SipCache {
 		stack = clusteredStack;
 	}
 	
-	public EmbeddedCacheManager getCacheManager(){
+	public CacheContainer getCacheManager(){
 		return cm;
 	}
 }
