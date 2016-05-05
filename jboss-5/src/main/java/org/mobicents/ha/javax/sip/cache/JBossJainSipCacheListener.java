@@ -108,9 +108,11 @@ public class JBossJainSipCacheListener {
 			return ;
 		}
 		final Fqn fqn = nodeRemovedEvent.getFqn();
-		if (!nodeRemovedEvent.isOriginLocal() && clusteredlogger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
-			clusteredlogger.logDebug("sipStack " + clusteredSipStack + 
-					" Node removed : " + fqn);
+		if (!nodeRemovedEvent.isOriginLocal()) {
+			if(clusteredlogger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+				clusteredlogger.logDebug("sipStack " + clusteredSipStack + 
+						" Node removed : " + fqn);
+			}
 			clusteredSipStack.remoteDialogRemoval(fqn.getLastElementAsString());
 		}		
 	}
