@@ -1,23 +1,20 @@
 /*
- * JBoss, Home of Professional Open Source
- * Copyright 2011, Red Hat, Inc. and individual contributors
- * by the @authors tag. See the copyright.txt in the distribution for a
- * full listing of individual contributors.
+ * TeleStax, Open Source Cloud Communications
+ * Copyright 2011-2016, Telestax Inc and individual contributors
+ * by the @authors tag.
  *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
+ * This program is free software: you can redistribute it and/or modify
+ * under the terms of the GNU Affero General Public License as
+ * published by the Free Software Foundation; either version 3 of
  * the License, or (at your option) any later version.
  *
- * This software is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Affero General Public License for more details.
  *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
 package org.mobicents.ha.javax.sip;
@@ -36,6 +33,11 @@ import java.util.Iterator;
 import java.util.Properties;
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.logging.FileHandler;
+import java.util.logging.Handler;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import java.util.logging.SimpleFormatter;
 
 import javax.sip.ClientTransaction;
 import javax.sip.Dialog;
@@ -77,26 +79,30 @@ import javax.sip.message.Request;
 import javax.sip.message.Response;
 
 import junit.framework.TestCase;
+
+import org.mobicents.tools.sip.balancer.BalancerRunner;
+
 /**
- * This test aims to test Restcomm Jain Sip failover recovery.
- * Issue 1407 http://code.google.com/p/restcomm/issues/detail?id=1407
+ * This test aims to test Restcomm Jain Sip Early Dialog failover recovery.
  * 
  * @author <A HREF="mailto:jean.deruelle@gmail.com">Jean Deruelle</A>
+ * @author <A HREF="mailto:posfai.gergely@ext.alerant.hu">Gergely Posfai</A>
+ * @author <A HREF="mailto:kokuti.andras@ext.alerant.hu">Andras Kokuti</A>
  *
  */
-public class B2BUADialogRecoveryTest extends TestCase {	
+
+public class B2BUAEarlyDialogRecoveryOn1xxTest extends TestCase {
+
+	public final String IP_ADDRESS = TestConstants.getIpAddressFromProperties();
 	
-    private final String IP_ADDRESS = TestConstants.getIpAddressFromProperties();
-	
-    public static final int BALANCER_PORT = 5050;
+    public static final int BALANCER_PORT = 5060;
 
     private static AddressFactory addressFactory;
 
     private static MessageFactory messageFactory;
 
     private static HeaderFactory headerFactory;
-
-
+    
     Shootist shootist;
 
     Shootme shootme;
@@ -104,6 +110,10 @@ public class B2BUADialogRecoveryTest extends TestCase {
     SimpleB2BUA b2buaNode1;
     
     SimpleB2BUA b2buaNode2;
+    
+    BalancerRunner balancer; 
+    
+    boolean stopNodeOnReinvite = false;
 
     class Shootme implements SipListener {
 
@@ -114,7 +124,7 @@ public class B2BUADialogRecoveryTest extends TestCase {
 
         private String stackName;
 
-        public int myPort = 5070;
+        public int myPort = 5090;
 
         protected ServerTransaction inviteTid;
 
@@ -140,12 +150,12 @@ public class B2BUADialogRecoveryTest extends TestCase {
 		private boolean byeReceived;
 		private boolean subscribeTxComplete;
 		private boolean notifyTxComplete;
-
+		
         public Shootme(String stackName, int myPort, boolean callerSendsBye) {
             this.stackName = stackName;
             this.myPort = myPort;
             this.callerSendsBye = callerSendsBye;
-            System.setProperty("jgroups.bind_addr", TestConstants.getIpAddressFromProperties());
+            System.setProperty("jgroups.bind_addr", IP_ADDRESS);
             System.setProperty("java.net.preferIPv4Stack", "true");
         }
 
@@ -236,6 +246,11 @@ public class B2BUADialogRecoveryTest extends TestCase {
         	Dialog dialog = responseEvent.getDialog();
         	CSeqHeader cSeqHeader = (CSeqHeader)responseEvent.getResponse().getHeader(CSeqHeader.NAME);
         	try {
+        		if(stopNodeOnReinvite && responseEvent.getResponse().getStatusCode() == Response.RINGING) {
+                	// stop the sip stack w/o stopping the cache
+            		b2buaNode2.stopPingBalancer();
+                    b2buaNode2.stop(false);                     
+            	}
         		if(responseEvent.getResponse().getStatusCode() >= 200 && cSeqHeader.getMethod().equalsIgnoreCase(Request.INVITE)) {
 	        		Request ackRequest = dialog.createAck(cSeqHeader.getSeqNumber());
 	        		int port = 5080;
@@ -251,14 +266,14 @@ public class B2BUADialogRecoveryTest extends TestCase {
 	        		((SipURI)ackRequest.getRequestURI()).setPort(port);
 					dialog.sendAck(ackRequest);
 															
-					if(!secondReinviteSent) {
-						Thread.sleep(2000);
-						Request request = dialog.createRequest("INVITE");
-		                ((SipURI)request.getRequestURI()).setPort(5080);
-		                final ClientTransaction ct = sipProvider.getNewClientTransaction(request);
-		                dialog.sendRequest(ct);
-		                secondReinviteSent = true;
-					}
+//					if(!secondReinviteSent) {
+//						Thread.sleep(2000);
+//						Request request = dialog.createRequest("INVITE");
+//		                ((SipURI)request.getRequestURI()).setPort(5080);
+//		                final ClientTransaction ct = sipProvider.getNewClientTransaction(request);
+//		                dialog.sendRequest(ct);
+//		                secondReinviteSent = true;
+//					}
         		} else if(responseEvent.getResponse().getStatusCode() >= 200 && cSeqHeader.getMethod().equalsIgnoreCase(Request.NOTIFY)) {
         			notifyTxComplete = true;
         			Thread.sleep(5000);
@@ -290,7 +305,7 @@ public class B2BUADialogRecoveryTest extends TestCase {
             	Dialog dialog = serverTransaction.getDialog();
                 System.out.println("shootme: got an ACK! ");
                 System.out.println("Dialog State = " + dialog.getState());
-                firstTxComplete = true;     
+                firstTxComplete = true;                     
                 
                 // used in basic reinvite
                 if(!firstReinviteSent && !((FromHeader)requestEvent.getRequest().getHeader(FromHeader.NAME)).getAddress().getURI().toString().contains("ReInviteSubsNotify")) {
@@ -331,7 +346,7 @@ public class B2BUADialogRecoveryTest extends TestCase {
 
                 st.sendResponse(response);
 
-                Thread.sleep(1000);
+                Thread.sleep(3000);
                 
                 this.okResponse = messageFactory.createResponse(Response.OK,
                         request);
@@ -423,7 +438,7 @@ public class B2BUADialogRecoveryTest extends TestCase {
                 notify.addHeader(headerFactory.createHeader(SubscriptionStateHeader.NAME, SubscriptionStateHeader.ACTIVE));
                 notify.addHeader(headerFactory.createHeader(EventHeader.NAME, "presence"));
                 ((SipURI)notify.getRequestURI()).setUser(null);
-                ((SipURI)notify.getRequestURI()).setHost(myAddress);
+                ((SipURI)notify.getRequestURI()).setHost(IP_ADDRESS);
                 ((SipURI)notify.getRequestURI()).setPort(5080);
                 st.getDialog().sendRequest(sipProvider.getNewClientTransaction(notify));
             } catch (Exception ex) {
@@ -479,8 +494,10 @@ public class B2BUADialogRecoveryTest extends TestCase {
             sipFactory.setPathName("gov.nist");
             Properties properties = new Properties();
             properties.setProperty("javax.sip.STACK_NAME", stackName);
-            //properties.setProperty("javax.sip.OUTBOUND_PROXY", Integer
-            //                .toString(BALANCER_PORT));
+            String transport = "udp";
+            String peerHostPort = IP_ADDRESS + ":" + BALANCER_PORT;
+            properties.setProperty("javax.sip.OUTBOUND_PROXY", peerHostPort + "/"
+                  + transport);
             // You need 16 for logging traces. 32 for debug + traces.
             // Your code will limp at 32 but it is best for debugging.
             properties.setProperty("gov.nist.javax.sip.TRACE_LEVEL", "32");
@@ -524,7 +541,8 @@ public class B2BUADialogRecoveryTest extends TestCase {
 //                    }
 //                    this.dialog = (SIPDialog)serializedDialogs.iterator().next();
 //                }
-                sipStack.start();
+                sipStack.start();                              
+                
                 if(!callerSendsBye && this.dialog != null) {
                     try {
                        Request byeRequest = this.dialog.createRequest(Request.BYE);
@@ -542,8 +560,7 @@ public class B2BUADialogRecoveryTest extends TestCase {
                 fail("Unexpected exception");
             }
         }
-
-
+        
         private Collection<Dialog> simulateDialogSerialization(
                 Collection<Dialog> dialogs) {
             Collection<Dialog> serializedDialogs = new ArrayList<Dialog>();
@@ -605,10 +622,10 @@ public class B2BUADialogRecoveryTest extends TestCase {
 					fail("firstTxComplete " + firstTxComplete + " && subscribeTxComplete " + subscribeTxComplete + " && notifyComplete " + notifyTxComplete + " && firstReInviteComplete " + firstReInviteComplete + "&& secondReInviteComplete " + secondReInviteComplete + " && byeReceived " + byeReceived);
 				}
 			} else {
-				if(firstTxComplete && firstReInviteComplete && secondReInviteComplete && byeReceived) {
+				if(firstTxComplete && firstReInviteComplete && byeReceived) {
 					System.out.println("shootme state OK " );
 				} else {
-					fail("firstTxComplete " + firstTxComplete + " && firstReInviteComplete " + firstReInviteComplete + "&& secondReInviteComplete " + secondReInviteComplete + " && byeReceived " + byeReceived);
+					fail("firstTxComplete " + firstTxComplete + " && firstReInviteComplete " + firstReInviteComplete + " && byeReceived " + byeReceived);
 				}
 			}
 		}
@@ -650,7 +667,10 @@ public class B2BUADialogRecoveryTest extends TestCase {
 		private boolean subscribeTxComplete;
 
 		private String stackName;
-        
+
+		private boolean failoverOn1xx;
+		private boolean failoverOn2xx;
+		
         class ByeTask  extends TimerTask {
             Dialog dialog;
             public ByeTask(Dialog dialog)  {
@@ -713,7 +733,7 @@ public class B2BUADialogRecoveryTest extends TestCase {
 	            		long cseq = ((CSeqHeader) request.getHeader(CSeqHeader.NAME)).getSeqNumber();
 	            		switch ((int) cseq) {
 						case 1:
-							firstReInviteComplete = true;
+							firstReInviteComplete = true;							
 							// not used in basic reinvite
 							if(sendSubscribe) {
 								try {
@@ -758,6 +778,15 @@ public class B2BUADialogRecoveryTest extends TestCase {
             	throw new IllegalStateException("The From and To Headers are reversed !!!!");
             }
             try {
+            	if(failoverOn2xx || failoverOn1xx) {
+					//restart the sip stack
+					try {
+						b2buaNode1.initStack(IP_ADDRESS, ListeningPoint.UDP);
+						b2buaNode1.pingBalancer();
+					} catch (Exception e) {
+						e.printStackTrace();
+					}
+				}
                 System.out.println("shootme: got an Invite sending Trying");
                 // System.out.println("shootme: " + request);
                 Response response = messageFactory.createResponse(Response.RINGING,
@@ -770,7 +799,7 @@ public class B2BUADialogRecoveryTest extends TestCase {
                 dialog = st.getDialog();
                 st.sendResponse(response);
 
-                Thread.sleep(1000);
+                Thread.sleep(3000);
                 
                 Response okResponse = messageFactory.createResponse(Response.OK,
                         request);
@@ -859,12 +888,27 @@ public class B2BUADialogRecoveryTest extends TestCase {
             assertSame("Checking dialog identity",tid.getDialog(), this.dialog);
 
             try {
+            	
+            	
+            	if(failoverOn1xx && response.getStatusCode() == Response.RINGING) {
+                	// stop the sip stack w/o stopping the cache
+            		b2buaNode1.stopPingBalancer();
+                    b2buaNode1.stop(false);                     
+            	}
+            	
                 if (response.getStatusCode() == Response.OK) {
                     if (cseq.getMethod().equals(Request.INVITE)) {
                         System.out.println("Dialog after 200 OK  " + dialog);
-                        System.out.println("Dialog State after 200 OK  " + dialog.getState());
-                        Request ackRequest = dialog.createAck(cseq.getSeqNumber());
-                        System.out.println("Sending ACK");
+                        System.out.println("Dialog State after 200 OK  " + dialog.getState());                                                
+                        
+                        Request ackRequest = dialog.createAck(cseq.getSeqNumber());        
+                        if (failoverOn2xx) {
+                        	// stop the sip stack w/o stopping the cache
+                        	b2buaNode1.stopPingBalancer();
+                            b2buaNode1.stop(false);                            
+                            ((SipURI)ackRequest.getRequestURI()).setPort(5081);
+                        }
+                        System.out.println("Sending " + ackRequest);                        
                         dialog.sendAck(ackRequest);
 
                         firstTxComplete = true;
@@ -924,9 +968,9 @@ public class B2BUADialogRecoveryTest extends TestCase {
             Properties properties = new Properties();
             // If you want to try TCP transport change the following to
             String transport = "udp";
-            String peerHostPort = myAddress + ":" + 5080;
-            //properties.setProperty("javax.sip.OUTBOUND_PROXY", peerHostPort + "/"
-            //      + transport);
+            String peerHostPort = IP_ADDRESS + ":" + BALANCER_PORT;
+            properties.setProperty("javax.sip.OUTBOUND_PROXY", peerHostPort + "/"
+                  + transport);
             // If you want to use UDP then uncomment this.
             properties.setProperty("javax.sip.STACK_NAME", stackName);
 
@@ -951,6 +995,7 @@ public class B2BUADialogRecoveryTest extends TestCase {
             try {
                 // Create SipStack object
                 sipStack = sipFactory.createSipStack(properties);
+                System.out.println("createSipStack " + sipStack);
             } catch (PeerUnavailableException e) {
                 // could not find
                 // gov.nist.jain.protocol.ip.sip.SipStackImpl
@@ -964,11 +1009,11 @@ public class B2BUADialogRecoveryTest extends TestCase {
                 headerFactory = sipFactory.createHeaderFactory();
                 addressFactory = sipFactory.createAddressFactory();
                 messageFactory = sipFactory.createMessageFactory();
-                udpListeningPoint = sipStack.createListeningPoint(myAddress, myPort, "udp");
+                udpListeningPoint = sipStack.createListeningPoint(IP_ADDRESS, myPort, "udp");
                 sipProvider = sipStack.createSipProvider(udpListeningPoint);
                 Shootist listener = this;
-                sipProvider.addSipListener(listener);
-
+                sipProvider.addSipListener(listener);                
+                
                 String fromName = from;
                 String fromSipAddress = "here.com";
                 String fromDisplayName = "The Master Blaster";
@@ -996,7 +1041,7 @@ public class B2BUADialogRecoveryTest extends TestCase {
 
                 // create Request URI
                 SipURI requestURI = addressFactory.createSipURI(toUser,
-                        peerHostPort);
+                		IP_ADDRESS + ":" + 5080);
 
                 // Create ViaHeaders
 
@@ -1029,7 +1074,7 @@ public class B2BUADialogRecoveryTest extends TestCase {
                         Request.INVITE, callIdHeader, cSeqHeader, fromHeader,
                         toHeader, viaHeaders, maxForwards);
                 // Create contact headers
-                String host = myAddress;
+                String host = IP_ADDRESS;
 
                 SipURI contactUrl = addressFactory.createSipURI(fromName, host);
                 contactUrl.setPort(udpListeningPoint.getPort());
@@ -1091,8 +1136,6 @@ public class B2BUADialogRecoveryTest extends TestCase {
             }
         }
 
-
-
         public void processIOException(IOExceptionEvent exceptionEvent) {
             System.out.println("IOException happened for "
                     + exceptionEvent.getHost() + " port = "
@@ -1123,16 +1166,44 @@ public class B2BUADialogRecoveryTest extends TestCase {
 					fail("firstTxComplete " + firstTxComplete + " && firstReInviteComplete  " + firstReInviteComplete + " && subscribeTxComplete " + subscribeTxComplete + " && notifyComplete " + notifyTxComplete + "&& secondReInviteComplete " + secondReInviteComplete + "&& thirdReInviteComplete " + thirdReInviteComplete + " && okToByeReceived " + okToByeReceived);
 				}
 			} else {
-				if(firstTxComplete && firstReInviteComplete && secondReInviteComplete && okToByeReceived) {
+				if(firstTxComplete && firstReInviteComplete && okToByeReceived) {
 					System.out.println("shootist state OK " );
 				} else {
-					fail("firstTxComplete " + firstTxComplete + " && firstReInviteComplete  " + firstReInviteComplete + " && secondReInviteComplete " + secondReInviteComplete + " && okToByeReceived " + okToByeReceived);
+					fail("firstTxComplete " + firstTxComplete + " && firstReInviteComplete  " + firstReInviteComplete + " && okToByeReceived " + okToByeReceived);
 				}
 			}
 		}
 
 		public void setSendSubscribe(boolean b) {
 			sendSubscribe  = b;
+		}
+
+		/**
+		 * @param failoverOn2xx the failoverOn2xx to set
+		 */
+		public void setFailoverOn2xx(boolean failoverOn2xx) {
+			this.failoverOn2xx = failoverOn2xx;
+		}
+
+		/**
+		 * @return the failoverOn2xx
+		 */
+		public boolean isFailoverOn2xx() {
+			return failoverOn2xx;
+		}
+
+		/**
+		 * @param failoverOn1xx the failoverOn1xx to set
+		 */
+		public void setFailoverOn1xx(boolean failoverOn1xx) {
+			this.failoverOn1xx = failoverOn1xx;
+		}
+
+		/**
+		 * @return the failoverOn1xx
+		 */
+		public boolean isFailoverOn1xx() {
+			return failoverOn1xx;
 		}
     }
 
@@ -1158,106 +1229,69 @@ public class B2BUADialogRecoveryTest extends TestCase {
         sipStack.stop();
         sipStack = null;
     }
-
+    
     /**
      * UA1			B2BUA (Engine1)			B2BUA (Engine2)			UA2
 	 * INVITE (CSeq 1)
-	 * ----------------------->
-	 * 		
-	 * 				INVITE (CSeq 1)
-	 * 				------------------------------------------------->
-	 * 	INVITE (CSeq 1)
-	 * <------------------------
-	 * 
-	 * SUBSCRIBE(CSeq 2)
-	 * ----------------------->
-	 * 		
-	 * 				SUBSCRIBE (CSeq 2)
-	 * 				------------------------------------------------->
-	 * 
-	 * 									NOTIFY (CSeq 1)
-	 *				<-------------------------------------------------
-	 * 		NOTIFY (CSeq 2)
-	 * <------------------------
-	 * 
-	 * 											INVITE (CSeq 2)
-	 * 								             <---------------------
-	 * 					INVITE (CSeq 3)
-	 * <------------------------------------------
-	 * 									INVITE (CSeq 3)
-	 *  				      <----------------------------------------
-	 *  	INVITE (CSeq 4)
-	 *  <---------------------
-	 *  BYE (CSeq 3)
-	 *  ----------------------->
-	 *  								BYE (CSeq 3)
-	 *  						------------------------------------->
-     */
-    public void testDialogFailoverReInviteSubsNotify() throws Exception {
-
-        shootist = new Shootist("shootist_subsnotify", true);
-        shootme = new Shootme("shootme_subsnotify", 5070, true);
-
-        b2buaNode1 = new SimpleB2BUA("b2buaNode1_subsnotify", 5080, TestConstants.getIpAddressFromProperties(), ListeningPoint.UDP, ReplicationStrategy.ConfirmedDialogNoApplicationData, false);
-        Thread.sleep(5000);
-        b2buaNode2 = new SimpleB2BUA("b2buaNode2_subsnotify", 5081, TestConstants.getIpAddressFromProperties(), ListeningPoint.UDP, ReplicationStrategy.ConfirmedDialogNoApplicationData, false);
-
-        shootme.init();
-        shootist.setSendSubscribe(true);
-        shootist.init("ReInviteSubsNotify");
-        
-        
-        Thread.sleep(60000);
-        
-        shootme.checkState(true);
-        shootist.checkState(true);
-        // make sure dialogs are removed on both nodes
-        // non regression for Issue 1418
-        // http://code.google.com/p/restcomm/issues/detail?id=1418
-        assertTrue(b2buaNode1.checkDialogsRemoved());
-        assertTrue(b2buaNode2.checkDialogsRemoved());
-        
-        b2buaNode1.stop();
-        b2buaNode2.stop();
-        
-        shootist.stop();
-        shootme.stop();
-        Thread.sleep(5000);
-    }
-   
-    /**
-     * UA1			B2BUA (Engine1)			B2BUA (Engine2)			UA2
-	 * INVITE (CSeq 1)
-	 * ----------------------->
+	 * --------------------->
 	 * 		
 	 * 				INVITE (CSeq 1)
 	 * 				-------------------------------------------------> 	
 	 * 
 	 * 											INVITE (CSeq 1)
 	 * 								             <---------------------
-	 * 					INVITE (CSeq 2)
+	 * 					INVITE (CSeq 1)
 	 * <------------------------------------------
-	 * 									INVITE (CSeq 2)
-	 *  				      <----------------------------------------
-	 *  	INVITE (CSeq 3)
-	 *  <---------------------
+	 * 								
 	 *  BYE (CSeq 2)
-	 *  ----------------------->
-	 *  								BYE (CSeq 2)
-	 *  						------------------------------------->
+	 *  ------------------------------------------->
+	 *  												BYE (CSeq 2)
+	 *  											-------------------->
      */
-    public void testDialogFailoverReInvite() throws Exception {
+    public void testEarlyDialogFailoverOn2xx() throws Exception {
 
+    	balancer = new BalancerRunner();
+    	Handler fh = new FileHandler("logs/sipbalancer_util.log");
+    	fh.setFormatter(new SimpleFormatter());
+    	Logger.getLogger("org.mobicents").addHandler(fh);
+    	Logger.getLogger("org.mobicents").setLevel(Level.FINEST);
+    	
+    	Properties properties = new Properties();
+    	properties.setProperty("javax.sip.STACK_NAME", "SipBalancerForwarder");
+    	properties.setProperty("javax.sip.AUTOMATIC_DIALOG_SUPPORT", "off");
+    	// You need 16 for logging traces. 32 for debug + traces.
+    	// Your code will limp at 32 but it is best for debugging.
+    	properties.setProperty("gov.nist.javax.sip.TRACE_LEVEL", "32");
+    	properties.setProperty("gov.nist.javax.sip.DEBUG_LOG",
+    			"logs/sipbalancerforwarderdebug.txt");
+    	properties.setProperty("gov.nist.javax.sip.SERVER_LOG",
+    			"logs/sipbalancerforwarder.xml");
+    	properties.setProperty("gov.nist.javax.sip.THREAD_POOL_SIZE", "8");
+    	properties.setProperty("gov.nist.javax.sip.REENTRANT_LISTENER", "true");
+    	properties.setProperty("gov.nist.javax.sip.CANCEL_CLIENT_TRANSACTION_CHECKED", "false");
+//    	properties.setProperty("algorithmClass", InviteTransactionFailover.class.getName());
+    	properties.setProperty("host", IP_ADDRESS);
+    	properties.setProperty("internalPort", "5065");
+    	properties.setProperty("externalPort", "5060");
+    	balancer.start(properties);
+    	
         shootist = new Shootist("shootist_reinvite", true);
         shootme = new Shootme("shootme_reinvite", 5070, true);
 
-        b2buaNode1 = new SimpleB2BUA("b2buaNode1_reinvite", 5080, TestConstants.getIpAddressFromProperties(), ListeningPoint.UDP, ReplicationStrategy.ConfirmedDialogNoApplicationData, false);
+        b2buaNode1 = new SimpleB2BUA("b2buaNode1_reinvite", 5080, IP_ADDRESS, ListeningPoint.UDP, ReplicationStrategy.ConfirmedDialogNoApplicationData, true);
         Thread.sleep(5000);
-        b2buaNode2 = new SimpleB2BUA("b2buaNode2_reinvite", 5081, TestConstants.getIpAddressFromProperties(), ListeningPoint.UDP, ReplicationStrategy.ConfirmedDialogNoApplicationData, false);
-
+        b2buaNode2 = new SimpleB2BUA("b2buaNode2_reinvite", 5081, IP_ADDRESS, ListeningPoint.UDP, ReplicationStrategy.ConfirmedDialogNoApplicationData, true);
+        b2buaNode1.getB2buaHandler().setSendAckOn2xx(true);
+        b2buaNode2.getB2buaHandler().setSendAckOn2xx(true);
+        b2buaNode1.pingBalancer();
+        Thread.sleep(1000);
+        b2buaNode2.pingBalancer();
+        Thread.sleep(1000);
+        shootist.setFailoverOn2xx(true);
+        
         shootme.init();
         shootist.init("ReInvite");        
-        Thread.sleep(60000);
+        Thread.sleep(100000);
         
         shootme.checkState(false);
         shootist.checkState(false);
@@ -1267,11 +1301,355 @@ public class B2BUADialogRecoveryTest extends TestCase {
         assertTrue(b2buaNode1.checkDialogsRemoved());
         assertTrue(b2buaNode2.checkDialogsRemoved());
         
+        assertTrue(b2buaNode1.checkTransactionsRemoved());
+        assertTrue(b2buaNode2.checkTransactionsRemoved());
+        
+        balancer.stop();
         b2buaNode1.stop();
         b2buaNode2.stop();
         
         shootist.stop();
-        shootme.stop();
+        shootme.stop();        
         Thread.sleep(5000);
     }
+    
+    /**
+     * UA1			B2BUA (Engine1)			B2BUA (Engine2)			UA2
+	 * INVITE (CSeq 1)
+	 * --------------------->
+	 * 		
+	 * 				INVITE (CSeq 1)
+	 * 				-------------------------------------------------> 	
+	 * 
+	 * 											INVITE (CSeq 1)
+	 * 								             <---------------------
+	 * 					INVITE (CSeq 1)
+	 * <------------------------------------------
+	 * 								
+	 *  								
+	 *  BYE (CSeq 2)
+	 *  ------------------------------------------->
+	 *  												BYE (CSeq 2)
+	 *  											-------------------->
+     */
+    public void testEarlyDialogFailoverOn1xx() throws Exception {
+
+    	balancer = new BalancerRunner();
+    	Handler fh = new FileHandler("logs/sipbalancer_util.log");
+    	fh.setFormatter(new SimpleFormatter());
+    	Logger.getLogger("org.mobicents").addHandler(fh);
+    	Logger.getLogger("org.mobicents").setLevel(Level.FINEST);
+    	
+    	Properties properties = new Properties();
+    	properties.setProperty("javax.sip.STACK_NAME", "SipBalancerForwarder");
+    	properties.setProperty("javax.sip.AUTOMATIC_DIALOG_SUPPORT", "off");
+    	// You need 16 for logging traces. 32 for debug + traces.
+    	// Your code will limp at 32 but it is best for debugging.
+    	properties.setProperty("gov.nist.javax.sip.TRACE_LEVEL", "32");
+    	properties.setProperty("gov.nist.javax.sip.DEBUG_LOG",
+    			"logs/sipbalancerforwarderdebug.txt");
+    	properties.setProperty("gov.nist.javax.sip.SERVER_LOG",
+    			"logs/sipbalancerforwarder.xml");
+    	properties.setProperty("gov.nist.javax.sip.THREAD_POOL_SIZE", "8");
+    	properties.setProperty("gov.nist.javax.sip.REENTRANT_LISTENER", "true");
+    	properties.setProperty("gov.nist.javax.sip.CANCEL_CLIENT_TRANSACTION_CHECKED", "false");
+//    	properties.setProperty("algorithmClass", InviteTransactionFailover.class.getName());
+    	properties.setProperty("host", IP_ADDRESS);
+    	properties.setProperty("internalPort", "5065");
+    	properties.setProperty("externalPort", "5060");
+    	balancer.start(properties);
+    	
+        shootist = new Shootist("shootist_reinvite", true);
+        shootme = new Shootme("shootme_reinvite", 5070, true);
+
+        b2buaNode1 = new SimpleB2BUA("b2buaNode1_reinvite", 5080, IP_ADDRESS, ListeningPoint.UDP, ReplicationStrategy.EarlyDialog, true);
+        Thread.sleep(5000);
+        b2buaNode2 = new SimpleB2BUA("b2buaNode2_reinvite", 5081, IP_ADDRESS, ListeningPoint.UDP, ReplicationStrategy.EarlyDialog, true);
+        b2buaNode1.getB2buaHandler().setSendAckOn2xx(true);
+        b2buaNode2.getB2buaHandler().setSendAckOn2xx(true);
+        Thread.sleep(5000);
+        b2buaNode1.pingBalancer();
+        Thread.sleep(1000);
+        b2buaNode2.pingBalancer();
+        Thread.sleep(1000);
+        shootist.setFailoverOn1xx(true);
+        
+        shootme.init();
+        shootist.init("ReInvite");        
+        Thread.sleep(100000);
+        
+        shootme.checkState(false);
+        shootist.checkState(false);
+        // make sure dialogs are removed on both nodes
+        // non regression for Issue 1418
+        // http://code.google.com/p/restcomm/issues/detail?id=1418
+        assertTrue(b2buaNode1.checkDialogsRemoved());
+        assertTrue(b2buaNode2.checkDialogsRemoved());
+        
+        assertTrue(b2buaNode1.checkTransactionsRemoved());
+        assertTrue(b2buaNode2.checkTransactionsRemoved());
+        
+        balancer.stop();
+        b2buaNode1.stop();
+        b2buaNode2.stop();
+        
+        shootist.stop();
+        shootme.stop();        
+        Thread.sleep(5000);
+    }
+    
+    /**
+     * UA1			B2BUA (Engine1)			B2BUA (Engine2)			UA2
+	 * INVITE (CSeq 1)
+	 * --------------------->
+	 * 		
+	 * 				INVITE (CSeq 1)
+	 * 				-------------------------------------------------> 	
+	 * 
+	 * 											INVITE (CSeq 1)
+	 * 								             <---------------------
+	 * 					INVITE (CSeq 1)
+	 * <------------------------------------------
+	 * 								
+	 *   								
+	 *  BYE (CSeq 2)
+	 *  ------------------------------------------->
+	 *  												BYE (CSeq 2)
+	 *  											-------------------->
+     */
+    public void testEarlyDialogFailoverOn1xxForwardACK() throws Exception {
+
+    	balancer = new BalancerRunner();
+    	Handler fh = new FileHandler("logs/sipbalancer_util.log");
+    	fh.setFormatter(new SimpleFormatter());
+    	Logger.getLogger("org.mobicents").addHandler(fh);
+    	Logger.getLogger("org.mobicents").setLevel(Level.FINEST);
+    	
+    	Properties properties = new Properties();
+    	properties.setProperty("javax.sip.STACK_NAME", "SipBalancerForwarder");
+    	properties.setProperty("javax.sip.AUTOMATIC_DIALOG_SUPPORT", "off");
+    	// You need 16 for logging traces. 32 for debug + traces.
+    	// Your code will limp at 32 but it is best for debugging.
+    	properties.setProperty("gov.nist.javax.sip.TRACE_LEVEL", "32");
+    	properties.setProperty("gov.nist.javax.sip.DEBUG_LOG",
+    			"logs/sipbalancerforwarderdebug.txt");
+    	properties.setProperty("gov.nist.javax.sip.SERVER_LOG",
+    			"logs/sipbalancerforwarder.xml");
+    	properties.setProperty("gov.nist.javax.sip.THREAD_POOL_SIZE", "8");
+    	properties.setProperty("gov.nist.javax.sip.REENTRANT_LISTENER", "true");
+    	properties.setProperty("gov.nist.javax.sip.CANCEL_CLIENT_TRANSACTION_CHECKED", "false");
+//    	properties.setProperty("algorithmClass", InviteTransactionFailover.class.getName());
+    	properties.setProperty("host", IP_ADDRESS);
+    	properties.setProperty("internalPort", "5065");
+    	properties.setProperty("externalPort", "5060");
+    	balancer.start(properties);
+    	
+        shootist = new Shootist("shootist_reinvite", true);
+        shootme = new Shootme("shootme_reinvite", 5070, true);
+
+        b2buaNode1 = new SimpleB2BUA("b2buaNode1_reinvite", 5080, IP_ADDRESS, ListeningPoint.UDP, ReplicationStrategy.EarlyDialog, true);
+        Thread.sleep(5000);
+        b2buaNode2 = new SimpleB2BUA("b2buaNode2_reinvite", 5081, IP_ADDRESS, ListeningPoint.UDP, ReplicationStrategy.EarlyDialog, true);
+        b2buaNode1.getB2buaHandler().setSendAckOn2xx(false);
+        b2buaNode2.getB2buaHandler().setSendAckOn2xx(false);
+        Thread.sleep(5000);
+        b2buaNode1.pingBalancer();
+        Thread.sleep(1000);
+        b2buaNode2.pingBalancer();
+        Thread.sleep(1000);
+        shootist.setFailoverOn1xx(true);
+        
+        shootme.init();
+        shootist.init("ReInvite");        
+        Thread.sleep(100000);
+        
+        shootme.checkState(false);
+        shootist.checkState(false);
+        // make sure dialogs are removed on both nodes
+        // non regression for Issue 1418
+        // http://code.google.com/p/restcomm/issues/detail?id=1418
+        assertTrue(b2buaNode1.checkDialogsRemoved());
+        assertTrue(b2buaNode2.checkDialogsRemoved());
+        
+        assertTrue(b2buaNode1.checkTransactionsRemoved());
+        assertTrue(b2buaNode2.checkTransactionsRemoved());
+        
+        balancer.stop();
+        b2buaNode1.stop();
+        b2buaNode2.stop();
+        
+        shootist.stop();
+        shootme.stop();        
+        Thread.sleep(5000);
+    }
+    
+    /**
+     * UA1			B2BUA (Engine1)			B2BUA (Engine2)			UA2
+	 * INVITE (CSeq 1)
+	 * --------------------->
+	 * 		
+	 * 				INVITE (CSeq 1)
+	 * 				-------------------------------------------------> 	
+	 * 
+	 * 											INVITE (CSeq 1)
+	 * 								             <---------------------
+	 * 					INVITE (CSeq 1)
+	 * <------------------------------------------
+	 * 								
+	 *  								
+	 *  BYE (CSeq 2)
+	 *  ------------------------------------------->
+	 *  												BYE (CSeq 2)
+	 *  											-------------------->
+     */
+    /*public void testEarlyDialogFailoverOn1xxStopNodeOnReinvite() throws Exception {
+    	stopNodeOnReinvite = true;
+    	balancer = new BalancerRunner();
+    	Handler fh = new FileHandler("logs/sipbalancer_util.log");
+    	fh.setFormatter(new SimpleFormatter());
+    	Logger.getLogger("org.mobicents").addHandler(fh);
+    	Logger.getLogger("org.mobicents").setLevel(Level.FINEST);
+    	
+    	Properties properties = new Properties();
+    	properties.setProperty("javax.sip.STACK_NAME", "SipBalancerForwarder");
+    	properties.setProperty("javax.sip.AUTOMATIC_DIALOG_SUPPORT", "off");
+    	// You need 16 for logging traces. 32 for debug + traces.
+    	// Your code will limp at 32 but it is best for debugging.
+    	properties.setProperty("gov.nist.javax.sip.TRACE_LEVEL", "32");
+    	properties.setProperty("gov.nist.javax.sip.DEBUG_LOG",
+    			"logs/sipbalancerforwarderdebug.txt");
+    	properties.setProperty("gov.nist.javax.sip.SERVER_LOG",
+    			"logs/sipbalancerforwarder.xml");
+    	properties.setProperty("gov.nist.javax.sip.THREAD_POOL_SIZE", "8");
+    	properties.setProperty("gov.nist.javax.sip.REENTRANT_LISTENER", "true");
+    	properties.setProperty("gov.nist.javax.sip.CANCEL_CLIENT_TRANSACTION_CHECKED", "false");
+//    	properties.setProperty("algorithmClass", InviteTransactionFailover.class.getName());
+    	properties.setProperty("host", IP_ADDRESS);
+    	properties.setProperty("internalPort", "5065");
+    	properties.setProperty("externalPort", "5060");
+    	balancer.start(properties);
+    	
+        shootist = new Shootist("shootist_reinvite", true);
+        shootme = new Shootme("shootme_reinvite", 5070, true);
+
+        b2buaNode1 = new SimpleB2BUA("b2buaNode1_reinvite", 5080, IP_ADDRESS, ListeningPoint.UDP, ReplicationStrategy.EarlyDialog, true);
+        Thread.sleep(5000);
+        b2buaNode2 = new SimpleB2BUA("b2buaNode2_reinvite", 5081, IP_ADDRESS, ListeningPoint.UDP, ReplicationStrategy.EarlyDialog, true);
+        b2buaNode1.getB2buaHandler().setSendAckOn2xx(true);
+        b2buaNode2.getB2buaHandler().setSendAckOn2xx(true);
+        Thread.sleep(5000);
+        b2buaNode1.pingBalancer();
+        Thread.sleep(1000);
+        b2buaNode2.pingBalancer();
+        Thread.sleep(1000);
+        shootist.setFailoverOn1xx(true);
+        
+        shootme.init();
+        shootist.init("ReInvite");        
+        Thread.sleep(100000);
+        
+        shootme.checkState(false);
+        shootist.checkState(false);
+        // make sure dialogs are removed on both nodes
+        // non regression for Issue 1418
+        // http://code.google.com/p/restcomm/issues/detail?id=1418
+        assertTrue(b2buaNode1.checkDialogsRemoved());
+        assertTrue(b2buaNode2.checkDialogsRemoved());
+        
+        assertTrue(b2buaNode1.checkTransactionsRemoved());
+        assertTrue(b2buaNode2.checkTransactionsRemoved());
+        
+        balancer.stop();
+        b2buaNode1.stop();
+        b2buaNode2.stop();
+        
+        shootist.stop();
+        shootme.stop();        
+        Thread.sleep(5000);
+    }*/
+    
+    /**
+     * UA1			B2BUA (Engine1)			B2BUA (Engine2)			UA2
+	 * INVITE (CSeq 1)
+	 * --------------------->
+	 * 		
+	 * 				INVITE (CSeq 1)
+	 * 				-------------------------------------------------> 	
+	 * 
+	 * 											INVITE (CSeq 1)
+	 * 								             <---------------------
+	 * 					INVITE (CSeq 1)
+	 * <------------------------------------------
+	 * 								
+	 *   								
+	 *  BYE (CSeq 2)
+	 *  ------------------------------------------->
+	 *  												BYE (CSeq 2)
+	 *  											-------------------->
+     */
+    /*public void testEarlyDialogFailoverOn1xxForwardACKStopNodeOnReinvite() throws Exception {
+    	stopNodeOnReinvite = true;
+    	balancer = new BalancerRunner();
+    	Handler fh = new FileHandler("logs/sipbalancer_util.log");
+    	fh.setFormatter(new SimpleFormatter());
+    	Logger.getLogger("org.mobicents").addHandler(fh);
+    	Logger.getLogger("org.mobicents").setLevel(Level.FINEST);
+    	
+    	Properties properties = new Properties();
+    	properties.setProperty("javax.sip.STACK_NAME", "SipBalancerForwarder");
+    	properties.setProperty("javax.sip.AUTOMATIC_DIALOG_SUPPORT", "off");
+    	// You need 16 for logging traces. 32 for debug + traces.
+    	// Your code will limp at 32 but it is best for debugging.
+    	properties.setProperty("gov.nist.javax.sip.TRACE_LEVEL", "32");
+    	properties.setProperty("gov.nist.javax.sip.DEBUG_LOG",
+    			"logs/sipbalancerforwarderdebug.txt");
+    	properties.setProperty("gov.nist.javax.sip.SERVER_LOG",
+    			"logs/sipbalancerforwarder.xml");
+    	properties.setProperty("gov.nist.javax.sip.THREAD_POOL_SIZE", "8");
+    	properties.setProperty("gov.nist.javax.sip.REENTRANT_LISTENER", "true");
+    	properties.setProperty("gov.nist.javax.sip.CANCEL_CLIENT_TRANSACTION_CHECKED", "false");
+//    	properties.setProperty("algorithmClass", InviteTransactionFailover.class.getName());
+    	properties.setProperty("host", IP_ADDRESS);
+    	properties.setProperty("internalPort", "5065");
+    	properties.setProperty("externalPort", "5060");
+    	balancer.start(properties);
+    	
+        shootist = new Shootist("shootist_reinvite", true);
+        shootme = new Shootme("shootme_reinvite", 5070, true);
+
+        b2buaNode1 = new SimpleB2BUA("b2buaNode1_reinvite", 5080, IP_ADDRESS, ListeningPoint.UDP, ReplicationStrategy.EarlyDialog, true);
+        Thread.sleep(5000);
+        b2buaNode2 = new SimpleB2BUA("b2buaNode2_reinvite", 5081, IP_ADDRESS, ListeningPoint.UDP, ReplicationStrategy.EarlyDialog, true);
+        b2buaNode1.getB2buaHandler().setSendAckOn2xx(false);
+        b2buaNode2.getB2buaHandler().setSendAckOn2xx(false);
+        Thread.sleep(5000);
+        b2buaNode1.pingBalancer();
+        Thread.sleep(1000);
+        b2buaNode2.pingBalancer();
+        Thread.sleep(1000);
+        shootist.setFailoverOn1xx(true);
+        
+        shootme.init();
+        shootist.init("ReInvite");        
+        Thread.sleep(100000);
+        
+        shootme.checkState(false);
+        shootist.checkState(false);
+        // make sure dialogs are removed on both nodes
+        // non regression for Issue 1418
+        // http://code.google.com/p/restcomm/issues/detail?id=1418
+        assertTrue(b2buaNode1.checkDialogsRemoved());
+        assertTrue(b2buaNode2.checkDialogsRemoved());
+        
+        assertTrue(b2buaNode1.checkTransactionsRemoved());
+        assertTrue(b2buaNode2.checkTransactionsRemoved());
+        
+        balancer.stop();
+        b2buaNode1.stop();
+        b2buaNode2.stop();
+        
+        shootist.stop();
+        shootme.stop();        
+        Thread.sleep(5000);
+    }*/
 }

@@ -97,18 +97,9 @@ import junit.framework.TestCase;
  */
 public class SimpleDialogRecoveryTest extends TestCase {
 
-	private static String getIpAddressFromProperties(){
-		Properties p = new Properties();
-		try {
-			p.load(SimpleDialogRecoveryTest.class.getClassLoader().getResourceAsStream("test.properties"));
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-		return p.getProperty("IP_ADDRESS","127.0.0.1");
-	}
+
+	public final String IP_ADDRESS = TestConstants.getIpAddressFromProperties();
 	
-//	public static final String IP_ADDRESS = getIpAddressFromProperties();
-	public static final String IP_ADDRESS = "192.168.0.10";
 	public static final String TRACE_LEVEL = "32";
 	
     public static final int BALANCER_PORT = 5050;
@@ -421,7 +412,7 @@ public class SimpleDialogRecoveryTest extends TestCase {
 //                SipProvider provider = (SipProvider) requestEvent.getSource();
                 //stopping the node 
 //                Collection<Dialog> dialogs=((SipStackImpl)sipStack).getDialogs(DialogState.CONFIRMED);
-                stop();
+                //stop();
 //                shootmeRecoveryNode.init();
 
                 //if (!callerSendsBye && !byeTaskRunning) {

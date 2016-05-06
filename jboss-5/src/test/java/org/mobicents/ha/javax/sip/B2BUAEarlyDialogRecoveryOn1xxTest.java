@@ -92,7 +92,7 @@ import org.mobicents.tools.sip.balancer.BalancerRunner;
  */
 public class B2BUAEarlyDialogRecoveryOn1xxTest extends TestCase {
 
-	public static final String IP_ADDRESS = "192.168.0.10";
+	public final String IP_ADDRESS = TestConstants.getIpAddressFromProperties();
 	
     public static final int BALANCER_PORT = 5060;
 
@@ -119,7 +119,7 @@ public class B2BUAEarlyDialogRecoveryOn1xxTest extends TestCase {
 
         private SipStack sipStack;
 
-        private static final String myAddress = IP_ADDRESS;
+        private final String myAddress = IP_ADDRESS;
 
         private String stackName;
 
@@ -648,7 +648,7 @@ public class B2BUAEarlyDialogRecoveryOn1xxTest extends TestCase {
 
         public boolean callerSendsBye = true;
         
-        private static final String myAddress = IP_ADDRESS;
+        private final String myAddress = IP_ADDRESS;
 
         public int myPort = 5050;
 

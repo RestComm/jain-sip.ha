@@ -1,27 +1,26 @@
 /*
- * JBoss, Home of Professional Open Source
- * Copyright 2011, Red Hat, Inc. and individual contributors
- * by the @authors tag. See the copyright.txt in the distribution for a
- * full listing of individual contributors.
+ * TeleStax, Open Source Cloud Communications
+ * Copyright 2011-2016, Telestax Inc and individual contributors
+ * by the @authors tag.
  *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
+ * This program is free software: you can redistribute it and/or modify
+ * under the terms of the GNU Affero General Public License as
+ * published by the Free Software Foundation; either version 3 of
  * the License, or (at your option) any later version.
  *
- * This software is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Affero General Public License for more details.
  *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
 package org.mobicents.ha.javax.sip;
 
+import gov.nist.javax.sip.message.MessageExt;
+import gov.nist.javax.sip.message.ResponseExt;
 import gov.nist.javax.sip.stack.SIPDialog;
 
 import java.io.ByteArrayInputStream;
@@ -53,6 +52,7 @@ import javax.sip.SipFactory;
 import javax.sip.SipListener;
 import javax.sip.SipProvider;
 import javax.sip.SipStack;
+import javax.sip.TimeoutEvent;
 import javax.sip.Transaction;
 import javax.sip.TransactionState;
 import javax.sip.TransactionTerminatedEvent;
@@ -63,12 +63,12 @@ import javax.sip.header.CSeqHeader;
 import javax.sip.header.CallIdHeader;
 import javax.sip.header.ContactHeader;
 import javax.sip.header.ContentTypeHeader;
-import javax.sip.header.EventHeader;
-import javax.sip.header.ExpiresHeader;
 import javax.sip.header.FromHeader;
 import javax.sip.header.Header;
 import javax.sip.header.HeaderFactory;
 import javax.sip.header.MaxForwardsHeader;
+import javax.sip.header.RecordRouteHeader;
+import javax.sip.header.RouteHeader;
 import javax.sip.header.SubscriptionStateHeader;
 import javax.sip.header.ToHeader;
 import javax.sip.header.ViaHeader;
@@ -76,17 +76,30 @@ import javax.sip.message.MessageFactory;
 import javax.sip.message.Request;
 import javax.sip.message.Response;
 
+import org.mobicents.ha.javax.sip.cache.infinispan.InfinispanCache;
+
 import junit.framework.TestCase;
+
 /**
  * This test aims to test Restcomm Jain Sip failover recovery.
- * Issue 1407 http://code.google.com/p/restcomm/issues/detail?id=1407
- * 
+ * Shootist on port 5060 shoots at a stateless proxy on prt 5050 (scaled down version of a balancer)
+ * Stateless proxy redirect to Shootme on port 5070
+ * on ACK, the Shootme stop itself and start the other shootme node on port 5080 and pass to him its current dialogs
+ * on BYE or other in-dialog requests, the stateless proxy forwards to recovery shootme on port 5080
+ * Shootme recovery sends OK to BYE.
+ *
  * @author <A HREF="mailto:jean.deruelle@gmail.com">Jean Deruelle</A>
+ * @author <A HREF="mailto:posfai.gergely@ext.alerant.hu">Gergely Posfai</A>
+ * @author <A HREF="mailto:kokuti.andras@ext.alerant.hu">Andras Kokuti</A>
  *
  */
-public class B2BUADialogRecoveryTest extends TestCase {	
+
+public class SimpleDialogRecoveryTest extends TestCase {
+
+
+	public final String IP_ADDRESS = TestConstants.getIpAddressFromProperties();
 	
-    private final String IP_ADDRESS = TestConstants.getIpAddressFromProperties();
+	public static final String TRACE_LEVEL = "32";
 	
     public static final int BALANCER_PORT = 5050;
 
@@ -100,10 +113,165 @@ public class B2BUADialogRecoveryTest extends TestCase {
     Shootist shootist;
 
     Shootme shootme;
-    
-    SimpleB2BUA b2buaNode1;
-    
-    SimpleB2BUA b2buaNode2;
+
+    Shootme shootmeRecoveryNode;
+
+    Balancer balancer;
+
+    class Balancer implements SipListener {
+
+        private String myHost;
+
+        private int myPort;
+
+        private SipStack sipStack;
+
+        private SipProvider sipProvider;
+
+        public Balancer(String host, int port) {
+            this.myHost = host;
+            this.myPort = port;
+        }
+
+        public void start() throws IllegalStateException {
+
+            SipFactory sipFactory = null;
+            sipStack = null;
+
+            Properties properties = new Properties();
+            properties.setProperty("javax.sip.RETRANSMISSION_FILTER", "true");
+            properties.setProperty("javax.sip.STACK_NAME", "StatelessForwarder");
+            properties.setProperty("javax.sip.AUTOMATIC_DIALOG_SUPPORT", "off");
+            // You need 16 for logging traces. 32 for debug + traces.
+            // Your code will limp at 32 but it is best for debugging.
+            properties.setProperty("gov.nist.javax.sip.TRACE_LEVEL", "ERROR");
+            properties.setProperty("gov.nist.javax.sip.DEBUG_LOG",
+                    "./logs/statelessforwarderdebug.txt");
+            properties.setProperty("gov.nist.javax.sip.SERVER_LOG", "./logs/statelessforwarderlog.xml");
+
+            try {
+                // Create SipStack object
+                sipFactory = SipFactory.getInstance();
+                sipFactory.setPathName("gov.nist");
+                sipStack = sipFactory.createSipStack(properties);
+
+                headerFactory = sipFactory.createHeaderFactory();
+                addressFactory = sipFactory.createAddressFactory();
+                messageFactory = sipFactory.createMessageFactory();
+
+                ListeningPoint lp = sipStack.createListeningPoint(myHost, myPort, ListeningPoint.UDP);
+                sipProvider = sipStack.createSipProvider(lp);
+                sipProvider.addSipListener(this);
+
+                sipStack.start();
+            } catch (Exception ex) {
+                throw new IllegalStateException("Cant create sip objects and lps due to["+ex.getMessage()+"]", ex);
+            }
+        }
+
+        public void processDialogTerminated(
+                DialogTerminatedEvent dialogTerminatedEvent) {
+            // TODO Auto-generated method stub
+
+        }
+
+        public void processIOException(IOExceptionEvent exceptionEvent) {
+            // TODO Auto-generated method stub
+
+        }
+
+        public void processRequest(RequestEvent requestEvent) {
+            try {
+                Request request = requestEvent.getRequest();
+
+                ViaHeader viaHeader = headerFactory.createViaHeader(
+                        this.myHost, this.myPort, ListeningPoint.UDP, "z9hG4bK"+Math.random()*31+""+System.currentTimeMillis());
+                //Decreasing the Max Forward Header
+                MaxForwardsHeader maxForwardsHeader = (MaxForwardsHeader) request.getHeader(MaxForwardsHeader.NAME);
+                if (maxForwardsHeader == null) {
+                    maxForwardsHeader = headerFactory.createMaxForwardsHeader(70);
+                    request.addHeader(maxForwardsHeader);
+                } else {
+                    maxForwardsHeader.setMaxForwards(maxForwardsHeader.getMaxForwards() - 1);
+                }
+                // Add the via header to the top of the header list.
+                request.addHeader(viaHeader);
+                //Removing first routeHeader if it is for us
+                RouteHeader routeHeader = (RouteHeader) request.getHeader(RouteHeader.NAME);
+                if(routeHeader != null) {
+                    SipURI routeUri = (SipURI)routeHeader.getAddress().getURI();
+                    if(routeUri.getHost().equalsIgnoreCase(myHost) && routeUri.getPort() == myPort) {
+                        request.removeFirst(RouteHeader.NAME);
+                    }
+                }
+
+                // Record route the invite so the bye comes to me.
+                if (request.getMethod().equals(Request.INVITE) || request.getMethod().equals(Request.SUBSCRIBE)) {
+                    SipURI sipUri = addressFactory
+                            .createSipURI(null, sipProvider.getListeningPoint(
+                                    ListeningPoint.UDP).getIPAddress());
+                    sipUri.setPort(sipProvider.getListeningPoint(ListeningPoint.UDP).getPort());
+                    //See RFC 3261 19.1.1 for lr parameter
+                    sipUri.setLrParam();
+                    Address address = addressFactory.createAddress(sipUri);
+                    address.setURI(sipUri);
+                    RecordRouteHeader recordRoute = headerFactory
+                            .createRecordRouteHeader(address);
+                    request.addHeader(recordRoute);
+
+                    //Adding Route Header
+                    SipURI routeSipUri = addressFactory
+                        .createSipURI(null, IP_ADDRESS);
+                    routeSipUri.setPort(5070);
+                    routeSipUri.setLrParam();
+                    RouteHeader route = headerFactory.createRouteHeader(addressFactory.createAddress(routeSipUri));
+                    request.addFirst(route);
+                }
+                else if (!Request.ACK.equals(request.getMethod())) {
+                    //Adding Route Header
+                    if(((SipURI)request.getRequestURI()).getPort() == 5070) {
+                        SipURI routeSipUri = addressFactory
+                            .createSipURI(null, IP_ADDRESS);
+                        routeSipUri.setPort(5080);
+                        routeSipUri.setLrParam();
+                        RouteHeader route = headerFactory.createRouteHeader(addressFactory.createAddress(routeSipUri));
+                        request.addFirst(route);
+                    }
+                }
+                //sending request
+                sipProvider.sendRequest(request);
+            } catch (Exception ex) {
+                ex.printStackTrace();
+            }
+        }
+
+        public void processResponse(ResponseEvent responseEvent) {
+            try {
+                Response response = responseEvent.getResponse();
+                SipProvider sender=null;
+
+                 // Topmost via header is me. As it is reposne to external reqeust
+                response.removeFirst(ViaHeader.NAME);
+
+                sender=this.sipProvider;
+                sender.sendResponse(response);
+            } catch (Exception ex) {
+                ex.printStackTrace();
+            }
+        }
+
+        public void processTimeout(TimeoutEvent timeoutEvent) {
+            // TODO Auto-generated method stub
+
+        }
+
+        public void processTransactionTerminated(
+                TransactionTerminatedEvent transactionTerminatedEvent) {
+            // TODO Auto-generated method stub
+
+        }
+
+    }
 
     class Shootme implements SipListener {
 
@@ -119,6 +287,8 @@ public class B2BUADialogRecoveryTest extends TestCase {
         protected ServerTransaction inviteTid;
 
         private Response okResponse;
+        
+        private Response lastNotifyResponse;
 
         private Request inviteRequest;
 
@@ -130,23 +300,16 @@ public class B2BUADialogRecoveryTest extends TestCase {
 
         private boolean byeTaskRunning;
 
-		private boolean secondReinviteSent;
-
-		private boolean firstReinviteSent;
-
-		private boolean firstTxComplete;
-		private boolean firstReInviteComplete;
-		private boolean secondReInviteComplete;
-		private boolean byeReceived;
-		private boolean subscribeTxComplete;
-		private boolean notifyTxComplete;
-
         public Shootme(String stackName, int myPort, boolean callerSendsBye) {
             this.stackName = stackName;
             this.myPort = myPort;
             this.callerSendsBye = callerSendsBye;
-            System.setProperty("jgroups.bind_addr", TestConstants.getIpAddressFromProperties());
+            System.setProperty("jgroups.bind_addr", IP_ADDRESS);
+            System.setProperty("jgroups.udp.mcast_addr", "232.5.5.5"); //System.setProperty("jgroups.udp.mcast_addr", "FFFF::232.5.5.5");
+            System.setProperty("jboss.server.log.threshold", "DEBUG");
             System.setProperty("java.net.preferIPv4Stack", "true");
+            System.setProperty("jbosscache.config.validate", "false");
+            
         }
 
         class ByeTask  extends TimerTask {
@@ -186,8 +349,6 @@ public class B2BUADialogRecoveryTest extends TestCase {
                 + "examples.shootist.Shootist \n"
                 + ">>>> is your class path set to the root?";
 
-		private static final long TIMEOUT = 10000;
-
 
 
         public void processRequest(RequestEvent requestEvent) {
@@ -201,12 +362,12 @@ public class B2BUADialogRecoveryTest extends TestCase {
 
             if (request.getMethod().equals(Request.INVITE)) {
                 processInvite(requestEvent, serverTransactionId);
+            } else if (request.getMethod().equals(Request.SUBSCRIBE)) {
+                processSubscribe(requestEvent, serverTransactionId);
             } else if (request.getMethod().equals(Request.ACK)) {
                 processAck(requestEvent, serverTransactionId);
             } else if (request.getMethod().equals(Request.BYE)) {
                 processBye(requestEvent, serverTransactionId);
-            } else if (request.getMethod().equals(Request.SUBSCRIBE)) {
-                processSubscribe(requestEvent, serverTransactionId);
             } else if (request.getMethod().equals(Request.CANCEL)) {
                 processCancel(requestEvent, serverTransactionId);
             } else {
@@ -233,52 +394,10 @@ public class B2BUADialogRecoveryTest extends TestCase {
         }
 
         public void processResponse(ResponseEvent responseEvent) {
-        	Dialog dialog = responseEvent.getDialog();
-        	CSeqHeader cSeqHeader = (CSeqHeader)responseEvent.getResponse().getHeader(CSeqHeader.NAME);
-        	try {
-        		if(responseEvent.getResponse().getStatusCode() >= 200 && cSeqHeader.getMethod().equalsIgnoreCase(Request.INVITE)) {
-	        		Request ackRequest = dialog.createAck(cSeqHeader.getSeqNumber());
-	        		int port = 5080;
-	                if(firstReinviteSent) {
-	                	port = 5081;
-	                	firstReinviteSent = false;
-	                	firstReInviteComplete = true;
-	                }
-	                if(secondReinviteSent) {
-	                	secondReInviteComplete = true;
-	                }
-	        		System.out.println("Sending ACK");
-	        		((SipURI)ackRequest.getRequestURI()).setPort(port);
-					dialog.sendAck(ackRequest);
-															
-					if(!secondReinviteSent) {
-						Thread.sleep(2000);
-						Request request = dialog.createRequest("INVITE");
-		                ((SipURI)request.getRequestURI()).setPort(5080);
-		                final ClientTransaction ct = sipProvider.getNewClientTransaction(request);
-		                dialog.sendRequest(ct);
-		                secondReinviteSent = true;
-					}
-        		} else if(responseEvent.getResponse().getStatusCode() >= 200 && cSeqHeader.getMethod().equalsIgnoreCase(Request.NOTIFY)) {
-        			notifyTxComplete = true;
-        			Thread.sleep(5000);
-        			 Request request = dialog.createRequest("INVITE");                
-                     ((SipURI)request.getRequestURI()).setPort(5081);                
-                     final ClientTransaction ct = sipProvider.getNewClientTransaction(request);
-                     firstReinviteSent = true;
-                     dialog.sendRequest(ct); 
-        		}
-			} catch (SipException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			} catch (InvalidArgumentException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			} catch (InterruptedException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-        	
+        	System.out.println(sipStack.getStackName() + " got a response " + responseEvent.getResponse());
+        	if(((ResponseExt)responseEvent.getResponse()).getCSeqHeader().getMethod().equals(Request.NOTIFY)) {
+        		lastNotifyResponse = responseEvent.getResponse();
+        	}
         }
 
         /**
@@ -287,20 +406,18 @@ public class B2BUADialogRecoveryTest extends TestCase {
         public void processAck(RequestEvent requestEvent,
                 ServerTransaction serverTransaction) {
             try {
-            	Dialog dialog = serverTransaction.getDialog();
                 System.out.println("shootme: got an ACK! ");
                 System.out.println("Dialog State = " + dialog.getState());
-                firstTxComplete = true;     
-                
-                // used in basic reinvite
-                if(!firstReinviteSent && !((FromHeader)requestEvent.getRequest().getHeader(FromHeader.NAME)).getAddress().getURI().toString().contains("ReInviteSubsNotify")) {
-					Thread.sleep(5000);
-        			 Request request = dialog.createRequest("INVITE");                
-                     ((SipURI)request.getRequestURI()).setPort(5081);                
-                     final ClientTransaction ct = sipProvider.getNewClientTransaction(request);
-                     firstReinviteSent = true;
-                     dialog.sendRequest(ct); 
-				}
+//                SipProvider provider = (SipProvider) requestEvent.getSource();
+                //stopping the node 
+//                Collection<Dialog> dialogs=((SipStackImpl)sipStack).getDialogs(DialogState.CONFIRMED);
+                //stop();
+//                shootmeRecoveryNode.init();
+
+                //if (!callerSendsBye && !byeTaskRunning) {
+                    //byeTaskRunning = true;
+                    //new Timer().schedule(new ByeTask(dialog), 4000) ;
+                //}
             } catch (Exception ex) {
                 ex.printStackTrace();
             }
@@ -321,7 +438,6 @@ public class B2BUADialogRecoveryTest extends TestCase {
                         request);
                 ToHeader toHeader = (ToHeader) response.getHeader(ToHeader.NAME);
                 toHeader.setTag("4321"); // Application is supposed to set.
-                
                 ServerTransaction st = requestEvent.getServerTransaction();
 
                 if (st == null) {
@@ -331,8 +447,6 @@ public class B2BUADialogRecoveryTest extends TestCase {
 
                 st.sendResponse(response);
 
-                Thread.sleep(1000);
-                
                 this.okResponse = messageFactory.createResponse(Response.OK,
                         request);
                 Address address = addressFactory.createAddress("Shootme <sip:"
@@ -348,7 +462,7 @@ public class B2BUADialogRecoveryTest extends TestCase {
                 // Answered in 1 second ( this guy is fast at taking calls)
                 this.inviteRequest = request;
 
-                sendInviteOK();
+                new Timer().schedule(new MyTimerTask(this), 1000);
             } catch (Exception ex) {
                 ex.printStackTrace();
                 System.exit(0);
@@ -374,19 +488,29 @@ public class B2BUADialogRecoveryTest extends TestCase {
         /**
          * Process the bye request.
          */
-        public void processBye(RequestEvent requestEvent,
+        public void processSubscribe(RequestEvent requestEvent,
                 ServerTransaction serverTransactionId) {
             SipProvider sipProvider = (SipProvider) requestEvent.getSource();
-            Request request = requestEvent.getRequest();
-            Dialog dialog = requestEvent.getDialog();
-            System.out.println("local party = " + dialog.getLocalParty());
+            ServerTransaction st = requestEvent.getServerTransaction();
             try {
-                System.out.println("shootme:  got a bye sending OK.");
-                Response response = messageFactory.createResponse(200, request);
-                serverTransactionId.sendResponse(response);
-                System.out.println("Dialog State is "
-                        + serverTransactionId.getDialog().getState());
-                byeReceived = true;
+	            if (st == null) {
+	                st = sipProvider.getNewServerTransaction(requestEvent.getRequest());
+	            }
+	            dialog = st.getDialog();
+	            Request request = requestEvent.getRequest();
+//            Dialog dialog = requestEvent.getDialog();
+//            System.out.println("local party = " + dialog.getLocalParty());            
+                System.out.println(sipStack.getStackName() + " got a subscribe sending OK Accepted.");
+                Response response = messageFactory.createResponse(202, request);
+                response.addHeader(headerFactory.createExpiresHeader(3600));
+                st.sendResponse(response);
+//                System.out.println("Dialog State is "
+//                        + serverTransactionId.getDialog().getState());
+                //((MobicentsSipCache)((ClusteredSipStack)sipProvider.getSipStack()).getSipCache()).getMobicentsCache().getJBossCache().put(Fqn.fromString("DIALOG_IDS"), "dialogId", dialog.getDialogId());
+                String dialogId = (String) ((InfinispanCache)((ClusteredSipStack)sipProvider.getSipStack()).getSipCache()).getCacheManager().getCache("DIALOG_IDS").put("dialogId", dialog.getDialogId());
+                                
+                sendNotify(SubscriptionStateHeader.PENDING);
+                
             } catch (Exception ex) {
                 ex.printStackTrace();
                 System.exit(0);
@@ -394,38 +518,41 @@ public class B2BUADialogRecoveryTest extends TestCase {
             }
         }
         
+
+		public void sendNotify(String state) {
+			//String dialogId = (String) ((MobicentsSipCache)((ClusteredSipStack)sipProvider.getSipStack()).getSipCache()).getMobicentsCache().getJBossCache().get(Fqn.fromString("DIALOG_IDS"), "dialogId");
+			String dialogId = (String) ((InfinispanCache)((ClusteredSipStack)sipProvider.getSipStack()).getSipCache()).getCacheManager().getCache("DIALOG_IDS").get("dialogId");
+			Dialog dialog = ((ClusteredSipStack)sipStack).getDialog(dialogId);
+			try {
+				Request notify = dialog.createRequest(Request.NOTIFY);
+	            notify.addHeader(headerFactory.createSubscriptionStateHeader(state));
+	            notify.addHeader(headerFactory.createEventHeader("reg;id"));
+	            ClientTransaction ct = this.sipProvider.getNewClientTransaction(notify);
+	            System.out.println(sipStack.getStackName() + ":  Sending NOTIFY " + notify);
+	            dialog.sendRequest(ct);
+			} catch (Exception ex) {
+                ex.printStackTrace();
+                System.exit(0);
+
+            }
+		}
+        
         /**
          * Process the bye request.
          */
-        public void processSubscribe(RequestEvent requestEvent,
+        public void processBye(RequestEvent requestEvent,
                 ServerTransaction serverTransactionId) {
             SipProvider sipProvider = (SipProvider) requestEvent.getSource();
             Request request = requestEvent.getRequest();
-            Dialog dialog = requestEvent.getDialog();   
-            
+            Dialog dialog = requestEvent.getDialog();
+            System.out.println("local party = " + dialog.getLocalParty());
             try {
-                ServerTransaction st = requestEvent.getServerTransaction();
-
-                if (st == null) {
-                    st = sipProvider.getNewServerTransaction(request);
-                }
-                System.out.println("shootme:  got a subscribe sending OK.");
+                System.out.println(sipStack.getStackName() +  "  got a bye sending OK.");
                 Response response = messageFactory.createResponse(200, request);
-    			response.addHeader(headerFactory.createHeader(ExpiresHeader.NAME, "3600"));
-                st.sendResponse(response);
+                serverTransactionId.sendResponse(response);
                 System.out.println("Dialog State is "
-                        + st.getDialog().getState());
-                subscribeTxComplete = true;
-                
-                Thread.sleep(5000);
-                
-                Request notify = st.getDialog().createRequest(Request.NOTIFY);
-                notify.addHeader(headerFactory.createHeader(SubscriptionStateHeader.NAME, SubscriptionStateHeader.ACTIVE));
-                notify.addHeader(headerFactory.createHeader(EventHeader.NAME, "presence"));
-                ((SipURI)notify.getRequestURI()).setUser(null);
-                ((SipURI)notify.getRequestURI()).setHost(myAddress);
-                ((SipURI)notify.getRequestURI()).setPort(5080);
-                st.getDialog().sendRequest(sipProvider.getNewClientTransaction(notify));
+                        + serverTransactionId.getDialog().getState());
+
             } catch (Exception ex) {
                 ex.printStackTrace();
                 System.exit(0);
@@ -476,14 +603,21 @@ public class B2BUADialogRecoveryTest extends TestCase {
             SipFactory sipFactory = null;
             sipStack = null;
             sipFactory = SipFactory.getInstance();
-            sipFactory.setPathName("gov.nist");
+            sipFactory.setPathName("org.mobicents.ha");
             Properties properties = new Properties();
             properties.setProperty("javax.sip.STACK_NAME", stackName);
+            //properties.setProperty(ManagedMobicentsSipCache.STANDALONE, "true");
+            properties.setProperty("org.mobicents.ha.javax.sip.REPLICATION_STRATEGY", "ConfirmedDialogNoApplicationData");
+            
+            properties.setProperty(
+    				"org.mobicents.ha.javax.sip.CACHE_CLASS_NAME",
+    				"org.mobicents.ha.javax.sip.cache.infinispan.InfinispanCache");
+            
             //properties.setProperty("javax.sip.OUTBOUND_PROXY", Integer
             //                .toString(BALANCER_PORT));
             // You need 16 for logging traces. 32 for debug + traces.
             // Your code will limp at 32 but it is best for debugging.
-            properties.setProperty("gov.nist.javax.sip.TRACE_LEVEL", "32");
+            properties.setProperty("gov.nist.javax.sip.TRACE_LEVEL", TRACE_LEVEL);
             properties.setProperty("gov.nist.javax.sip.DEBUG_LOG", "logs/" +
                     stackName + "debug.txt");
             properties.setProperty("gov.nist.javax.sip.SERVER_LOG", "logs/" +
@@ -597,21 +731,6 @@ public class B2BUADialogRecoveryTest extends TestCase {
             stopSipStack(sipStack, this);
         }
 
-		public void checkState(boolean reinviteSubsNotify) {
-			if(reinviteSubsNotify) {
-				if(firstTxComplete && subscribeTxComplete && notifyTxComplete  && firstReInviteComplete && secondReInviteComplete && byeReceived) {
-					System.out.println("shootme state OK " );
-				} else {
-					fail("firstTxComplete " + firstTxComplete + " && subscribeTxComplete " + subscribeTxComplete + " && notifyComplete " + notifyTxComplete + " && firstReInviteComplete " + firstReInviteComplete + "&& secondReInviteComplete " + secondReInviteComplete + " && byeReceived " + byeReceived);
-				}
-			} else {
-				if(firstTxComplete && firstReInviteComplete && secondReInviteComplete && byeReceived) {
-					System.out.println("shootme state OK " );
-				} else {
-					fail("firstTxComplete " + firstTxComplete + " && firstReInviteComplete " + firstReInviteComplete + "&& secondReInviteComplete " + secondReInviteComplete + " && byeReceived " + byeReceived);
-				}
-			}
-		}
 
     }
     class Shootist implements SipListener {
@@ -631,26 +750,7 @@ public class B2BUADialogRecoveryTest extends TestCase {
         private boolean byeTaskRunning;
 
         public boolean callerSendsBye = true;
-        
-        private final String myAddress = IP_ADDRESS;
 
-        public int myPort = 5050;
-
-		private boolean sendSubscribe ;
-        
-        private boolean firstTxComplete;
-		private boolean firstReInviteComplete;
-		private boolean secondReInviteComplete;
-		private boolean thirdReInviteComplete;
-		private boolean okToByeReceived;
-		// Save the created ACK request, to respond to retransmitted 2xx
-        private Request ackRequest;
-
-		private boolean notifyTxComplete;
-		private boolean subscribeTxComplete;
-
-		private String stackName;
-        
         class ByeTask  extends TimerTask {
             Dialog dialog;
             public ByeTask(Dialog dialog)  {
@@ -670,9 +770,8 @@ public class B2BUADialogRecoveryTest extends TestCase {
 
         }
 
-        public Shootist(String stackName, boolean callerSendsBye) {
+        public Shootist(boolean callerSendsBye) {
             this.callerSendsBye = callerSendsBye;
-            this.stackName = stackName;
         }
 
         public void processRequest(RequestEvent requestReceivedEvent) {
@@ -687,115 +786,17 @@ public class B2BUADialogRecoveryTest extends TestCase {
             // We are the UAC so the only request we get is the BYE.
             if (request.getMethod().equals(Request.BYE))
                 processBye(request, serverTransactionId);
-            else if(request.getMethod().equals(Request.NOTIFY)) {
-            	try {
-					serverTransactionId.sendResponse( messageFactory.createResponse(200,request) );
-					notifyTxComplete = true;
-				} catch (Exception e) {					
-					e.printStackTrace();
-					fail("Unxepcted exception ");
-				}
-            } else {
-            	if(!request.getMethod().equals(Request.ACK)) {
-            		// not used in basic reinvite
-            		if(((CSeqHeader) request.getHeader(CSeqHeader.NAME)).getSeqNumber() == 1 && ((ToHeader)request.getHeader(ToHeader.NAME)).getAddress().getURI().toString().contains("ReInviteSubsNotify")) {
-		                try {
-		                    serverTransactionId.sendResponse( messageFactory.createResponse(202,request) );
-		                } catch (Exception e) {
-		                    e.printStackTrace();
-		                    fail("Unxepcted exception ");
-		                }
-	          		} else {
-            			processInvite(requestReceivedEvent, serverTransactionId);
-            		}
-            	} else {
-            		if(request.getMethod().equals(Request.ACK)) {
-	            		long cseq = ((CSeqHeader) request.getHeader(CSeqHeader.NAME)).getSeqNumber();
-	            		switch ((int) cseq) {
-						case 1:
-							firstReInviteComplete = true;
-							// not used in basic reinvite
-							if(sendSubscribe) {
-								try {
-									Request subscribe = requestReceivedEvent.getDialog().createRequest(Request.SUBSCRIBE);
-									requestReceivedEvent.getDialog().sendRequest(sipProvider.getNewClientTransaction(subscribe));
-								} catch (SipException e) {
-									// TODO Auto-generated catch block
-									e.printStackTrace();
-									fail("Unxepcted exception ");
-								}
-							}
-							
-							break;
-						case 2:
-							secondReInviteComplete = true;
-							break;	
-						case 3:
-							secondReInviteComplete = true;
-							break;
-							
-						case 4:
-							thirdReInviteComplete = true;
-							break;
-	
-						default:
-							break;
-						}
-            		}
-            	}
-            }
-
-        }
-        
-        /**
-         * Process the invite request.
-         */
-        public void processInvite(RequestEvent requestEvent,
-                ServerTransaction serverTransaction) {
-            SipProvider sipProvider = (SipProvider) requestEvent.getSource();
-            Request request = requestEvent.getRequest();
-            if(!((ToHeader)requestEvent.getRequest().getHeader(ToHeader.NAME)).getAddress().getURI().toString().contains("ReInvite") && !((FromHeader)requestEvent.getRequest().getHeader(FromHeader.NAME)).getAddress().getURI().toString().contains("LittleGuy")) {
-            	throw new IllegalStateException("The From and To Headers are reversed !!!!");
-            }
-            try {
-                System.out.println("shootme: got an Invite sending Trying");
-                // System.out.println("shootme: " + request);
-                Response response = messageFactory.createResponse(Response.RINGING,
-                        request);
-                ServerTransaction st = requestEvent.getServerTransaction();
-
-                if (st == null) {
-                    st = sipProvider.getNewServerTransaction(request);
+            else if (request.getMethod().equals(Request.NOTIFY))
+                processNotify(request, serverTransactionId);            
+            else {
+                try {
+                    serverTransactionId.sendResponse( messageFactory.createResponse(202,request) );
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    fail("Unxepcted exception ");
                 }
-                dialog = st.getDialog();
-                st.sendResponse(response);
-
-                Thread.sleep(1000);
-                
-                Response okResponse = messageFactory.createResponse(Response.OK,
-                        request);
-                Address address = addressFactory.createAddress("Shootme <sip:"
-                        + myAddress + ":" + myPort + ">");
-                ContactHeader contactHeader = headerFactory
-                        .createContactHeader(address);
-                response.addHeader(contactHeader);
-                okResponse.addHeader(contactHeader);
-//                this.inviteTid = st;
-                // Defer sending the OK to simulate the phone ringing.
-                // Answered in 1 second ( this guy is fast at taking calls)
-//                this.inviteRequest = request;
-
-                if (inviteTid.getState() != TransactionState.COMPLETED) {
-                    System.out.println("shootme: Dialog state before 200: "
-                            + inviteTid.getDialog().getState());
-                    st.sendResponse(okResponse);
-                    System.out.println("shootme: Dialog state after 200: "
-                            + inviteTid.getDialog().getState());
-                }
-            } catch (Exception ex) {
-                ex.printStackTrace();
-                System.exit(0);
             }
+
         }
 
         public void processBye(Request request,
@@ -818,8 +819,49 @@ public class B2BUADialogRecoveryTest extends TestCase {
 
             }
         }
+        
+        public void processNotify(Request request,
+                ServerTransaction serverTransactionId) {
+            try {
+                System.out.println("shootist:  got a " + request);
+                if (serverTransactionId == null) {
+                    System.out.println("shootist:  null TID.");
+                    return;
+                }
+                Dialog dialog = serverTransactionId.getDialog();
+                System.out.println("Dialog :  localParty " + dialog.getLocalParty().getURI());
+                System.out.println("Dialog :  remoteParty " + dialog.getRemoteParty().getURI());
+                
+                System.out.println("request :  localParty " + ((MessageExt)request).getFromHeader().getAddress().getURI());
+                System.out.println("request :  remoteParty " + ((MessageExt)request).getToHeader().getAddress().getURI());
+                
+                int statusCode = Response.OK;
+                
+                if(dialog.getLocalParty().getURI().equals(((MessageExt)request).getToHeader().getAddress().getURI()) && dialog.getRemoteParty().getURI().equals(((MessageExt)request).getFromHeader().getAddress().getURI())) {
+                	statusCode = Response.OK;
+                } else {
+                	statusCode = Response.CALL_OR_TRANSACTION_DOES_NOT_EXIST;
+                }
+                
+                
+                System.out.println("Dialog State = " + dialog.getState());
+                Response response = messageFactory.createResponse(statusCode, request);
+                serverTransactionId.sendResponse(response);
+                System.out.println("shootist:  Sending "+ statusCode);
+                System.out.println("Dialog State = " + dialog.getState());
 
-        public void processResponse(ResponseEvent responseReceivedEvent) {        	
+            } catch (Exception ex) {
+                fail("Unexpected exception");
+
+            }
+        }
+
+           // Save the created ACK request, to respond to retransmitted 2xx
+           private Request ackRequest;
+
+		public boolean okToByeReceived;
+
+        public void processResponse(ResponseEvent responseReceivedEvent) {
             System.out.println("Got a response");
             Response response = (Response) responseReceivedEvent.getResponse();
             ClientTransaction tid = responseReceivedEvent.getClientTransaction();
@@ -828,11 +870,7 @@ public class B2BUADialogRecoveryTest extends TestCase {
             System.out.println("Response received : Status Code = "
                     + response.getStatusCode() + " " + cseq);
 
-            if(cseq.getMethod().equalsIgnoreCase(Request.SUBSCRIBE)) {
-            	subscribeTxComplete = true;
-            	return;
-            }
-            
+
             if (tid == null) {
 
                 // RFC3261: MUST respond to every 2xx
@@ -850,7 +888,7 @@ public class B2BUADialogRecoveryTest extends TestCase {
             // If the caller is supposed to send the bye
             if ( callerSendsBye && !byeTaskRunning) {
                 byeTaskRunning = true;
-                new Timer().schedule(new ByeTask(dialog), 50000) ;
+                new Timer().schedule(new ByeTask(dialog), 4000) ;
             }
             System.out.println("transaction state is " + tid.getState());
             System.out.println("Dialog = " + tid.getDialog());
@@ -867,7 +905,6 @@ public class B2BUADialogRecoveryTest extends TestCase {
                         System.out.println("Sending ACK");
                         dialog.sendAck(ackRequest);
 
-                        firstTxComplete = true;
                         // JvB: test REFER, reported bug in tag handling
 //                      Request referRequest = dialog.createRequest("REFER");
 //                      //simulating a balancer that will forward the request to the recovery node
@@ -916,7 +953,7 @@ public class B2BUADialogRecoveryTest extends TestCase {
             }
         }
 
-        public void init(String from) {
+        public void init(String method) {
             SipFactory sipFactory = null;
             sipStack = null;
             sipFactory = SipFactory.getInstance();
@@ -924,11 +961,11 @@ public class B2BUADialogRecoveryTest extends TestCase {
             Properties properties = new Properties();
             // If you want to try TCP transport change the following to
             String transport = "udp";
-            String peerHostPort = myAddress + ":" + 5080;
-            //properties.setProperty("javax.sip.OUTBOUND_PROXY", peerHostPort + "/"
-            //      + transport);
+            String peerHostPort = IP_ADDRESS + ":" + BALANCER_PORT;
+            properties.setProperty("javax.sip.OUTBOUND_PROXY", peerHostPort + "/"
+                    + transport);
             // If you want to use UDP then uncomment this.
-            properties.setProperty("javax.sip.STACK_NAME", stackName);
+            properties.setProperty("javax.sip.STACK_NAME", "shootist");
 
             // The following properties are specific to nist-sip
             // and are not necessarily part of any other jain-sip
@@ -946,11 +983,12 @@ public class B2BUADialogRecoveryTest extends TestCase {
             // Set to 0 (or NONE) in your production code for max speed.
             // You need 16 (or TRACE) for logging traces. 32 (or DEBUG) for debug + traces.
             // Your code will limp at 32 but it is best for debugging.
-            properties.setProperty("gov.nist.javax.sip.TRACE_LEVEL", "DEBUG");
+            properties.setProperty("gov.nist.javax.sip.TRACE_LEVEL", "ERROR");
 
             try {
                 // Create SipStack object
                 sipStack = sipFactory.createSipStack(properties);
+                System.out.println("createSipStack " + sipStack);
             } catch (PeerUnavailableException e) {
                 // could not find
                 // gov.nist.jain.protocol.ip.sip.SipStackImpl
@@ -964,12 +1002,12 @@ public class B2BUADialogRecoveryTest extends TestCase {
                 headerFactory = sipFactory.createHeaderFactory();
                 addressFactory = sipFactory.createAddressFactory();
                 messageFactory = sipFactory.createMessageFactory();
-                udpListeningPoint = sipStack.createListeningPoint(myAddress, myPort, "udp");
+                udpListeningPoint = sipStack.createListeningPoint(IP_ADDRESS, 5060, "udp");
                 sipProvider = sipStack.createSipProvider(udpListeningPoint);
                 Shootist listener = this;
                 sipProvider.addSipListener(listener);
 
-                String fromName = from;
+                String fromName = "BigGuy";
                 String fromSipAddress = "here.com";
                 String fromDisplayName = "The Master Blaster";
 
@@ -1018,7 +1056,7 @@ public class B2BUADialogRecoveryTest extends TestCase {
 
                 // Create a new Cseq header
                 CSeqHeader cSeqHeader = headerFactory.createCSeqHeader(1L,
-                        Request.INVITE);
+                        method);
 
                 // Create a new MaxForwardsHeader
                 MaxForwardsHeader maxForwards = headerFactory
@@ -1026,10 +1064,10 @@ public class B2BUADialogRecoveryTest extends TestCase {
 
                 // Create the request.
                 Request request = messageFactory.createRequest(requestURI,
-                        Request.INVITE, callIdHeader, cSeqHeader, fromHeader,
+                        method, callIdHeader, cSeqHeader, fromHeader,
                         toHeader, viaHeaders, maxForwards);
                 // Create contact headers
-                String host = myAddress;
+                String host = IP_ADDRESS;
 
                 SipURI contactUrl = addressFactory.createSipURI(fromName, host);
                 contactUrl.setPort(udpListeningPoint.getPort());
@@ -1114,26 +1152,6 @@ public class B2BUADialogRecoveryTest extends TestCase {
         public void stop() {
             stopSipStack(sipStack, this);
         }
-
-		public void checkState(boolean reinviteSubsNotify) {
-			if(reinviteSubsNotify) {
-				if(firstTxComplete && firstReInviteComplete && subscribeTxComplete && notifyTxComplete && secondReInviteComplete && thirdReInviteComplete && okToByeReceived) {
-					System.out.println("shootist state OK " );
-				} else {
-					fail("firstTxComplete " + firstTxComplete + " && firstReInviteComplete  " + firstReInviteComplete + " && subscribeTxComplete " + subscribeTxComplete + " && notifyComplete " + notifyTxComplete + "&& secondReInviteComplete " + secondReInviteComplete + "&& thirdReInviteComplete " + thirdReInviteComplete + " && okToByeReceived " + okToByeReceived);
-				}
-			} else {
-				if(firstTxComplete && firstReInviteComplete && secondReInviteComplete && okToByeReceived) {
-					System.out.println("shootist state OK " );
-				} else {
-					fail("firstTxComplete " + firstTxComplete + " && firstReInviteComplete  " + firstReInviteComplete + " && secondReInviteComplete " + secondReInviteComplete + " && okToByeReceived " + okToByeReceived);
-				}
-			}
-		}
-
-		public void setSendSubscribe(boolean b) {
-			sendSubscribe  = b;
-		}
     }
 
     public static void stopSipStack(SipStack sipStack, SipListener listener) {
@@ -1143,7 +1161,7 @@ public class B2BUADialogRecoveryTest extends TestCase {
                 SipProvider sipProvider = sipProviderIterator.next();
                 ListeningPoint[] listeningPoints = sipProvider.getListeningPoints();
                 for (ListeningPoint listeningPoint : listeningPoints) {
-                    sipProvider.removeListeningPoint(listeningPoint);
+                	sipProvider.removeListeningPoint(listeningPoint);
                     sipStack.deleteListeningPoint(listeningPoint);
                     listeningPoints = sipProvider.getListeningPoints();
                 }
@@ -1159,119 +1177,84 @@ public class B2BUADialogRecoveryTest extends TestCase {
         sipStack = null;
     }
 
-    /**
-     * UA1			B2BUA (Engine1)			B2BUA (Engine2)			UA2
-	 * INVITE (CSeq 1)
-	 * ----------------------->
-	 * 		
-	 * 				INVITE (CSeq 1)
-	 * 				------------------------------------------------->
-	 * 	INVITE (CSeq 1)
-	 * <------------------------
-	 * 
-	 * SUBSCRIBE(CSeq 2)
-	 * ----------------------->
-	 * 		
-	 * 				SUBSCRIBE (CSeq 2)
-	 * 				------------------------------------------------->
-	 * 
-	 * 									NOTIFY (CSeq 1)
-	 *				<-------------------------------------------------
-	 * 		NOTIFY (CSeq 2)
-	 * <------------------------
-	 * 
-	 * 											INVITE (CSeq 2)
-	 * 								             <---------------------
-	 * 					INVITE (CSeq 3)
-	 * <------------------------------------------
-	 * 									INVITE (CSeq 3)
-	 *  				      <----------------------------------------
-	 *  	INVITE (CSeq 4)
-	 *  <---------------------
-	 *  BYE (CSeq 3)
-	 *  ----------------------->
-	 *  								BYE (CSeq 3)
-	 *  						------------------------------------->
-     */
-    public void testDialogFailoverReInviteSubsNotify() throws Exception {
+    public void testDialogFailover() throws Exception {
+    	
+        balancer = new Balancer(IP_ADDRESS, BALANCER_PORT);
+        balancer.start();
 
-        shootist = new Shootist("shootist_subsnotify", true);
-        shootme = new Shootme("shootme_subsnotify", 5070, true);
-
-        b2buaNode1 = new SimpleB2BUA("b2buaNode1_subsnotify", 5080, TestConstants.getIpAddressFromProperties(), ListeningPoint.UDP, ReplicationStrategy.ConfirmedDialogNoApplicationData, false);
-        Thread.sleep(5000);
-        b2buaNode2 = new SimpleB2BUA("b2buaNode2_subsnotify", 5081, TestConstants.getIpAddressFromProperties(), ListeningPoint.UDP, ReplicationStrategy.ConfirmedDialogNoApplicationData, false);
-
+        shootist = new Shootist(true);
+        
+        shootme = new Shootme("shootme", 5070, true);
+        shootmeRecoveryNode = new Shootme("shootme_recovery", 5080, true);
         shootme.init();
-        shootist.setSendSubscribe(true);
-        shootist.init("ReInviteSubsNotify");
+        shootmeRecoveryNode.init();        
+
+        Thread.sleep(5000);
+
+        shootist.init(Request.INVITE);
         
-        
-        Thread.sleep(60000);
-        
-        shootme.checkState(true);
-        shootist.checkState(true);
-        // make sure dialogs are removed on both nodes
-        // non regression for Issue 1418
-        // http://code.google.com/p/restcomm/issues/detail?id=1418
-        assertTrue(b2buaNode1.checkDialogsRemoved());
-        assertTrue(b2buaNode2.checkDialogsRemoved());
-        
-        b2buaNode1.stop();
-        b2buaNode2.stop();
+        Thread.sleep(10000);
         
         shootist.stop();
-        shootme.stop();
-        Thread.sleep(5000);
+        shootmeRecoveryNode.stop();
+        stopSipStack(balancer.sipStack, balancer);
+        assertTrue(shootist.okToByeReceived);
     }
-   
-    /**
-     * UA1			B2BUA (Engine1)			B2BUA (Engine2)			UA2
-	 * INVITE (CSeq 1)
-	 * ----------------------->
-	 * 		
-	 * 				INVITE (CSeq 1)
-	 * 				-------------------------------------------------> 	
-	 * 
-	 * 											INVITE (CSeq 1)
-	 * 								             <---------------------
-	 * 					INVITE (CSeq 2)
-	 * <------------------------------------------
-	 * 									INVITE (CSeq 2)
-	 *  				      <----------------------------------------
-	 *  	INVITE (CSeq 3)
-	 *  <---------------------
-	 *  BYE (CSeq 2)
-	 *  ----------------------->
-	 *  								BYE (CSeq 2)
-	 *  						------------------------------------->
-     */
-    public void testDialogFailoverReInvite() throws Exception {
+    
+    // http://code.google.com/p/restcomm/issues/detail?id=2942
+	// 	From and To Uris switch places in certain conditions
+    public void testSubscribeDialogFailover() throws Exception {
 
-        shootist = new Shootist("shootist_reinvite", true);
-        shootme = new Shootme("shootme_reinvite", 5070, true);
+        balancer = new Balancer(IP_ADDRESS, BALANCER_PORT);
+        balancer.start();
 
-        b2buaNode1 = new SimpleB2BUA("b2buaNode1_reinvite", 5080, TestConstants.getIpAddressFromProperties(), ListeningPoint.UDP, ReplicationStrategy.ConfirmedDialogNoApplicationData, false);
-        Thread.sleep(5000);
-        b2buaNode2 = new SimpleB2BUA("b2buaNode2_reinvite", 5081, TestConstants.getIpAddressFromProperties(), ListeningPoint.UDP, ReplicationStrategy.ConfirmedDialogNoApplicationData, false);
-
+        shootist = new Shootist(false);
+        
+        shootme = new Shootme("shootme", 5070, true);
+        shootmeRecoveryNode = new Shootme("shootme_recovery", 5080, true);
         shootme.init();
-        shootist.init("ReInvite");        
-        Thread.sleep(60000);
+        shootmeRecoveryNode.init();        
+
+        Thread.sleep(5000);
+
+        shootist.init(Request.SUBSCRIBE);
         
-        shootme.checkState(false);
-        shootist.checkState(false);
-        // make sure dialogs are removed on both nodes
-        // non regression for Issue 1418
-        // http://code.google.com/p/restcomm/issues/detail?id=1418
-        assertTrue(b2buaNode1.checkDialogsRemoved());
-        assertTrue(b2buaNode2.checkDialogsRemoved());
+        Thread.sleep(10000);
         
-        b2buaNode1.stop();
-        b2buaNode2.stop();
+        shootmeRecoveryNode.sendNotify(SubscriptionStateHeader.ACTIVE);
+        
+        Thread.sleep(5000);
         
         shootist.stop();
-        shootme.stop();
-        Thread.sleep(5000);
+        shootmeRecoveryNode.stop();
+        stopSipStack(balancer.sipStack, balancer);
+        assertEquals(200, shootme.lastNotifyResponse.getStatusCode());
+        assertEquals(200, shootmeRecoveryNode.lastNotifyResponse.getStatusCode());
     }
+
+//    public void testDialogIdentityCalleeSendsBye() throws Exception {
+//
+//        balancer = new Balancer(IP_ADDRESS, BALANCER_PORT);
+//
+//        balancer.start();
+//
+//        shootist = new Shootist(false);
+//
+//        shootme = new Shootme("shootme", 5070, false);
+//
+//        shootmeRecoveryNode = new Shootme("shootme_recovery", 5080, false);
+//
+//        shootme.init();
+//        shootmeRecoveryNode.init();
+//        shootist.init();
+//
+//        Thread.sleep(10000);
+//
+//        shootist.stop();
+//        shootmeRecoveryNode.stop();
+////      shootme.stop();
+//        stopSipStack(balancer.sipStack, balancer);
+//
+//
+//    }
 }

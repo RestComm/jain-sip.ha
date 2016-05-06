@@ -1,23 +1,20 @@
 /*
- * JBoss, Home of Professional Open Source
- * Copyright 2011, Red Hat, Inc. and individual contributors
- * by the @authors tag. See the copyright.txt in the distribution for a
- * full listing of individual contributors.
+ * TeleStax, Open Source Cloud Communications
+ * Copyright 2011-2016, Telestax Inc and individual contributors
+ * by the @authors tag.
  *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
+ * This program is free software: you can redistribute it and/or modify
+ * under the terms of the GNU Affero General Public License as
+ * published by the Free Software Foundation; either version 3 of
  * the License, or (at your option) any later version.
  *
- * This software is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Affero General Public License for more details.
  *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
 package org.mobicents.ha.javax.sip;
@@ -53,11 +50,18 @@ import javax.sip.header.HeaderFactory;
 import javax.sip.message.MessageFactory;
 import javax.sip.message.Request;
 
-import org.jboss.cache.Fqn;
-import org.mobicents.ha.javax.sip.cache.ManagedMobicentsSipCache;
-import org.mobicents.ha.javax.sip.cache.MobicentsSipCache;
+import org.mobicents.ha.javax.sip.cache.infinispan.InfinispanCache;
 import org.mobicents.tools.sip.balancer.NodeRegisterRMIStub;
 import org.mobicents.tools.sip.balancer.SIPNode;
+
+/**
+ * Implementation of a B2B User Agent for the tests. See the test cases for more details.
+ * 
+ * @author <A HREF="mailto:jean.deruelle@gmail.com">Jean Deruelle</A>
+ * @author <A HREF="mailto:posfai.gergely@ext.alerant.hu">Gergely Posfai</A>
+ * @author <A HREF="mailto:kokuti.andras@ext.alerant.hu">Andras Kokuti</A>
+ *
+ */
 
 public class SimpleB2BUA implements SipListener {
  
@@ -95,11 +99,14 @@ public class SimpleB2BUA implements SipListener {
         properties.setProperty("javax.sip.AUTOMATIC_DIALOG_SUPPORT", "off");
         properties.setProperty("gov.nist.javax.sip.REENTRANT_LISTENER", "true");
         properties.setProperty("org.mobicents.ha.javax.sip.REPLICATION_STRATEGY", replicationStrategy.toString());
-        properties.setProperty(ManagedMobicentsSipCache.STANDALONE, "true");
-        System.setProperty("jgroups.bind_addr", ipAddress);
-        System.setProperty("jgroups.udp.mcast_addr", "232.5.5.5");
-        System.setProperty("jboss.server.log.threshold", "DEBUG");
-        System.setProperty("jbosscache.config.validate", "false");
+        properties.setProperty(
+				"org.mobicents.ha.javax.sip.CACHE_CLASS_NAME",
+				"org.mobicents.ha.javax.sip.cache.infinispan.InfinispanCache");
+//        properties.setProperty(ManagedMobicentsSipCache.STANDALONE, "true");
+//        System.setProperty("jgroups.bind_addr", ipAddress);
+//        System.setProperty("jgroups.udp.mcast_addr", "232.5.5.5");
+//        System.setProperty("jboss.server.log.threshold", "DEBUG");
+//        System.setProperty("jbosscache.config.validate", "false");
 		initStack(ipAddress, transport);
 	}
 	
@@ -107,7 +114,6 @@ public class SimpleB2BUA implements SipListener {
 			NumberFormatException, InvalidArgumentException, ParseException {
 		this.sipFactory = SipFactory.getInstance();
 		this.sipFactory.setPathName("org.mobicents.ha");
-//		this.sipFactory.setPathName("gov.nist");
 		this.sipStack = this.sipFactory.createSipStack(properties);
 		this.sipStack.start();
 		this.listeningPoint = this.sipStack.createListeningPoint(properties.getProperty(
@@ -236,8 +242,9 @@ public class SimpleB2BUA implements SipListener {
                 }
                 sipProvider.removeSipListener(this);
                 if (stopSipStack){
-                	((MobicentsSipCache)((ClusteredSipStack)sipProvider.getSipStack()).getSipCache()).getMobicentsCache().getJBossCache().remove(Fqn.fromString("DIALOG_IDS"), "outgoingDialogId");
-                	((MobicentsSipCache)((ClusteredSipStack)sipProvider.getSipStack()).getSipCache()).getMobicentsCache().getJBossCache().remove(Fqn.fromString("DIALOG_IDS"), "incomingDialogId");
+                	((InfinispanCache)((ClusteredSipStack)sipProvider.getSipStack()).getSipCache()).getCacheManager().getCache("DIALOG_IDS").remove("outgoingDialogId");
+                	((InfinispanCache)((ClusteredSipStack)sipProvider.getSipStack()).getSipCache()).getCacheManager().getCache("DIALOG_IDS").remove("incomingDialogId");
+                	((InfinispanCache)((ClusteredSipStack)sipProvider.getSipStack()).getSipCache()).getCacheManager().getCache("STX_IDS").remove("serverTransactionId");
                 }
                 sipStack.deleteSipProvider(sipProvider);                
                 sipProviderIterator = sipStack.getSipProviders();
