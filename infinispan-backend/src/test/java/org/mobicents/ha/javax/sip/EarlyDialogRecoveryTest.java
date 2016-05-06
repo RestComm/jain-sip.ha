@@ -78,7 +78,14 @@ import gov.nist.javax.sip.stack.SIPDialog;
 import gov.nist.javax.sip.stack.SIPServerTransaction;
 import junit.framework.TestCase;
 
-
+/**
+ * Test case for the early dialog recovery. For more information please see the tests below.
+ * 
+ * @author <A HREF="mailto:jean.deruelle@gmail.com">Jean Deruelle</A>
+ * @author <A HREF="mailto:posfai.gergely@ext.alerant.hu">Gergely Posfai</A>
+ * @author <A HREF="mailto:kokuti.andras@ext.alerant.hu">Andras Kokuti</A>
+ *
+ */
 
 public class EarlyDialogRecoveryTest extends TestCase {
 	

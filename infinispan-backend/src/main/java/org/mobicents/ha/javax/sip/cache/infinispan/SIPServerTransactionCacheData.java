@@ -42,8 +42,8 @@ import org.infinispan.Cache;
  * This class modifies the original SIPServerTransactionCacheData ( @see org.mobicents.ha.javax.sip.cache.hz.SIPServerTransactionCacheData ) 
  * to provide an implementation backed by Infinispan Cache
  * 
- * @author posfai.gergely@ext.alerant.hu
- * @author kokuti.andras@ext.alerant.hu
+ * @author <A HREF="mailto:posfai.gergely@ext.alerant.hu">Gergely Posfai</A>
+ * @author <A HREF="mailto:kokuti.andras@ext.alerant.hu">Andras Kokuti</A>
  *
  */
 

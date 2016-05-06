@@ -56,8 +56,8 @@ import gov.nist.javax.sip.stack.SIPServerTransaction;
  * If neither the Infinispan cache configuration path property, nor the CacheManager JNDI name are specified, then a default Infinispan config will be used, which can be found at:
  * <b>META-INF/cache-configuration.xml</b> 
  * 
- * @author kokuti.andras@ext.alerant.hu
- * @author posfai.gergely@ext.alerant.hu
+ * @author <A HREF="mailto:posfai.gergely@ext.alerant.hu">Gergely Posfai</A>
+ * @author <A HREF="mailto:kokuti.andras@ext.alerant.hu">Andras Kokuti</A>
  *
  */
 public class InfinispanCache implements SipCache {

@@ -8,16 +8,15 @@
     <version>1.5.0-SNAPSHOT</version>
   </parent>
 
-  <artifactId>restcomm-jain-sip-ha-infinispan-backend</artifactId>
+  <artifactId>restcomm-jain-sip-ha-hazelcast-backend</artifactId>
   <version>1.5.0-SNAPSHOT</version>
 
-  <name>Restcomm JAIN SIP HA Infinispan backend</name>
-  <description>Restcomm JAIN SIP HA Infinispan backend</description>
-  
+  <name>Restcomm JAIN SIP HA Hazelcast backend</name>
+  <description>Restcomm JAIN SIP HA Hazelcast backend</description>
+  <url>https://github.com/RestComm/jain-sip.ha</url>
+
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-	<IP_ADDRESS>192.168.10.213</IP_ADDRESS>
-	<maven.test.skip>true</maven.test.skip>
   </properties>
 
   <dependencies>
@@ -32,10 +31,10 @@
 		<version>1.5.0-SNAPSHOT</version>
 	</dependency>
 	<dependency>
-		<groupId>org.infinispan</groupId>
-		<artifactId>infinispan-core</artifactId>
-		<version>5.1.2.FINAL</version>
-	</dependency> 
+    	<groupId>com.hazelcast</groupId>
+    	<artifactId>hazelcast</artifactId>
+    	<version>3.4.1</version>
+    </dependency>
     <dependency>
 	   	<groupId>log4j</groupId>
 	   	<artifactId>log4j</artifactId>
@@ -47,11 +46,6 @@
       <version>3.8.1</version>
       <scope>test</scope>
     </dependency>
-	<dependency>
-			<groupId>org.jboss.logging</groupId>
-			<artifactId>jboss-logging-log4j</artifactId>
-			<scope>provided</scope>
-		</dependency> 
     <dependency>
     	<groupId>org.mobicents.tools</groupId>
     	<artifactId>sip-balancer-jar</artifactId>
@@ -74,17 +68,11 @@
     	        <groupId>jgroups</groupId>
 				<artifactId>jgroups</artifactId>
     	    </exclusion>
+    	    <exclusion>
+    	        <groupId>com.sun.jdmk</groupId>
+				<artifactId>jmxtools</artifactId>
+    	    </exclusion>
     	</exclusions>
     </dependency>
   </dependencies>
-  
-	<build>
-		<testResources>
-			<testResource>
-				<directory>src/test/resources</directory>
-				<filtering>true</filtering>
-			</testResource>
-		</testResources> 
-	</build>
-  
-</project> 
+</project>

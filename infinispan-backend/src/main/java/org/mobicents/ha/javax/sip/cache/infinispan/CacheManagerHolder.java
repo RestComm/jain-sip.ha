@@ -27,8 +27,8 @@ import org.infinispan.manager.DefaultCacheManager;
  * This class holds a singleton DefaultCacheManager if there is no Infinispan cache allocated
  * under the given JNDI name @see org.mobicents.ha.javax.sip.cache.infinispan.InfinispanCache  
  * 
- * @author posfai.gergely@ext.alerant.hu
- * @author kokuti.andras@ext.alerant.hu
+ * @author <A HREF="mailto:posfai.gergely@ext.alerant.hu">Gergely Posfai</A>
+ * @author <A HREF="mailto:kokuti.andras@ext.alerant.hu">Andras Kokuti</A>
  *
  */
 
