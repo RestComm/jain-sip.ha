@@ -951,11 +951,6 @@ public class B2BUADialogRecoveryTest extends TestCase {
             try {
                 // Create SipStack object
                 sipStack = sipFactory.createSipStack(properties);
-                if(sipStack instanceof ClusteredSipStack){
-                	System.out.println("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");                	
-                }
-                System.out.println("####################################");
-                System.out.println("createSipStack " + sipStack.getClass().getName());
             } catch (PeerUnavailableException e) {
                 // could not find
                 // gov.nist.jain.protocol.ip.sip.SipStackImpl
