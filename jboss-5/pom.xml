@@ -17,7 +17,7 @@
 	<url>https://github.com/RestComm/jain-sip.ha</url>
 
 	<properties>
-		<IP_ADDRESS>192.168.0.11</IP_ADDRESS>
+		<IP_ADDRESS>192.168.10.213</IP_ADDRESS>
 		<maven.test.skip>true</maven.test.skip>
 	</properties>
 	
@@ -75,6 +75,14 @@
 			<artifactId>core</artifactId>
 			<scope>provided</scope>
 		</dependency>
+		
+		<dependency>
+				<groupId>org.mobicents.tools</groupId>
+				<artifactId>sip-balancer-jar</artifactId>
+				<scope>provided</scope>
+		</dependency>
+		
+		
 	</dependencies>
 
 	<build>
