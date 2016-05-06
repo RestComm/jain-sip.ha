@@ -115,7 +115,6 @@ public class JBossJainSipCacheListener {
 			}
 			clusteredSipStack.remoteDialogRemoval(fqn.getLastElementAsString());
 		}		
-		clusteredSipStack.remoteDialogRemoval(fqn.getLastElementAsString());
 	}
 
 	@ViewChanged
