@@ -62,7 +62,7 @@ import org.mobicents.tools.sip.balancer.SIPNode;
  * @author <A HREF="mailto:jean.deruelle@telestax.com">Jean Deruelle</A> 
  *
  */
-public class MultiNetworkLoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBeatingService, LoadBalancerHeartBeatingServiceImplMBean {
+public class MultiNetworkLoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBeatingService, MultiNetworkLoadBalancerHeartBeatingServiceImplMBean {
 
 	private static StackLogger logger = CommonLogger.getLogger(MultiNetworkLoadBalancerHeartBeatingServiceImpl.class);
 	public static String LB_HB_SERVICE_MBEAN_NAME = "org.mobicents.jain.sip:type=load-balancer-heartbeat-service,name=";
