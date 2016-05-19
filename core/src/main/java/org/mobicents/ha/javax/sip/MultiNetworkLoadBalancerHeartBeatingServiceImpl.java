@@ -33,9 +33,7 @@ import java.net.UnknownHostException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Enumeration;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -50,7 +48,6 @@ import javax.management.MBeanServer;
 import javax.management.ObjectName;
 import javax.sip.ListeningPoint;
 
-import org.mobicents.ha.javax.sip.util.Inet6Util;
 import org.mobicents.tools.sip.balancer.NodeRegisterRMIStub;
 import org.mobicents.tools.sip.balancer.SIPNode;
 
@@ -58,15 +55,16 @@ import org.mobicents.tools.sip.balancer.SIPNode;
  *  <p>implementation of the <code>LoadBalancerHeartBeatingService</code> interface.</p>
  *     
  *  <p>
- *  It sends heartbeats and health information to the sip balancers configured through the stack property org.mobicents.ha.javax.sip.BALANCERS 
+ *  It sends heartbeats and health information to the sip balancers configured per connector so it can support multiple network interfaces and transports at the same time for outbound traffic
+ *  See https://github.com/RestComm/jain-sip.ha/issues/9 
  *  </p>
  * 
- * @author <A HREF="mailto:jean.deruelle@gmail.com">Jean Deruelle</A> 
+ * @author <A HREF="mailto:jean.deruelle@telestax.com">Jean Deruelle</A> 
  *
  */
-public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBeatingService, LoadBalancerHeartBeatingServiceImplMBean {
+public class MultiNetworkLoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBeatingService, LoadBalancerHeartBeatingServiceImplMBean {
 
-	private static StackLogger logger = CommonLogger.getLogger(LoadBalancerHeartBeatingServiceImpl.class);
+	private static StackLogger logger = CommonLogger.getLogger(MultiNetworkLoadBalancerHeartBeatingServiceImpl.class);
 	public static String LB_HB_SERVICE_MBEAN_NAME = "org.mobicents.jain.sip:type=load-balancer-heartbeat-service,name=";
     public final static String REACHABLE_CHECK = "org.mobicents.ha.javax.sip.REACHABLE_CHECK";
     public final static String LOCAL_HTTP_PORT = "org.mobicents.ha.javax.sip.LOCAL_HTTP_PORT";
@@ -81,13 +79,13 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 	
 	ClusteredSipStack sipStack = null;
     Properties sipStackProperties = null;
-	//the logger
-    //the balancers to send heartbeat to and our health info
-	protected String balancers;
 	//the jvmRoute for this node
 	protected String jvmRoute;
     //the balancers names to send heartbeat to and our health info
-	protected Map<String, SipLoadBalancer> register = new ConcurrentHashMap<String, SipLoadBalancer>();
+	// https://github.com/RestComm/jain-sip.ha/issues/4 : 
+	// Caching the sipNodes to send to the LB as there is no reason for them to change often or at all after startup
+	protected Map<SipLoadBalancer, Set<SIPNode>> register = new ConcurrentHashMap<SipLoadBalancer, Set<SIPNode>>();
+	protected Map<SipLoadBalancer, Set<ListeningPoint>> connectors = new ConcurrentHashMap<SipLoadBalancer, Set<ListeningPoint>>();
 	//heartbeat interval, can be modified through JMX
 	protected long heartBeatInterval = 5000;
 	protected Timer heartBeatTimer = new Timer();
@@ -100,16 +98,11 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 	protected Set<LoadBalancerHeartBeatingListener> loadBalancerHeartBeatingListeners;
 	// https://github.com/RestComm/jain-sip.ha/issues/3
 	protected boolean useLoadBalancerForAllConnectors;
-	protected Set<ListeningPoint> sipConnectors;
-	// https://github.com/RestComm/jain-sip.ha/issues/4 : 
-	// Caching the sipNodes to send to the LB as there is no reason for them to change often or at all after startup
-	ConcurrentHashMap<String, SIPNode> sipNodes = new ConcurrentHashMap<String, SIPNode>();
-    
+	
 	ObjectName oname = null;
 	
-    public LoadBalancerHeartBeatingServiceImpl() {
+    public MultiNetworkLoadBalancerHeartBeatingServiceImpl() {
 		loadBalancerHeartBeatingListeners = new CopyOnWriteArraySet<LoadBalancerHeartBeatingListener>();
-		sipConnectors = new CopyOnWriteArraySet<ListeningPoint>();
 		useLoadBalancerForAllConnectors = true;
 	}
     
@@ -117,7 +110,6 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 			Properties stackProperties) {
 		sipStack = clusteredSipStack;
         sipStackProperties = stackProperties;
-		balancers = stackProperties.getProperty(BALANCERS);
 		heartBeatInterval = Integer.parseInt(stackProperties.getProperty(HEARTBEAT_INTERVAL, "5000"));
         String reachableCheckString = sipStackProperties.getProperty(REACHABLE_CHECK);
         if(reachableCheckString != null) {
@@ -139,46 +131,12 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
     	});
 
     	if (!started) {
-			if (balancers != null && balancers.length() > 0) {
-				String[] balancerDescriptions = balancers.split(BALANCERS_CHAR_SEPARATOR);
-				for (String balancerDescription : balancerDescriptions) {
-					String balancerAddress = balancerDescription;
-					int sipPort = DEFAULT_LB_SIP_PORT;
-					int httpPort = DEFAULT_LB_HTTP_PORT;
-					int rmiPort = DEFAULT_RMI_PORT;
-					if(balancerDescription.indexOf(BALANCER_SIP_PORT_CHAR_SEPARATOR) != -1) {
-						String[] balancerDescriptionSplitted = balancerDescription.split(BALANCER_SIP_PORT_CHAR_SEPARATOR);
-						balancerAddress = balancerDescriptionSplitted[0];
-						try {
-							//sipPort:httpPort:rmiPort
-							sipPort = Integer.parseInt(balancerDescriptionSplitted[1]);
-							if(balancerDescriptionSplitted.length>2) {
-								httpPort = Integer.parseInt(balancerDescriptionSplitted[2]);
-								if(balancerDescriptionSplitted.length>3){
-									rmiPort = Integer.parseInt(balancerDescriptionSplitted[3]);
-								}
-							}
-						} catch (NumberFormatException e) {
-							logger.logError("Impossible to parse the following sip balancer port " + balancerDescriptionSplitted[1], e);
-						}
-					} 
-					if(Inet6Util.isValidIP6Address(balancerAddress) || Inet6Util.isValidIPV4Address(balancerAddress)) {
-						try {
-							this.addBalancer(InetAddress.getByName(balancerAddress).getHostAddress(), sipPort, httpPort, rmiPort);
-						} catch (UnknownHostException e) {
-							logger.logError("Impossible to parse the following sip balancer address " + balancerAddress, e);
-						}
-					} else {
-						this.addBalancer(balancerAddress, sipPort, httpPort, 0, rmiPort);
-					}
-				}
-			}		
 			started = true;
 		}
-    	if(sipNodes.isEmpty()) {
-    		logger.logInfo("Computing SIP Nodes to be sent to the LB");
-    		updateConnectorsAsSIPNode();
-		}
+//    	if(sipNodes.isEmpty()) {
+//    		logger.logInfo("Computing SIP Nodes to be sent to the LB");
+//    		updateConnectorsAsSIPNode();
+//		}
 		this.hearBeatTaskToRun = new BalancerPingTimerTask();
 		
 		// Delay the start with 2 seconds so nodes joining under load are really ready to serve requests
@@ -260,10 +218,10 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 		}
 		
 		this.heartBeatInterval = heartBeatInterval;
-		if(sipNodes.isEmpty()) {
-			logger.logInfo("Computing SIP Nodes to be sent to the LB");
-			updateConnectorsAsSIPNode();
-		}
+//		if(sipNodes.isEmpty()) {
+//			logger.logInfo("Computing SIP Nodes to be sent to the LB");
+//			updateConnectorsAsSIPNode();
+//		}
 		this.hearBeatTaskToRun.cancel();
 		this.hearBeatTaskToRun = new BalancerPingTimerTask();
 		this.heartBeatTimer.scheduleAtFixedRate(this.hearBeatTaskToRun, 0,
@@ -311,125 +269,43 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
      * {@inheritDoc}
      */
 	public boolean addBalancer(String addr, int sipPort, int httpPort, int rmiPort) {
-		if (addr == null)
-			throw new NullPointerException("addr cant be null!!!");
-
-		InetAddress address = null;
-		try {
-			address = InetAddress.getByName(addr);
-		} catch (UnknownHostException e) {
-			throw new IllegalArgumentException(
-					"Something wrong with host creation.", e);
-		}		
-		String balancerName = address.getCanonicalHostName() + ":" + rmiPort;
-
-		if (register.get(balancerName) != null) {
-			logger.logInfo("Sip balancer " + balancerName + " already present, not added");
-			return false;
-		}		
-
-		SipLoadBalancer sipLoadBalancer = new SipLoadBalancer(this, address, sipPort, httpPort, rmiPort);
-		register.put(balancerName, sipLoadBalancer);
-
-		// notify the listeners
-		for (LoadBalancerHeartBeatingListener loadBalancerHeartBeatingListener : loadBalancerHeartBeatingListeners) {
-			loadBalancerHeartBeatingListener.loadBalancerAdded(sipLoadBalancer);
-		}
-
-		if(logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
-			logger.logDebug("following balancer name : " + balancerName +"/address:"+ addr + " added");
-		}
-		
-		return true;
+		throw new UnsupportedOperationException("This algorithm only allows to add a Load Balancer tied to a sip connector");
 	}
 
 	/**
      * {@inheritDoc}
      */
 	public boolean addBalancer(String hostName, int sipPort, int httpPort, int index, int rmiPort) {
-		return this.addBalancer(fetchHostAddress(hostName, index)
-				.getHostAddress(), sipPort, httpPort, rmiPort);
+		throw new UnsupportedOperationException("This algorithm only allows to add a Load Balancer tied to a sip connector");
 	}
 
 	/**
      * {@inheritDoc}
      */
 	public boolean removeBalancer(String addr, int sipPort, int httpPort, int rmiPort) {
-		if (addr == null)
-			throw new NullPointerException("addr cant be null!!!");
-
-		InetAddress address = null;
-		try {
-			address = InetAddress.getByName(addr);
-		} catch (UnknownHostException e) {
-			throw new IllegalArgumentException(
-					"Something wrong with host creation.", e);
-		}
-
-		SipLoadBalancer sipLoadBalancer = new SipLoadBalancer(this, address, sipPort, httpPort, rmiPort);
-
-		String keyToRemove = null;
-		Iterator<String> keyIterator = register.keySet().iterator();
-		while (keyIterator.hasNext() && keyToRemove ==null) {
-			String key = keyIterator.next();
-			if(register.get(key).equals(sipLoadBalancer)) {
-				keyToRemove = key;
-			}
-		}
-		
-		if(keyToRemove !=null ) {			
-			register.remove(keyToRemove);
-			
-			// notify the listeners
-			for (LoadBalancerHeartBeatingListener loadBalancerHeartBeatingListener : loadBalancerHeartBeatingListeners) {
-				loadBalancerHeartBeatingListener.loadBalancerRemoved(sipLoadBalancer);
-			}
-			
-			if(logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
-				logger.logDebug("following balancer name : " + keyToRemove +"/address:"+ addr + " removed");
-			}
-			
-			return true;
-		}
-
-		return false;
+		throw new UnsupportedOperationException("This algorithm only allows to remove a Load Balancer tied to a sip connector");
 	}
 
 	/**
      * {@inheritDoc}
      */
 	public boolean removeBalancer(String hostName, int sipPort, int httpPort, int index, int rmiPort) {
-		InetAddress[] hostAddr = null;
-		try {
-			hostAddr = InetAddress.getAllByName(hostName);
-		} catch (UnknownHostException uhe) {
-			throw new IllegalArgumentException(
-					"HostName is not a valid host name or it doesnt exists in DNS",
-					uhe);
-		}
-
-		if (index < 0 || index >= hostAddr.length) {
-			throw new IllegalArgumentException(
-					"Index in host address array is wrong, it should be [0]<x<["
-							+ hostAddr.length + "] and it is [" + index + "]");
-		}
-
-		InetAddress address = hostAddr[index];
-
-		return this.removeBalancer(address.getHostAddress(), sipPort, httpPort, rmiPort);
+		throw new UnsupportedOperationException("This algorithm only allows to remove a Load Balancer tied to a sip connector");
 	}
 
-	protected void updateConnectorsAsSIPNode() {
+	protected void updateConnectorsAsSIPNode(SipLoadBalancer loadBalancer) {
 		if(logger.isLoggingEnabled(StackLogger.TRACE_TRACE)) {
 			logger.logTrace("Gathering all SIP Connectors information. UseLoadBalancer for all connectors: " + useLoadBalancerForAllConnectors);
 		}
 		// Gathering info about server' sip listening points
-		Iterator<ListeningPoint> listeningPointIterator = null;
-		if(useLoadBalancerForAllConnectors) {
-			listeningPointIterator = sipStack.getListeningPoints();
-		} else {
-			listeningPointIterator = sipConnectors.iterator();
+		Set<ListeningPoint> listeningPoints = connectors.get(loadBalancer);
+		if(listeningPoints == null) {
+			if(logger.isLoggingEnabled(StackLogger.TRACE_INFO)) {
+				logger.logInfo("No listening points defined for " + loadBalancer);
+			}
+			return;
 		}
+		Iterator<ListeningPoint> listeningPointIterator = listeningPoints.iterator();
 		while (listeningPointIterator.hasNext()) {
 			
 			Integer sipTcpPort = null;
@@ -586,15 +462,19 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 							logger.logTrace("Creating new SIP Node for [" + ipAddress + "] to be added to the list for pinging the LB");
 						}	
 						SIPNode node = new SIPNode(hostName, ipAddress);
-						SIPNode previousValue = sipNodes.putIfAbsent(ipAddress, node);
-						if(previousValue == null) {
+						Set<SIPNode> sipNodes = register.get(loadBalancer);
+						if(sipNodes == null) {
+							sipNodes = new CopyOnWriteArraySet<SIPNode>();
+							register.put(loadBalancer, sipNodes);
+						}
+						boolean alreadyAdded = sipNodes.add(node);
+						if(!alreadyAdded) {
 							if(logger.isLoggingEnabled(StackLogger.TRACE_TRACE)) {
-								logger.logTrace("Added a sip Node with the key [" + ipAddress + "]");
+								logger.logTrace("Added " + node);
 							}
 						} else {
-							node = previousValue;
 							if(logger.isLoggingEnabled(StackLogger.TRACE_TRACE)) {
-								logger.logTrace("SIPNode " + node +  " was already present");
+								logger.logTrace(node +  " was already present");
 							}
 						}
 
@@ -643,61 +523,64 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 	 * @param info
 	 */
 	protected void sendKeepAliveToBalancers() {
-		if(sipNodes.isEmpty()) {
-    		logger.logInfo("Computing SIP Nodes to be sent to the LB as the list is currently empty");
-    		updateConnectorsAsSIPNode();
-		}
-		ArrayList<SIPNode> info = new ArrayList<SIPNode>(sipNodes.values());
-		if(logger.isLoggingEnabled(StackLogger.TRACE_TRACE)) {
-            logger.logTrace("Pinging balancers with info[" + info + "]");
-        }
+		
 		Thread.currentThread().setContextClassLoader(NodeRegisterRMIStub.class.getClassLoader());
-		for(SipLoadBalancer  balancerDescription:new HashSet<SipLoadBalancer>(register.values())) {
+		for(SipLoadBalancer loadBalancerToPing: register.keySet()) {
 			try {
+				Set<SIPNode> sipNodes = register.get(loadBalancerToPing);
+				if(sipNodes.isEmpty()) {
+		    		logger.logInfo("Computing SIP Nodes to be sent to the LB as the list is currently empty");
+		    		updateConnectorsAsSIPNode(loadBalancerToPing);
+				}
+				ArrayList<SIPNode> info = new ArrayList<SIPNode>(sipNodes);
+				if(logger.isLoggingEnabled(StackLogger.TRACE_TRACE)) {
+		            logger.logTrace("Pinging balancers with info[" + info + "]");
+		        }
+				
 				long startTime = System.currentTimeMillis();
-				Registry registry = LocateRegistry.getRegistry(balancerDescription.getAddress().getHostAddress(), balancerDescription.getRmiPort());
+				Registry registry = LocateRegistry.getRegistry(loadBalancerToPing.getAddress().getHostAddress(), loadBalancerToPing.getRmiPort());
 				NodeRegisterRMIStub reg=(NodeRegisterRMIStub) registry.lookup("SIPBalancer");
                 if(reachableCheck) {
-                    ArrayList<SIPNode> reachableInfo = getReachableSIPNodeInfo(balancerDescription.getAddress(), info);
+                    ArrayList<SIPNode> reachableInfo = getReachableSIPNodeInfo(loadBalancerToPing.getAddress(), info);
                     info = reachableInfo;
                     if(reachableInfo.isEmpty()) {
                         logger.logWarning("All connectors are unreachable from the balancer");
                     }
                 }
 				if(logger.isLoggingEnabled(StackLogger.TRACE_TRACE)) {
-				    logger.logTrace("Pinging the LB with the following Node Info [" + info + "]");
+				    logger.logTrace("Pinging " + loadBalancerToPing + " with the following Node Info [" + info + "]");
 				}
 				reg.handlePing(info);
 				if(logger.isLoggingEnabled(StackLogger.TRACE_TRACE)) {
-				    logger.logTrace("Pinged the LB with the following Node Info [" + info + "]");
+				    logger.logTrace("Pinged " + loadBalancerToPing + "  with the following Node Info [" + info + "]");
 				}
-				balancerDescription.setDisplayWarning(true);
-				if(!balancerDescription.isAvailable()) {
-					logger.logInfo("Keepalive: SIP Load Balancer Found! " + balancerDescription);
+				loadBalancerToPing.setDisplayWarning(true);
+				if(!loadBalancerToPing.isAvailable()) {
+					logger.logInfo("Keepalive: SIP Load Balancer Found! " + loadBalancerToPing);
 				}
-				balancerDescription.setAvailable(true);
+				loadBalancerToPing.setAvailable(true);
 				startTime = System.currentTimeMillis() - startTime;
 				if(startTime>200)
 					logger.logWarning("Heartbeat sent too slow in " + startTime + " millis at " + System.currentTimeMillis());
 
+				if(logger.isLoggingEnabled(StackLogger.TRACE_TRACE)) {
+					logger.logTrace("Finished gathering, Gathered info[" + info + "]");
+				}
 			} catch (IOException e) {
-				balancerDescription.setAvailable(false);
-				if(balancerDescription.isDisplayWarning()) {
-					logger.logWarning("sendKeepAlive: Cannot access the SIP load balancer RMI registry: " + e.getMessage() +
-						"\nIf you need a cluster configuration make sure the SIP load balancer is running. Host " + balancerDescription.toString());
+				loadBalancerToPing.setAvailable(false);
+				if(loadBalancerToPing.isDisplayWarning()) {
+					logger.logWarning("sendKeepAlive: Cannot access the " + loadBalancerToPing + "  RMI registry: " + e.getMessage() +
+						"\nIf you need a cluster configuration make sure " + loadBalancerToPing + " is running. Host " + loadBalancerToPing.toString());
 				}
-				balancerDescription.setDisplayWarning(false);
+				loadBalancerToPing.setDisplayWarning(false);
 			} catch (Exception e) {
-				balancerDescription.setAvailable(false);
-				if(balancerDescription.isDisplayWarning()) {
-					logger.logError("sendKeepAlive: Cannot access the SIP load balancer RMI registry: " + e.getMessage() +
-						"\nIf you need a cluster configuration make sure the SIP load balancer is running. Host " + balancerDescription.toString(), e);
+				loadBalancerToPing.setAvailable(false);
+				if(loadBalancerToPing.isDisplayWarning()) {
+					logger.logError("sendKeepAlive: Cannot access the " + loadBalancerToPing + " RMI registry: " + e.getMessage() +
+						"\nIf you need a cluster configuration make sure " + loadBalancerToPing + " is running. Host " + loadBalancerToPing.toString(), e);
 				}
-				balancerDescription.setDisplayWarning(false);
+				loadBalancerToPing.setDisplayWarning(false);
 			}
-		}
-		if(logger.isLoggingEnabled(StackLogger.TRACE_TRACE)) {
-			logger.logTrace("Finished gathering, Gathered info[" + info + "]");
 		}
 	}
 	
@@ -744,37 +627,36 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 	 * @param info
 	 */
 	protected void removeNodesFromBalancers() {
-		ArrayList<SIPNode> info = new ArrayList<SIPNode>(sipNodes.values());
-		
 		Thread.currentThread().setContextClassLoader(NodeRegisterRMIStub.class.getClassLoader());
-		for(SipLoadBalancer balancerDescription:new HashSet<SipLoadBalancer>(register.values())) {
+		for(SipLoadBalancer loadBalancerToRemove: register.keySet()) {
 			try {
-				Registry registry = LocateRegistry.getRegistry(balancerDescription.getAddress().getHostAddress(),balancerDescription.getRmiPort());
+				Registry registry = LocateRegistry.getRegistry(loadBalancerToRemove.getAddress().getHostAddress(),loadBalancerToRemove.getRmiPort());
 				NodeRegisterRMIStub reg=(NodeRegisterRMIStub) registry.lookup("SIPBalancer");
+				ArrayList<SIPNode> info = new ArrayList<SIPNode>(register.get(loadBalancerToRemove));
 				reg.forceRemoval(info);
-				if(!balancerDescription.isAvailable()) {
-					logger.logInfo("Remove: SIP Load Balancer Found! " + balancerDescription);
-					balancerDescription.setDisplayWarning(true);
+				if(!loadBalancerToRemove.isAvailable()) {
+					logger.logInfo("Remove: SIP Load Balancer Found! " + loadBalancerToRemove);
+					loadBalancerToRemove.setDisplayWarning(true);
 				}
-				balancerDescription.setAvailable(true);
+				loadBalancerToRemove.setAvailable(true);
+				if(logger.isLoggingEnabled(StackLogger.TRACE_TRACE)) {
+					logger.logTrace("Finished removed, Gathered info[" + info + "]");
+				}
 			} catch (IOException e) {
-				if(balancerDescription.isDisplayWarning()) {
+				if(loadBalancerToRemove.isDisplayWarning()) {
 					logger.logWarning("remove: Cannot access the SIP load balancer RMI registry: " + e.getMessage() +
 							"\nIf you need a cluster configuration make sure the SIP load balancer is running.");
-					balancerDescription.setDisplayWarning(false);
+					loadBalancerToRemove.setDisplayWarning(false);
 				}
-				balancerDescription.setAvailable(true);
+				loadBalancerToRemove.setAvailable(true);
 			} catch (Exception e) {
-				if(balancerDescription.isDisplayWarning()) {
+				if(loadBalancerToRemove.isDisplayWarning()) {
 					logger.logError("remove: Cannot access the SIP load balancer RMI registry: " + e.getMessage() +
 							"\nIf you need a cluster configuration make sure the SIP load balancer is running.", e);
-					balancerDescription.setDisplayWarning(false);
+					loadBalancerToRemove.setDisplayWarning(false);
 				}
-				balancerDescription.setAvailable(true);
+				loadBalancerToRemove.setAvailable(true);
 			}
-		}
-		if(logger.isLoggingEnabled(StackLogger.TRACE_TRACE)) {
-			logger.logTrace("Finished gathering, Gathered info[" + info + "]");
 		}
 	}
 	
@@ -790,13 +672,6 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 		public void run() {			
 			sendKeepAliveToBalancers();
 		}
-	}
-
-	/**
-	 * @param balancers the balancers to set
-	 */
-	public void setBalancers(String balancers) {
-		this.balancers = balancers;
 	}
 
 	/*
@@ -890,38 +765,46 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 	}
 
 	public void addSipConnector(ListeningPoint listeningPoint) {
+		throw new UnsupportedOperationException("This algorithm doesn't let you specify a load balancer without connector, please use instead " + LoadBalancerHeartBeatingServiceImpl.class.getName());
+	}
+	
+	public void removeSipConnector(ListeningPoint listeningPoint) {
+		throw new UnsupportedOperationException("This algorithm doesn't let you specify a load balancer without connector, please use instead " + LoadBalancerHeartBeatingServiceImpl.class.getName());
+	}
+	
+	public void addSipConnector(ListeningPoint listeningPoint, SipLoadBalancer loadBalancer) {
 		if(logger.isLoggingEnabled(StackLogger.TRACE_INFO)){
-			logger.logInfo("Adding Listening Point to be using the Load Balancer for outbound traffic " + listeningPoint.getIPAddress() + ":" + listeningPoint.getPort() + "/" + listeningPoint.getTransport());
+			logger.logInfo("Adding Listening Point to be using the Load Balancer " + loadBalancer + " for outbound traffic " + listeningPoint.getIPAddress() + ":" + listeningPoint.getPort() + "/" + listeningPoint.getTransport());
 			logger.logInfo("Recomputing SIP Nodes to be sent to the LB");
 		}
 		// https://github.com/RestComm/jain-sip.ha/issues/3 we restrict only if one connector is passed forcefully this way
 		useLoadBalancerForAllConnectors = false;
+		Set<ListeningPoint> sipConnectors = connectors.get(loadBalancer);
+		if(sipConnectors == null) {
+			sipConnectors = new CopyOnWriteArraySet<ListeningPoint>();
+			connectors.put(loadBalancer, sipConnectors);
+		}
 		sipConnectors.add(listeningPoint);
-		updateConnectorsAsSIPNode();
-	}
-	
-	public void addSipConnector(ListeningPoint listeningPoint, SipLoadBalancer loadBalancer) {
-		if(loadBalancer != null) {
-			throw new UnsupportedOperationException("This algorithm doesn't let you specify a load balancer per connector, please use instead " + MultiNetworkLoadBalancerHeartBeatingServiceImpl.class.getName());
-		} else {
-			addSipConnector(listeningPoint);
+		updateConnectorsAsSIPNode(loadBalancer);
+		// notify the listeners
+		for (LoadBalancerHeartBeatingListener loadBalancerHeartBeatingListener : loadBalancerHeartBeatingListeners) {
+			loadBalancerHeartBeatingListener.loadBalancerAdded(loadBalancer);
 		}
 	}
 	
 	public void removeSipConnector(ListeningPoint listeningPoint, SipLoadBalancer loadBalancer) {
-		if(loadBalancer != null) {
-			throw new UnsupportedOperationException("This algorithm doesn't let you specify a load balancer per connector, please use instead " + MultiNetworkLoadBalancerHeartBeatingServiceImpl.class.getName());
-		} else {
-			removeSipConnector(listeningPoint);
-		}
-	}
-
-	public void removeSipConnector(ListeningPoint listeningPoint) {
 		if(logger.isLoggingEnabled(StackLogger.TRACE_INFO)){
-			logger.logInfo("Removing Listening Point to be using the Load Balancer for outbound traffic " + listeningPoint.getIPAddress() + ":" + listeningPoint.getPort() + "/" + listeningPoint.getTransport());
+			logger.logInfo("Removing Listening Point to be using the Load Balancer " + loadBalancer + " for outbound traffic " + listeningPoint.getIPAddress() + ":" + listeningPoint.getPort() + "/" + listeningPoint.getTransport());
 			logger.logInfo("Recomputing SIP Nodes to be sent to the LB");
 		}
+		// https://github.com/RestComm/jain-sip.ha/issues/3 we restrict only if one connector is passed forcefully this way
+		useLoadBalancerForAllConnectors = false;
+		Set<ListeningPoint> sipConnectors = connectors.get(loadBalancer);
 		sipConnectors.remove(listeningPoint);
-		updateConnectorsAsSIPNode();
+		updateConnectorsAsSIPNode(loadBalancer);
+		// notify the listeners
+		for (LoadBalancerHeartBeatingListener loadBalancerHeartBeatingListener : loadBalancerHeartBeatingListeners) {
+			loadBalancerHeartBeatingListener.loadBalancerRemoved(loadBalancer);
+		}
 	}
 }

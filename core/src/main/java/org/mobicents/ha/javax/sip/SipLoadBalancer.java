@@ -183,8 +183,8 @@ public class SipLoadBalancer implements Serializable {
 		final int prime = 31;
 		int result = 1;
 		result = prime * result + ((address == null) ? 0 : address.hashCode());
-		result = prime * result + sipPort;
-		result = prime * result + httpPort;
+//		result = prime * result + sipPort;
+//		result = prime * result + httpPort;
 		result = prime * result + rmiPort;
 		return result;
 	}
@@ -205,10 +205,10 @@ public class SipLoadBalancer implements Serializable {
 				return false;
 		} else if (!address.equals(other.address))
 			return false;
-		if (sipPort != other.sipPort)
-			return false;
-		if (httpPort != other.httpPort)
-			return false;
+//		if (sipPort != other.sipPort)
+//			return false;
+//		if (httpPort != other.httpPort)
+//			return false;
 		if (rmiPort != other.rmiPort)
 			return false;
 		return true;
@@ -216,7 +216,13 @@ public class SipLoadBalancer implements Serializable {
 	
 	@Override
 	public String toString() {
-		return getAddress() + ":" + getSipPort() + ":" + getHttpPort()+ ":" + getRmiPort();
+		StringBuilder stringBuilder = new StringBuilder();
+		stringBuilder.append("LoadBalancer:")
+		.append(getAddress().getHostAddress())
+		.append(":" + getSipPort())
+		.append(":" + getHttpPort())
+		.append(":" + getRmiPort());
+		return stringBuilder.toString();
 	}
 
 	public void switchover(String fromJvmRoute, String toJvmRoute) {

@@ -22,10 +22,10 @@ package org.mobicents.ha.javax.sip;
 import java.io.IOException;
 
 /**
- * @author jean.deruelle@gmail.com
+ * @author jean.deruelle@telestax.com
  *
  */
-public interface LoadBalancerHeartBeatingServiceImplMBean {
+public interface MultiNetworkLoadBalancerHeartBeatingServiceImplMBean {
 
 	void start();
 	void stop();

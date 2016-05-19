@@ -26,6 +26,7 @@
 package org.mobicents.ha.javax.sip;
 
 import gov.nist.core.StackLogger;
+import gov.nist.javax.sip.ListeningPointExt;
 import gov.nist.javax.sip.address.AddressFactoryImpl;
 
 import java.io.IOException;
@@ -244,6 +245,18 @@ public class RoundRobinLoadBalancerElectorTest  extends TestCase {
 		}
 
 		public void removeSipConnector(ListeningPoint listeningPoint) {
+			// TODO Auto-generated method stub
+			
+		}
+
+		public void addSipConnector(ListeningPoint listeningPoint,
+				SipLoadBalancer loadBalancer) {
+			// TODO Auto-generated method stub
+			
+		}
+
+		public void removeSipConnector(ListeningPoint listeningPoint,
+				SipLoadBalancer loadBalancer) {
 			// TODO Auto-generated method stub
 			
 		}

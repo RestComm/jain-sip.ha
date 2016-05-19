@@ -38,6 +38,8 @@
  */
 package org.mobicents.ha.javax.sip;
 
+import gov.nist.javax.sip.ListeningPointExt;
+
 import java.io.IOException;
 import java.util.Properties;
 
@@ -149,4 +151,8 @@ public interface LoadBalancerHeartBeatingService {
 	// https://github.com/RestComm/jain-sip.ha/issues/3
 	void addSipConnector(ListeningPoint listeningPoint);
 	void removeSipConnector(ListeningPoint listeningPoint);
+	
+	// https://github.com/RestComm/jain-sip.ha/issues/9
+	void addSipConnector(ListeningPoint listeningPoint, SipLoadBalancer loadBalancer);
+	void removeSipConnector(ListeningPoint listeningPoint, SipLoadBalancer loadBalancer);
 }
