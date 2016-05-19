@@ -84,7 +84,7 @@ public class MultiNetworkLoadBalancerHeartBeatingServiceImpl implements LoadBala
     //the balancers names to send heartbeat to and our health info
 	// https://github.com/RestComm/jain-sip.ha/issues/4 : 
 	// Caching the sipNodes to send to the LB as there is no reason for them to change often or at all after startup
-	protected Map<SipLoadBalancer, Set<SIPNode>> register = new ConcurrentHashMap<SipLoadBalancer, Set<SIPNode>>();
+	protected Map<SipLoadBalancer, ConcurrentHashMap<String, SIPNode>> register = new ConcurrentHashMap<SipLoadBalancer, ConcurrentHashMap<String, SIPNode>>();
 	protected Map<SipLoadBalancer, Set<ListeningPoint>> connectors = new ConcurrentHashMap<SipLoadBalancer, Set<ListeningPoint>>();
 	//heartbeat interval, can be modified through JMX
 	protected long heartBeatInterval = 5000;
@@ -462,19 +462,25 @@ public class MultiNetworkLoadBalancerHeartBeatingServiceImpl implements LoadBala
 							logger.logTrace("Creating new SIP Node for [" + ipAddress + "] to be added to the list for pinging the LB");
 						}	
 						SIPNode node = new SIPNode(hostName, ipAddress);
-						Set<SIPNode> sipNodes = register.get(loadBalancer);
+						ConcurrentHashMap<String, SIPNode> sipNodes = register.get(loadBalancer);
 						if(sipNodes == null) {
-							sipNodes = new CopyOnWriteArraySet<SIPNode>();
-							register.put(loadBalancer, sipNodes);
-						}
-						boolean alreadyAdded = sipNodes.add(node);
-						if(!alreadyAdded) {
+							sipNodes = new ConcurrentHashMap<String, SIPNode>();
+							sipNodes.put(ipAddress, node);
 							if(logger.isLoggingEnabled(StackLogger.TRACE_TRACE)) {
-								logger.logTrace("Added " + node);
+								logger.logTrace("Added a sip Node with the key [" + ipAddress + "]");
 							}
+							register.put(loadBalancer, sipNodes);
 						} else {
-							if(logger.isLoggingEnabled(StackLogger.TRACE_TRACE)) {
-								logger.logTrace(node +  " was already present");
+							SIPNode previousValue = sipNodes.putIfAbsent(ipAddress, node);
+							if(previousValue == null) {
+								if(logger.isLoggingEnabled(StackLogger.TRACE_TRACE)) {
+									logger.logTrace("Added a sip Node with the key [" + ipAddress + "]");
+								}
+							} else {
+								node = previousValue;
+								if(logger.isLoggingEnabled(StackLogger.TRACE_TRACE)) {
+									logger.logTrace("SIPNode " + node +  " was already present");
+								}
 							}
 						}
 
@@ -527,12 +533,12 @@ public class MultiNetworkLoadBalancerHeartBeatingServiceImpl implements LoadBala
 		Thread.currentThread().setContextClassLoader(NodeRegisterRMIStub.class.getClassLoader());
 		for(SipLoadBalancer loadBalancerToPing: register.keySet()) {
 			try {
-				Set<SIPNode> sipNodes = register.get(loadBalancerToPing);
+				ConcurrentHashMap<String, SIPNode> sipNodes = register.get(loadBalancerToPing);
 				if(sipNodes.isEmpty()) {
 		    		logger.logInfo("Computing SIP Nodes to be sent to the LB as the list is currently empty");
 		    		updateConnectorsAsSIPNode(loadBalancerToPing);
 				}
-				ArrayList<SIPNode> info = new ArrayList<SIPNode>(sipNodes);
+				ArrayList<SIPNode> info = new ArrayList<SIPNode>(sipNodes.values());
 				if(logger.isLoggingEnabled(StackLogger.TRACE_TRACE)) {
 		            logger.logTrace("Pinging balancers with info[" + info + "]");
 		        }
@@ -632,7 +638,7 @@ public class MultiNetworkLoadBalancerHeartBeatingServiceImpl implements LoadBala
 			try {
 				Registry registry = LocateRegistry.getRegistry(loadBalancerToRemove.getAddress().getHostAddress(),loadBalancerToRemove.getRmiPort());
 				NodeRegisterRMIStub reg=(NodeRegisterRMIStub) registry.lookup("SIPBalancer");
-				ArrayList<SIPNode> info = new ArrayList<SIPNode>(register.get(loadBalancerToRemove));
+				ArrayList<SIPNode> info = new ArrayList<SIPNode>(register.get(loadBalancerToRemove).values());
 				reg.forceRemoval(info);
 				if(!loadBalancerToRemove.isAvailable()) {
 					logger.logInfo("Remove: SIP Load Balancer Found! " + loadBalancerToRemove);
