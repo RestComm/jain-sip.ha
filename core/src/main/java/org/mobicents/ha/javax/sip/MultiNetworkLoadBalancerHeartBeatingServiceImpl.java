@@ -426,7 +426,6 @@ public class MultiNetworkLoadBalancerHeartBeatingServiceImpl implements LoadBala
 				String smppPortString = sipStackProperties.getProperty(LOCAL_SMPP_PORT);
 				String smppSslPortString = sipStackProperties.getProperty(LOCAL_SMPP_SSL_PORT);
 
-				//http
 				if(httpPortString == null && sslPortString == null) {
 					logger.logWarning("HTTP or HTTPS port couldn't be retrieved from System properties, trying with JMX");
 					Integer httpPort = null;
@@ -454,37 +453,6 @@ public class MultiNetworkLoadBalancerHeartBeatingServiceImpl implements LoadBala
 						sipStackProperties.setProperty(LOCAL_HTTP_PORT, String.valueOf(httpPort));
 					} else if (sslBound && sslPort!=null){
 		                sipStackProperties.setProperty(LOCAL_SSL_PORT, String.valueOf(sslPort));
-					}
-				}
-				
-				//smpp
-				if(smppPortString == null && smppSslPortString == null) {
-					logger.logWarning("SMPP or secure SMPP port couldn't be retrieved from System properties, trying with JMX");
-					Integer smppPort = null;
-					Boolean smppBound = false;
-					Integer smppSslPort = null;
-					Boolean smppSslBound = false;
-
-					MBeanServer mBeanServer = ManagementFactory.getPlatformMBeanServer();
-					try {
-		                String socketBindingGroup = sipStackProperties.getProperty(SOCKET_BINDING_GROUP, "standard-sockets");
-						ObjectName smpp = new ObjectName("jboss.as:socket-binding-group=" + socketBindingGroup + ",socket-binding=smpp");
-						smppPort = (Integer) mBeanServer.getAttribute(smpp, "boundPort");
-						smppBound = (Boolean) mBeanServer.getAttribute(smpp, "bound");
-
-						ObjectName smppSsl = new ObjectName("jboss.as:socket-binding-group=" + socketBindingGroup + ",socket-binding=smppSsl");
-						smppSslPort = (Integer) mBeanServer.getAttribute(smppSsl, "boundPort");
-						smppSslBound = (Boolean) mBeanServer.getAttribute(smppSsl, "bound");
-						if(logger.isLoggingEnabled(StackLogger.TRACE_TRACE)) {
-							logger.logTrace("Dound smppPort " + smppPort + " and smppSslPort " + smppSslPort);
-						}
-					} catch (Exception e) {} //Ignore any exceptions
-
-					if(smppBound && smppPort!=null){
-						sipStackProperties.setProperty(LOCAL_SMPP_PORT, String.valueOf(smppPort));
-					} 
-					if (smppSslBound && smppSslPort!=null){
-		                sipStackProperties.setProperty(LOCAL_SMPP_SSL_PORT, String.valueOf(smppSslPort));
 					}
 				}
 				
@@ -536,10 +504,14 @@ public class MultiNetworkLoadBalancerHeartBeatingServiceImpl implements LoadBala
 						if(smppPortString != null) {
 							smppPort = Integer.parseInt(smppPortString);
 							node.getProperties().put("smppPort", smppPort);
+						} else {
+							logger.logWarning("SMPP port not set in System properties");
 						}
 						if(smppSslPortString != null) {
 							smppSslPort = Integer.parseInt(smppSslPortString);
 							node.getProperties().put("smppSslPort", smppSslPort);
+						} else {
+							logger.logWarning("Secure SMPP port not set in System properties");
 						}
 					
 						if(sipTcpPort != null) node.getProperties().put("tcpPort", sipTcpPort);
