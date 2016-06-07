@@ -71,6 +71,8 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
     public final static String REACHABLE_CHECK = "org.mobicents.ha.javax.sip.REACHABLE_CHECK";
     public final static String LOCAL_HTTP_PORT = "org.mobicents.ha.javax.sip.LOCAL_HTTP_PORT";
     public final static String LOCAL_SSL_PORT = "org.mobicents.ha.javax.sip.LOCAL_SSL_PORT";
+    public final static String LOCAL_SMPP_PORT = "org.mobicents.ha.javax.sip.LOCAL_SMPP_PORT";
+    public final static String LOCAL_SMPP_SSL_PORT = "org.mobicents.ha.javax.sip.LOCAL_SMPP_SSL_PORT";
     public final static String SOCKET_BINDING_GROUP = "org.mobicents.ha.javax.sip.SOCKET_BINDING_GROUP";
 	
 	public static final int DEFAULT_RMI_PORT = 2000;
@@ -545,6 +547,8 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 				
 				String httpPortString = sipStackProperties.getProperty(LOCAL_HTTP_PORT);
 				String sslPortString = sipStackProperties.getProperty(LOCAL_SSL_PORT);
+				String smppPortString = sipStackProperties.getProperty(LOCAL_SMPP_PORT);
+				String smppSslPortString = sipStackProperties.getProperty(LOCAL_SMPP_SSL_PORT);
 
 				if(httpPortString == null && sslPortString == null) {
 					logger.logWarning("HTTP or HTTPS port couldn't be retrieved from System properties, trying with JMX");
@@ -600,6 +604,8 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 
 						int httpPort = 0;
 						int sslPort = 0;
+						int smppPort = 0;
+						int smppSslPort = 0;
 					
 						if(httpPortString != null) {
 							httpPort = Integer.parseInt(httpPortString);
@@ -608,6 +614,18 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 						if(sslPortString != null) {
 							sslPort = Integer.parseInt(sslPortString);
 							node.getProperties().put("sslPort", sslPort);
+						}
+						if(smppPortString != null) {
+							smppPort = Integer.parseInt(smppPortString);
+							node.getProperties().put("smppPort", smppPort);
+						} else {
+							logger.logWarning("SMPP port not set in System properties");
+						}
+						if(smppSslPortString != null) {
+							smppSslPort = Integer.parseInt(smppSslPortString);
+							node.getProperties().put("smppSslPort", smppSslPort);
+						} else {
+							logger.logWarning("Secure SMPP port not set in System properties");
 						}
 					
 						if(sipTcpPort != null) node.getProperties().put("tcpPort", sipTcpPort);
