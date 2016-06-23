@@ -471,7 +471,7 @@ public abstract class ClusteredSipStackImpl extends SipStackImpl implements Clus
 	@Override
 	public void removeTransaction(SIPTransaction sipTransaction) {
 		super.removeTransaction(sipTransaction);
-		if(sipCache.inLocalMode()) {
+		if(sipCache.inLocalMode() && transactionFactory == null) {
 			return;
 		}
 		if(transactionFactory != null && sipTransaction != null && replicationStrategy == ReplicationStrategy.EarlyDialog && sipTransaction.getMethod().equalsIgnoreCase(Request.INVITE)) {
@@ -496,7 +496,7 @@ public abstract class ClusteredSipStackImpl extends SipStackImpl implements Clus
 	@Override
 	protected void removeTransactionHash(SIPTransaction sipTransaction) {
 		super.removeTransactionHash(sipTransaction);
-		if(sipCache.inLocalMode()) {
+		if(sipCache.inLocalMode() && transactionFactory == null) {
 			return;
 		}
 		if(transactionFactory != null && sipTransaction != null && replicationStrategy == ReplicationStrategy.EarlyDialog && sipTransaction.getMethod().equalsIgnoreCase(Request.INVITE)) {
