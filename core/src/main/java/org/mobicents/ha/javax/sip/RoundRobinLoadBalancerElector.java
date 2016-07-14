@@ -129,4 +129,14 @@ public class RoundRobinLoadBalancerElector extends AbstractLoadBalancerElector {
 		return getLoadBalancer(true);
 	}
 
+	public void pingingloadBalancer(SipLoadBalancer balancerDescription) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	public void pingedloadBalancer(SipLoadBalancer balancerDescription) {
+		// TODO Auto-generated method stub
+		
+	}
+
 }

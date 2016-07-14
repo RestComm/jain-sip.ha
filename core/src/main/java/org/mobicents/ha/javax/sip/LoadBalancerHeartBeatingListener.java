@@ -48,4 +48,8 @@ public interface LoadBalancerHeartBeatingListener {
 
 	void loadBalancerAdded(SipLoadBalancer balancerDescription);
 	void loadBalancerRemoved(SipLoadBalancer balancerDescription);
+	// listener before the Load Balancer is pinged
+	void pingingloadBalancer(SipLoadBalancer balancerDescription);
+	// listener after the Load Balancer has been pinged 
+	void pingedloadBalancer(SipLoadBalancer balancerDescription);
 }

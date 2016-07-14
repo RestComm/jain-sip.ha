@@ -43,6 +43,7 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
 
@@ -676,7 +677,7 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 				Registry registry = LocateRegistry.getRegistry(balancerDescription.getAddress().getHostAddress(), balancerDescription.getRmiPort());
 				NodeRegisterRMIStub reg=(NodeRegisterRMIStub) registry.lookup("SIPBalancer");
                 if(reachableCheck) {
-                    ArrayList<SIPNode> reachableInfo = getReachableSIPNodeInfo(balancerDescription.getAddress(), info);
+                    ArrayList<SIPNode> reachableInfo = getReachableSIPNodeInfo(balancerDescription, info);
                     info = reachableInfo;
                     if(reachableInfo.isEmpty()) {
                         logger.logWarning("All connectors are unreachable from the balancer");
@@ -685,7 +686,16 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 				if(logger.isLoggingEnabled(StackLogger.TRACE_TRACE)) {
 				    logger.logTrace("Pinging the LB with the following Node Info [" + info + "]");
 				}
+				// https://github.com/RestComm/jain-sip.ha/issues/14
+				// notify the listeners
+				for (LoadBalancerHeartBeatingListener loadBalancerHeartBeatingListener : loadBalancerHeartBeatingListeners) {
+					loadBalancerHeartBeatingListener.pingingloadBalancer(balancerDescription);
+				}
 				reg.handlePing(info);
+				// notify the listeners
+				for (LoadBalancerHeartBeatingListener loadBalancerHeartBeatingListener : loadBalancerHeartBeatingListeners) {
+					loadBalancerHeartBeatingListener.pingedloadBalancer(balancerDescription);
+				}
 				if(logger.isLoggingEnabled(StackLogger.TRACE_TRACE)) {
 				    logger.logTrace("Pinged the LB with the following Node Info [" + info + "]");
 				}
@@ -726,7 +736,8 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 	 * @param info the list of node info from which we try to access the load balancer
 	 * @return the list stripped from the nodes not able to reach the load balancer
 	 */
-	protected ArrayList<SIPNode> getReachableSIPNodeInfo(InetAddress balancerAddr, ArrayList<SIPNode> info) {
+	protected ArrayList<SIPNode> getReachableSIPNodeInfo(SipLoadBalancer balancer, ArrayList<SIPNode> info) {
+		InetAddress balancerAddr = balancer.getAddress();
 		if (balancerAddr.isLoopbackAddress()) {
 			return info;
 		}
@@ -744,6 +755,14 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 					logger.logTrace(node + " is reachable ? " + b);
 				}
 				if(b) {
+					if(balancer.getCustomInfo() != null && !balancer.getCustomInfo().isEmpty()) {
+						for(Entry<Object, Object> entry : balancer.getCustomInfo().entrySet()) {
+							if(logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+								logger.logDebug("Adding custom info with key " + (String)entry.getKey() + " and value " + (String)entry.getValue());
+							}
+							node.getProperties().put((String)entry.getKey(), (String)entry.getValue());
+						}
+					}
 					rv.add(node);
 				}
 			} catch (IOException e) {

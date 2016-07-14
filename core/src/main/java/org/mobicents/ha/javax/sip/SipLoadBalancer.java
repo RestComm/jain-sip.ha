@@ -22,6 +22,7 @@ package org.mobicents.ha.javax.sip;
 
 import java.io.Serializable;
 import java.net.InetAddress;
+import java.util.Properties;
 
 import javax.sip.PeerUnavailableException;
 import javax.sip.SipFactory;
@@ -62,6 +63,8 @@ public class SipLoadBalancer implements Serializable {
 	private transient boolean displayWarning;
 	private transient Address sipAddress;
     private transient SipProvider localSipProvider;
+    // https://github.com/RestComm/jain-sip.ha/issues/14
+    private transient Properties customInfo;
 	/**
 	 * @param address
 	 * @param sipPort
@@ -248,4 +251,18 @@ public class SipLoadBalancer implements Serializable {
     public void setLocalSipProvider(SipProvider localSipProvider) {
         this.localSipProvider = localSipProvider;
     }
+
+	/**
+	 * @return the customInfo
+	 */
+	public Properties getCustomInfo() {
+		return customInfo;
+	}
+
+	/**
+	 * @param customInfo the customInfo to set
+	 */
+	public void setCustomInfo(Properties customInfo) {
+		this.customInfo = customInfo;
+	}
 }

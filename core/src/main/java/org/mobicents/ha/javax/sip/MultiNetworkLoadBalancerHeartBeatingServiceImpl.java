@@ -37,6 +37,7 @@ import java.util.Enumeration;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Properties;
 import java.util.Set;
 import java.util.Timer;
@@ -521,6 +522,15 @@ public class MultiNetworkLoadBalancerHeartBeatingServiceImpl implements LoadBala
 						if(sipWssPort != null) node.getProperties().put("wssPort", sipWssPort);
 						if(sipTlsPort != null) node.getProperties().put("tlsPort", sipTlsPort);
 						if(sipSctpPort != null) node.getProperties().put("sctpPort", sipTlsPort);
+						// https://github.com/RestComm/sip-servlets/issues/172
+						if(loadBalancer.getCustomInfo() != null && !loadBalancer.getCustomInfo().isEmpty()) {
+							for(Entry<Object, Object> entry : loadBalancer.getCustomInfo().entrySet()) {
+								if(logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+									logger.logDebug("Adding custom info with key " + (String)entry.getKey() + " and value " + (String)entry.getValue());
+								}
+								node.getProperties().put((String)entry.getKey(), (String)entry.getValue());
+							}
+						}
 						
 						if(jvmRoute != null) node.getProperties().put("jvmRoute", jvmRoute);
 						
@@ -574,7 +584,16 @@ public class MultiNetworkLoadBalancerHeartBeatingServiceImpl implements LoadBala
 				if(logger.isLoggingEnabled(StackLogger.TRACE_TRACE)) {
 				    logger.logTrace("Pinging " + loadBalancerToPing + " with the following Node Info [" + info + "]");
 				}
+				// https://github.com/RestComm/jain-sip.ha/issues/14
+				// notify the listeners
+				for (LoadBalancerHeartBeatingListener loadBalancerHeartBeatingListener : loadBalancerHeartBeatingListeners) {
+					loadBalancerHeartBeatingListener.pingingloadBalancer(loadBalancerToPing);
+				}
 				reg.handlePing(info);
+				// notify the listeners
+				for (LoadBalancerHeartBeatingListener loadBalancerHeartBeatingListener : loadBalancerHeartBeatingListeners) {
+					loadBalancerHeartBeatingListener.pingedloadBalancer(loadBalancerToPing);
+				}
 				if(logger.isLoggingEnabled(StackLogger.TRACE_TRACE)) {
 				    logger.logTrace("Pinged " + loadBalancerToPing + "  with the following Node Info [" + info + "]");
 				}
