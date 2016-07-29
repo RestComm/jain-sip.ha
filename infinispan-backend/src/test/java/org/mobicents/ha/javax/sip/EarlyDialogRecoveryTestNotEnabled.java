@@ -87,7 +87,7 @@ import junit.framework.TestCase;
  *
  */
 
-public class EarlyDialogRecoveryTest extends TestCase {
+public class EarlyDialogRecoveryTestNotEnabled extends TestCase {
 	
 	private static final String myAddress = "127.0.0.1";
 	

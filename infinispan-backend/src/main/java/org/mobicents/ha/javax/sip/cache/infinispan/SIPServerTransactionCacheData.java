@@ -59,8 +59,8 @@ public class SIPServerTransactionCacheData {
 			Cache<String, Object> serverTxAppCache) {
 		stack = s;
 		logger = s.getStackLogger();
-		serverTransactions = serverTXCache;
-		serverTransactionsApp = serverTxAppCache;
+		setServerTransactions(serverTXCache);
+		setServerTransactionsApp(serverTxAppCache);
 	}
 	
 	public SIPServerTransaction getServerTransaction(String txId) 
@@ -70,8 +70,8 @@ public class SIPServerTransactionCacheData {
 			logger.logDebug("getServerTransaction(" + txId + ")");
 		
 		try {
-			final Map<String, Object> transactionMetaData = (Map<String, Object>)serverTransactions.get(txId);		
-			final Object txAppData = serverTransactionsApp.get(txId);
+			final Map<String, Object> transactionMetaData = (Map<String, Object>)getServerTransactions().get(txId);		
+			final Object txAppData = getServerTransactionsApp().get(txId);
 				
 			haSipServerTransaction = createServerTransaction(txId, transactionMetaData, txAppData);
 			
@@ -92,12 +92,12 @@ public class SIPServerTransactionCacheData {
 			
 			// meta data
 			Map<String, Object> metaData = haServerTransaction.getMetaDataToReplicate();
-			serverTransactions.put(serverTransaction.getTransactionId(), metaData);
+			getServerTransactions().put(serverTransaction.getTransactionId(), metaData);
 			
 			// app data
 			final Object transactionAppData = haServerTransaction.getApplicationDataToReplicate();
 			if(transactionAppData != null) {
-				serverTransactionsApp.put(serverTransaction.getTransactionId(), transactionAppData);
+				getServerTransactionsApp().put(serverTransaction.getTransactionId(), transactionAppData);
 			}
 		} catch (Exception e) {
 			throw new SipCacheException(e);
@@ -108,8 +108,8 @@ public class SIPServerTransactionCacheData {
 			throws SipCacheException {
 		if(logger.isLoggingEnabled(StackLogger.TRACE_TRACE))
 			logger.logDebug("removeServerTransaction(" + txId + ")");
-		serverTransactions.remove(txId);
-		serverTransactionsApp.remove(txId);
+		getServerTransactions().remove(txId);
+		getServerTransactionsApp().remove(txId);
 	}
 	
 	public MobicentsHASIPServerTransaction createServerTransaction(String txId, Map<String, Object> transactionMetaData, Object transactionAppData) throws SipCacheException {
@@ -178,5 +178,33 @@ public class SIPServerTransactionCacheData {
 			PeerUnavailableException {
 		haServerTransaction.setMetaDataToReplicate(transactionMetaData, recreation);
 		haServerTransaction.setApplicationDataToReplicate(transactionAppData);		
+	}
+
+	/**
+	 * @return the serverTransactions
+	 */
+	public Cache<String, Object> getServerTransactions() {
+		return serverTransactions;
+	}
+
+	/**
+	 * @param serverTransactions the serverTransactions to set
+	 */
+	public void setServerTransactions(Cache<String, Object> serverTransactions) {
+		this.serverTransactions = serverTransactions;
+	}
+
+	/**
+	 * @return the serverTransactionsApp
+	 */
+	public Cache<String, Object> getServerTransactionsApp() {
+		return serverTransactionsApp;
+	}
+
+	/**
+	 * @param serverTransactionsApp the serverTransactionsApp to set
+	 */
+	public void setServerTransactionsApp(Cache<String, Object> serverTransactionsApp) {
+		this.serverTransactionsApp = serverTransactionsApp;
 	}
 }

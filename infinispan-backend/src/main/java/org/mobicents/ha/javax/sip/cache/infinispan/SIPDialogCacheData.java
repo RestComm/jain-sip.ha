@@ -62,7 +62,7 @@ public class SIPDialogCacheData {
 			Cache<String, Object> dialogAppCache) {
 		stack = s;
 		clusteredlogger = s.getStackLogger();
-		dialogs = dialogCache;
+		setDialogs(dialogCache);
 		appDataMap = dialogAppCache;
 	}
 	
@@ -70,7 +70,7 @@ public class SIPDialogCacheData {
 		if(clusteredlogger.isLoggingEnabled(StackLogger.TRACE_TRACE))
 			clusteredlogger.logTrace("getDialog("+ dialogId +")");
 		
-		Object metaData = dialogs.get(dialogId);
+		Object metaData = getDialogs().get(dialogId);
 		Object appData = appDataMap.get(dialogId);
 		if (metaData != null) {
 			return (SIPDialog) createDialog(dialogId, (Map<String, Object>) metaData, appData);
@@ -89,19 +89,19 @@ public class SIPDialogCacheData {
 		
 		Object dialogMetaData = haSipDialog.getMetaDataToReplicate(); 
 		if (dialogMetaData != null) {
-			if (dialogs.containsKey(dialog.getDialogId())) {
-				Map<String, Object> cachedMetaData = (Map<String, Object>)dialogs.get(dialog.getDialogId());
+			if (getDialogs().containsKey(dialog.getDialogId())) {
+				Map<String, Object> cachedMetaData = (Map<String, Object>)getDialogs().get(dialog.getDialogId());
 				Long currentVersion = (Long)((Map<String, Object>)dialogMetaData).get(AbstractHASipDialog.VERSION);
 				Long cacheVersion = (Long)((Map<String, Object>)cachedMetaData).get(AbstractHASipDialog.VERSION);
 				if ( cacheVersion.longValue() < currentVersion.longValue()) {
 					for(Entry<String, Object> e : ((Map<String, Object>)dialogMetaData).entrySet()) {
 						cachedMetaData.put(e.getKey(), e.getValue());
 					}
-					dialogs.replace(dialog.getDialogId(), cachedMetaData);
+					getDialogs().replace(dialog.getDialogId(), cachedMetaData);
 				}
 				
 			} else {
-				dialogs.put(dialog.getDialogId(), dialogMetaData);
+				getDialogs().put(dialog.getDialogId(), dialogMetaData);
 			}
 		}
 		
@@ -119,7 +119,7 @@ public class SIPDialogCacheData {
 			clusteredlogger.logDebug("updateDialog(" + dialog.getDialogId() + ")");
 		
 		final HASipDialog haSipDialog = (HASipDialog) dialog;
-		final Object dialogMetaData = dialogs.get(dialog.getDialogId());
+		final Object dialogMetaData = getDialogs().get(dialog.getDialogId());
 		final Object dialogAppData = appDataMap.get(dialog.getDialogId()); 
 	    
 		updateDialog(haSipDialog, (Map<String, Object>)dialogMetaData, dialogAppData);
@@ -129,14 +129,14 @@ public class SIPDialogCacheData {
 		if(clusteredlogger.isLoggingEnabled(StackLogger.TRACE_TRACE))
 			clusteredlogger.logDebug("removeDialog(" + dialogId + ")");
 		
-		dialogs.remove(dialogId);
+		getDialogs().remove(dialogId);
 	}
 	
 	public void evictDialog(String dialogId) {
 		if(clusteredlogger.isLoggingEnabled(StackLogger.TRACE_TRACE))
 			clusteredlogger.logDebug("evictDialog(" + dialogId + ")");
 		
-		dialogs.remove(dialogId);
+		getDialogs().remove(dialogId);
 	}
 	
 	private HASipDialog createDialog(String dialogId, Map<String, Object> dialogMetaData, 
@@ -228,5 +228,19 @@ public class SIPDialogCacheData {
 			}
 			haSipDialog.setContactHeader(contactHeader);
 		}
+	}
+
+	/**
+	 * @return the dialogs
+	 */
+	public Cache<String, Object> getDialogs() {
+		return dialogs;
+	}
+
+	/**
+	 * @param dialogs the dialogs to set
+	 */
+	public void setDialogs(Cache<String, Object> dialogs) {
+		this.dialogs = dialogs;
 	}
 }

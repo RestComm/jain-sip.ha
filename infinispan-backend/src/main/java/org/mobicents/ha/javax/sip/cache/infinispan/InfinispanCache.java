@@ -19,30 +19,26 @@
 
 package org.mobicents.ha.javax.sip.cache.infinispan;
 
-import java.io.IOException;
-import java.util.Properties;
-import javax.naming.InitialContext;
-import javax.naming.NamingException;
-
-import org.infinispan.Cache;
-import org.infinispan.configuration.cache.CacheMode;
-import org.infinispan.configuration.cache.Configuration;
-import org.infinispan.configuration.cache.ConfigurationBuilder;
-import org.infinispan.configuration.global.GlobalConfigurationBuilder;
-import org.infinispan.manager.CacheContainer;
-import org.infinispan.manager.CacheManager;
-import org.infinispan.manager.DefaultCacheManager;
-import org.infinispan.manager.EmbeddedCacheManager;
-import org.jgroups.conf.PropertyConverters.Default;
-import org.mobicents.ha.javax.sip.ClusteredSipStack;
-import org.mobicents.ha.javax.sip.cache.SipCache;
-import org.mobicents.ha.javax.sip.cache.SipCacheException;
-
 import gov.nist.core.CommonLogger;
+import gov.nist.core.LogLevels;
 import gov.nist.core.StackLogger;
 import gov.nist.javax.sip.stack.SIPClientTransaction;
 import gov.nist.javax.sip.stack.SIPDialog;
 import gov.nist.javax.sip.stack.SIPServerTransaction;
+
+import java.io.IOException;
+import java.util.Properties;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+
+import javax.naming.InitialContext;
+import javax.naming.NamingException;
+
+import org.infinispan.Cache;
+import org.infinispan.manager.CacheContainer;
+import org.mobicents.ha.javax.sip.ClusteredSipStack;
+import org.mobicents.ha.javax.sip.cache.SipCache;
+import org.mobicents.ha.javax.sip.cache.SipCacheException;
 
 /**
  * Implementation of the SipCache interface, backed by an Infinispan Cache
@@ -67,6 +63,7 @@ public class InfinispanCache implements SipCache {
 	public static final String INFINISPAN_CACHEMANAGER_JNDI_NAME = "org.mobicents.ha.javax.sip.INFINISPAN_CACHEMANAGER_JNDI_NAME";
 	private static StackLogger clusteredlogger = CommonLogger.getLogger(InfinispanCache.class);
 	
+	private ScheduledThreadPoolExecutor executor = null;
 	private Properties configProperties = null;
 	private ClusteredSipStack stack;
 	private Cache<String, Object> dialogs;
@@ -177,44 +174,104 @@ public class InfinispanCache implements SipCache {
 	}
 	
 	public void init() throws SipCacheException {
-				
-		String configurationPath = configProperties.getProperty(INFINISPAN_CACHE_CONFIG_PATH);
-		if(configurationPath == null){
-			configurationPath = DEFAULT_FILE_CONFIG_PATH;
-		}
 		
-		try {
-			// Init Infinispan CacheManager
-			if (configProperties.containsKey(INFINISPAN_CACHEMANAGER_JNDI_NAME)){
-				try {
-					InitialContext context = new InitialContext();
-					String cacheManagerJndiName = configProperties.getProperty(INFINISPAN_CACHEMANAGER_JNDI_NAME);
-					cm = (CacheContainer) context.lookup(cacheManagerJndiName);
-				} catch (NamingException e) {
-					// Inifinispan CacheManager JNDI lookup failed: could not get InitialContext or lookup failed
-					clusteredlogger.logError("Inifinispan CacheManager JNDI lookup failed: could not get InitialContext or lookup failed", e);
-				}
+		executor = new ScheduledThreadPoolExecutor(1);
+		
+		final String configurationPath = configProperties.getProperty(INFINISPAN_CACHE_CONFIG_PATH, DEFAULT_FILE_CONFIG_PATH);
+		
+		if (configProperties.containsKey(INFINISPAN_CACHEMANAGER_JNDI_NAME)){
+			if(clusteredlogger.isLoggingEnabled(LogLevels.TRACE_INFO)) {
+				clusteredlogger.logInfo(INFINISPAN_CACHEMANAGER_JNDI_NAME + " specified, trying to load Inifinispan CacheManager from JNDI " + configProperties.getProperty(INFINISPAN_CACHEMANAGER_JNDI_NAME));
 			}
-			if (cm == null) {
-				cm = CacheManagerHolder.getManager(configurationPath);
+			executor.scheduleAtFixedRate(new Runnable() {
 				
+				static final int MAX_ATTEMPTS = 30;
+				int attempts = 0;
+				
+				public void run() {
+					attempts++;
+					// Init Infinispan CacheManager
+					if (configProperties.containsKey(INFINISPAN_CACHEMANAGER_JNDI_NAME)){
+						try {
+							InitialContext context = new InitialContext();
+							String cacheManagerJndiName = configProperties.getProperty(INFINISPAN_CACHEMANAGER_JNDI_NAME);
+							cm = (CacheContainer) context.lookup(cacheManagerJndiName);
+							if(clusteredlogger.isLoggingEnabled(LogLevels.TRACE_INFO)) {
+								clusteredlogger.logInfo("Found Inifinispan CacheManager: cacheManagerJndiName \"" + cacheManagerJndiName + "\" " + cm + " after attempts " + attempts);
+							}
+							executor.remove(this);
+							executor.shutdown();
+						} catch (NamingException e) {
+							// Inifinispan CacheManager JNDI lookup failed: could not get InitialContext or lookup failed
+							if(attempts > MAX_ATTEMPTS) {
+								clusteredlogger.logError("Inifinispan CacheManager JNDI lookup failed: could not get InitialContext or lookup failed after attempts " + attempts + " stopping there", e);
+								executor.remove(this);
+								executor.shutdown();
+							} else {
+								if(clusteredlogger.isLoggingEnabled(LogLevels.TRACE_INFO)) {
+									clusteredlogger.logInfo("Inifinispan CacheManager JNDI lookup failed: could not get InitialContext or lookup failed after attempts " + attempts + ", retrying every second");
+								}
+							}
+							return;
+						}
+					}
+					
+					setupCacheStructures();
+					
+					if(dialogCacheData != null) {
+						dialogCacheData.setDialogs(dialogs);
+					}
+					if(serverTXCacheData != null) {
+						serverTXCacheData.setServerTransactions(serverTransactions);
+						serverTXCacheData.setServerTransactionsApp(serverTransactionsApp);
+					}
+					if(clientTXCacheData != null) {
+						clientTXCacheData.setClientTransactions(clientTransactions);
+						clientTXCacheData.setClientTransactionsApp(clientTransactionsApp);
+					}
+				}
+			} , 0, 1, TimeUnit.SECONDS);
+		} else {
+			if(clusteredlogger.isLoggingEnabled(LogLevels.TRACE_INFO)) {
+				clusteredlogger.logInfo(INFINISPAN_CACHEMANAGER_JNDI_NAME + " not specified, trying to load Inifinispan CacheManager from configuration file " + configurationPath);
+			}
+			try {
+				if (cm == null) {
+					cm = CacheManagerHolder.getManager(configurationPath);
+					if(clusteredlogger.isLoggingEnabled(LogLevels.TRACE_INFO)) {
+						clusteredlogger.logInfo("Found Inifinispan CacheManager: configuration file from path \"" + configurationPath + "\" " + cm);
+					}
+				}
+				setupCacheStructures();
+			} catch (IOException e) {
+				clusteredlogger.logError("Failed to init Inifinispan CacheManager: could not read configuration file from path \"" + configurationPath + "\"", e);
 			}
 			
-			InfinispanCacheListener dialogsCacheListener = new InfinispanCacheListener(stack);
-			
-			dialogs = cm.getCache("cache.dialogs");
-			appDataMap = cm.getCache("cache.appdata");
-			serverTransactions = cm.getCache("cache.serverTX");
-			serverTransactionsApp = cm.getCache("cache.serverTXApp");
-			clientTransactions = cm.getCache("cache.clientTX");
-			clientTransactionsApp = cm.getCache("cache.clientTXApp");
-			
-			dialogs.addListener(dialogsCacheListener);
-			
-		} catch (IOException e) {
-			clusteredlogger.logError("Failed to init Inifinispan CacheManager: could not read configuration file from path \"" + configurationPath + "\"", e);
-			e.printStackTrace();
+			if(dialogCacheData != null) {
+				dialogCacheData.setDialogs(dialogs);
+			}
+			if(serverTXCacheData != null) {
+				serverTXCacheData.setServerTransactions(serverTransactions);
+				serverTXCacheData.setServerTransactionsApp(serverTransactionsApp);
+			}
+			if(clientTXCacheData != null) {
+				clientTXCacheData.setClientTransactions(clientTransactions);
+				clientTXCacheData.setClientTransactionsApp(clientTransactionsApp);
+			}
 		}
+	}
+
+	private void setupCacheStructures() {
+		InfinispanCacheListener dialogsCacheListener = new InfinispanCacheListener(stack);
+		
+		dialogs = cm.getCache("cache.dialogs");
+		appDataMap = cm.getCache("cache.appdata");
+		serverTransactions = cm.getCache("cache.serverTX");
+		serverTransactionsApp = cm.getCache("cache.serverTXApp");
+		clientTransactions = cm.getCache("cache.clientTX");
+		clientTransactionsApp = cm.getCache("cache.clientTXApp");
+		
+		dialogs.addListener(dialogsCacheListener);
 	}
 	
 	public void start() throws SipCacheException {
