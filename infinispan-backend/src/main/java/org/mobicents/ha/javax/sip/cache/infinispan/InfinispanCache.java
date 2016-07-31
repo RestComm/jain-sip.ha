@@ -220,6 +220,7 @@ public class InfinispanCache implements SipCache {
 					
 					if(dialogCacheData != null) {
 						dialogCacheData.setDialogs(dialogs);
+						dialogCacheData.setAppDataMap(appDataMap);
 					}
 					if(serverTXCacheData != null) {
 						serverTXCacheData.setServerTransactions(serverTransactions);
