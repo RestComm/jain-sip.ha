@@ -63,7 +63,7 @@ public class SIPDialogCacheData {
 		stack = s;
 		clusteredlogger = s.getStackLogger();
 		setDialogs(dialogCache);
-		appDataMap = dialogAppCache;
+		setAppDataMap(dialogAppCache);
 	}
 	
 	public SIPDialog getDialog(String dialogId) throws SipCacheException {
@@ -71,7 +71,7 @@ public class SIPDialogCacheData {
 			clusteredlogger.logTrace("getDialog("+ dialogId +")");
 		
 		Object metaData = getDialogs().get(dialogId);
-		Object appData = appDataMap.get(dialogId);
+		Object appData = getAppDataMap().get(dialogId);
 		if (metaData != null) {
 			return (SIPDialog) createDialog(dialogId, (Map<String, Object>) metaData, appData);
 			
@@ -107,10 +107,10 @@ public class SIPDialogCacheData {
 		
 		Object dialogAppData = haSipDialog.getApplicationDataToReplicate();
 		if (dialogAppData != null) {
-			if (appDataMap.containsKey(dialog.getDialogId()))
-				appDataMap.replace(dialog.getDialogId(), dialogAppData);
+			if (getAppDataMap().containsKey(dialog.getDialogId()))
+				getAppDataMap().replace(dialog.getDialogId(), dialogAppData);
 			else 
-				appDataMap.put(dialog.getDialogId(), dialogAppData);
+				getAppDataMap().put(dialog.getDialogId(), dialogAppData);
 		}
 	}
 	
@@ -120,7 +120,7 @@ public class SIPDialogCacheData {
 		
 		final HASipDialog haSipDialog = (HASipDialog) dialog;
 		final Object dialogMetaData = getDialogs().get(dialog.getDialogId());
-		final Object dialogAppData = appDataMap.get(dialog.getDialogId()); 
+		final Object dialogAppData = getAppDataMap().get(dialog.getDialogId()); 
 	    
 		updateDialog(haSipDialog, (Map<String, Object>)dialogMetaData, dialogAppData);
 	}
@@ -242,5 +242,19 @@ public class SIPDialogCacheData {
 	 */
 	public void setDialogs(Cache<String, Object> dialogs) {
 		this.dialogs = dialogs;
+	}
+
+	/**
+	 * @return the appDataMap
+	 */
+	public Cache<String, Object> getAppDataMap() {
+		return appDataMap;
+	}
+
+	/**
+	 * @param appDataMap the appDataMap to set
+	 */
+	public void setAppDataMap(Cache<String, Object> appDataMap) {
+		this.appDataMap = appDataMap;
 	}
 }
