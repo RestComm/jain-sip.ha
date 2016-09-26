@@ -639,7 +639,7 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 						if(jvmRoute != null) node.getProperties().put("jvmRoute", jvmRoute);
 						
 						node.getProperties().put("version", System.getProperty("org.mobicents.server.version", "0"));
-						
+						node.getProperties().put("sessionId", ""+System.currentTimeMillis());
 						if(gracefullyShuttingDown) {
 							if(logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
 								logger.logDebug("Adding GRACEFUL_SHUTDOWN prop to following SIP Node " + node);
