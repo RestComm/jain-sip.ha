@@ -99,6 +99,7 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 	protected boolean started = false;
     protected boolean gracefullyShuttingDown = false;
     protected boolean reachableCheck = true;
+    protected String sessionId;
 
 	protected Set<LoadBalancerHeartBeatingListener> loadBalancerHeartBeatingListeners;
 	// https://github.com/RestComm/jain-sip.ha/issues/3
@@ -177,6 +178,7 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 				}
 			}		
 			started = true;
+			sessionId = ""+System.currentTimeMillis();
 		}
     	if(sipNodes.isEmpty()) {
     		logger.logInfo("Computing SIP Nodes to be sent to the LB");
@@ -640,7 +642,8 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 						if(jvmRoute != null) node.getProperties().put("jvmRoute", jvmRoute);
 						
 						node.getProperties().put("version", System.getProperty("org.mobicents.server.version", "0"));
-						
+						node.getProperties().put("sessionId", sessionId);
+
 						if(gracefullyShuttingDown) {
 							if(logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
 								logger.logDebug("Adding GRACEFUL_SHUTDOWN prop to following SIP Node " + node);
