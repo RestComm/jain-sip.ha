@@ -919,6 +919,7 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 	 */
 	public void setGracefulShutdown(SipLoadBalancer sipLoadBalancer, boolean gracefullyShuttingDown) {
 		this.gracefullyShuttingDown = gracefullyShuttingDown;
+		updateConnectorsAsSIPNode();
 		// forcing keep alive sending to update the nodes in the LB with the info
 		// that the nodes are shutting down 
 		sendKeepAliveToBalancers();
