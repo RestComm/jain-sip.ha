@@ -264,5 +264,6 @@ public class SipLoadBalancer implements Serializable {
 	 */
 	public void setCustomInfo(Properties customInfo) {
 		this.customInfo = customInfo;
+		loadBalancerHeartBeatingService.setCustomInfo(this);
 	}
 }

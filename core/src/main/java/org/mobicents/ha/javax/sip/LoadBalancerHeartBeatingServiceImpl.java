@@ -925,6 +925,10 @@ public class LoadBalancerHeartBeatingServiceImpl implements LoadBalancerHeartBea
 		sendKeepAliveToBalancers();
 	}
 
+	public void setCustomInfo(SipLoadBalancer sipLoadBalancer) {
+		updateConnectorsAsSIPNode();
+	}
+
 	public SipLoadBalancer[] getLoadBalancers() {
 		// This is slow, but it is called rarely, so no prob
 		return register.values().toArray(new SipLoadBalancer[] {});

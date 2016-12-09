@@ -803,6 +803,10 @@ public class MultiNetworkLoadBalancerHeartBeatingServiceImpl implements LoadBala
 		sendKeepAliveToBalancers();
 	}
 
+	public void setCustomInfo(SipLoadBalancer sipLoadBalancer) {
+		updateConnectorsAsSIPNode(sipLoadBalancer);
+	}
+	
 	public SipLoadBalancer[] getLoadBalancers() {
 		// This is slow, but it is called rarely, so no prob
 		return register.values().toArray(new SipLoadBalancer[] {});

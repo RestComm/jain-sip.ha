@@ -155,4 +155,6 @@ public interface LoadBalancerHeartBeatingService {
 	// https://github.com/RestComm/jain-sip.ha/issues/9
 	void addSipConnector(ListeningPoint listeningPoint, SipLoadBalancer loadBalancer);
 	void removeSipConnector(ListeningPoint listeningPoint, SipLoadBalancer loadBalancer);
+
+	void setCustomInfo(SipLoadBalancer sipLoadBalancer);
 }
