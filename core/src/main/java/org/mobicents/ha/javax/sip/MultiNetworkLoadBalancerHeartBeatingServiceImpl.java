@@ -505,14 +505,10 @@ public class MultiNetworkLoadBalancerHeartBeatingServiceImpl implements LoadBala
 						if(smppPortString != null) {
 							smppPort = Integer.parseInt(smppPortString);
 							node.getProperties().put("smppPort", smppPort);
-						} else {
-							logger.logWarning("SMPP port not set in System properties");
 						}
 						if(smppSslPortString != null) {
 							smppSslPort = Integer.parseInt(smppSslPortString);
 							node.getProperties().put("smppSslPort", smppSslPort);
-						} else {
-							logger.logWarning("Secure SMPP port not set in System properties");
 						}
 					
 						if(sipTcpPort != null) node.getProperties().put("tcpPort", sipTcpPort);
