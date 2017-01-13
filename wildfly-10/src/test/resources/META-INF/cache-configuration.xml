@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<jbosscache xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="urn:jboss:jbosscache-core:config:3.1">
+
+
+   <!--
+      isolation levels supported: READ_COMMITTED and REPEATABLE_READ
+      nodeLockingSchemes: mvcc, pessimistic (deprecated), optimistic (deprecated)
+   -->
+   <locking
+         isolationLevel="REPEATABLE_READ"
+         nodeLockingScheme="mvcc"/>  	 
+  
+   <!--
+      If region based marshalling is used, defines whether new regions are inactive on startup.
+   -->
+   <startup
+         regionsInactiveOnStartup="false"/>
+
+   <!--
+      Used to register JVM shutdown hooks.
+      hookBehavior: DEFAULT, REGISTER, DONT_REGISTER
+   -->
+   <shutdown
+         hookBehavior="DEFAULT"/>
+
+   <!--
+      serialization related configuration, used for replication and cache loading
+   -->
+   <serialization         
+         useRegionBasedMarshalling="true"/>
+
+   <!--
+      This element specifies that the cache is clustered.
+      modes supported: replication (r) or invalidation (i).
+   -->
+   <clustering mode="replication" clusterName="JBossCache-cluster">
+
+     <stateRetrieval fetchInMemoryState="true" timeout="60000"/>
+         <jgroupsConfig multiplexerStack="${jboss.default.jgroups.stack:udp}"/>
+         <sync replTimeout="175000"/>
+   </clustering>     
+</jbosscache>
