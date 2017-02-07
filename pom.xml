@@ -26,9 +26,9 @@
     </scm>
 
     <properties>
-        <restcomm.cluster.version>3.0.0.8</restcomm.cluster.version>
+        <restcomm.cluster.version>3.0.0-SNAPSHOT</restcomm.cluster.version>
         <restcomm.jain.sip.ext.version>1.3.26</restcomm.jain.sip.ext.version>
-        <restcomm.load.balancer.version>2.0.22</restcomm.load.balancer.version>
+        <restcomm.load.balancer.version>8.1.147</restcomm.load.balancer.version>
     </properties>
 
     <dependencyManagement>

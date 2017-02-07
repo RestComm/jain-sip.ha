@@ -34,12 +34,15 @@ import javax.naming.Context;
 import javax.naming.InitialContext;
 import javax.transaction.UserTransaction;
 
-import org.jboss.cache.Cache;
-import org.jboss.cache.CacheException;
-import org.jboss.cache.DefaultCacheFactory;
-import org.jboss.cache.Fqn;
-import org.jboss.cache.Node;
-import org.jboss.cache.config.Configuration.CacheMode;
+import org.infinispan.manager.CacheContainer;
+import org.infinispan.manager.DefaultCacheManager;
+import org.infinispan.tree.TreeCache;
+import org.infinispan.commons.CacheException;
+import org.infinispan.tree.Fqn;
+import org.infinispan.tree.Node;
+import org.infinispan.tree.TreeCacheFactory;
+import org.infinispan.configuration.cache.CacheMode;
+
 import org.mobicents.ha.javax.sip.ClusteredSipStack;
 import org.mobicents.ha.javax.sip.ReplicationStrategy;
 
@@ -58,7 +61,7 @@ public class JBossSipCache implements SipCache {
 	ClusteredSipStack clusteredSipStack = null;
 	Properties configProperties = null;	
 	
-	protected Cache cache;
+	protected TreeCache cache;
 	protected JBossJainSipCacheListener cacheListener;
 	
 	protected Node<String, SIPDialog> dialogRootNode = null;
@@ -169,10 +172,10 @@ public class JBossSipCache implements SipCache {
 					"Mobicents JAIN SIP JBoss Cache Configuration path is : " + pojoConfigurationPath);
 		}
 		try {
-			cache = new DefaultCacheFactory<String, SIPDialog>().createCache(pojoConfigurationPath);
-			cache.create();
+			CacheContainer cacheContainer = new DefaultCacheManager(pojoConfigurationPath, false);
+			cache = new TreeCacheFactory().createTreeCache(cacheContainer.getCache());
 			cacheListener = new JBossJainSipCacheListener(clusteredSipStack);
-			cache.addCacheListener(cacheListener);			
+			cache.getCache().addListener(cacheListener);
 		} catch (Exception e) {
 			throw new SipCacheException("Couldn't init JBoss Cache", e);
 		}
@@ -197,8 +200,7 @@ public class JBossSipCache implements SipCache {
 	}
 
 	public void stop() throws SipCacheException {
-		cache.stop();		
-		cache.destroy();
+		cache.stop();
 	}
 
 	/*
@@ -206,11 +208,11 @@ public class JBossSipCache implements SipCache {
 	 * @see org.mobicents.ha.javax.sip.cache.SipCache#inLocalMode()
 	 */
 	public boolean inLocalMode() {
-		return cache.getConfiguration().getCacheMode() == CacheMode.LOCAL;
+		return cache.getCache().getCacheConfiguration().clustering().cacheMode() == CacheMode.LOCAL;
 	}
 
 	public void evictDialog(String dialogId) {
-		cache.evict(Fqn.fromElements(dialogRootNode.getFqn(), Fqn.fromString(dialogId)));
+		cache.getCache().evict(Fqn.fromElements(dialogRootNode.getFqn(), Fqn.fromString(dialogId)));
 	}
 
 	public SIPServerTransaction getServerTransaction(String transactionId)

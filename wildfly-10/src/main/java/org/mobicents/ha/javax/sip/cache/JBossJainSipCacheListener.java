@@ -25,18 +25,25 @@ package org.mobicents.ha.javax.sip.cache;
 import gov.nist.core.CommonLogger;
 import gov.nist.core.StackLogger;
 
-import org.jboss.cache.Fqn;
-import org.jboss.cache.notifications.annotation.CacheStarted;
-import org.jboss.cache.notifications.annotation.CacheStopped;
-import org.jboss.cache.notifications.annotation.NodeCreated;
-import org.jboss.cache.notifications.annotation.NodeModified;
-import org.jboss.cache.notifications.annotation.NodeRemoved;
-import org.jboss.cache.notifications.annotation.ViewChanged;
-import org.jboss.cache.notifications.event.CacheStartedEvent;
-import org.jboss.cache.notifications.event.CacheStoppedEvent;
-import org.jboss.cache.notifications.event.NodeCreatedEvent;
-import org.jboss.cache.notifications.event.NodeModifiedEvent;
-import org.jboss.cache.notifications.event.NodeRemovedEvent;
+import org.infinispan.tree.Fqn;
+import org.infinispan.tree.impl.NodeKey;
+
+import org.infinispan.notifications.Listener;
+import org.infinispan.notifications.cachemanagerlistener.annotation.CacheStarted;
+import org.infinispan.notifications.cachemanagerlistener.annotation.CacheStopped;
+import org.infinispan.notifications.cachelistener.annotation.CacheEntryCreated;
+import org.infinispan.notifications.cachelistener.annotation.CacheEntryModified;
+import org.infinispan.notifications.cachelistener.annotation.CacheEntryRemoved;
+
+import org.infinispan.notifications.cachemanagerlistener.event.CacheStartedEvent;
+import org.infinispan.notifications.cachemanagerlistener.event.CacheStoppedEvent;
+import org.infinispan.notifications.cachelistener.event.CacheEntryCreatedEvent;
+import org.infinispan.notifications.cachelistener.event.CacheEntryModifiedEvent;
+import org.infinispan.notifications.cachelistener.event.CacheEntryRemovedEvent;
+
+import org.infinispan.notifications.cachemanagerlistener.annotation.ViewChanged;
+import org.infinispan.notifications.cachemanagerlistener.event.ViewChangedEvent;
+
 import org.mobicents.ha.javax.sip.ClusteredSipStack;
 
 /**
@@ -45,7 +52,7 @@ import org.mobicents.ha.javax.sip.ClusteredSipStack;
  * @author jean.deruelle@gmail.com
  *
  */
-@org.jboss.cache.notifications.annotation.CacheListener
+@Listener
 public class JBossJainSipCacheListener {
 	private static StackLogger clusteredlogger = CommonLogger.getLogger(JBossJainSipCacheListener.class);
 
@@ -63,8 +70,8 @@ public class JBossJainSipCacheListener {
 	public void cacheStarted(CacheStartedEvent cacheStartedEvent) {
 		if (clusteredlogger.isLoggingEnabled(StackLogger.TRACE_INFO)) {
 			clusteredlogger.logInfo(
-					"Mobicents Cache started, status: " + cacheStartedEvent.getCache().getCacheStatus() + 
-					", Mode: " + cacheStartedEvent.getCache().getConfiguration().getCacheModeString());
+					"Mobicents Cache started, status: " + cacheStartedEvent.getCacheManager().getCache().getStatus() +
+					", Mode: " + cacheStartedEvent.getCacheManager().getCache().getCacheConfiguration().clustering().cacheModeString());
 		}
 	}
 
@@ -72,42 +79,42 @@ public class JBossJainSipCacheListener {
 	public void cacheStopped(CacheStoppedEvent cacheStoppedEvent) {
 		if (clusteredlogger.isLoggingEnabled(StackLogger.TRACE_INFO)) {
 			clusteredlogger.logInfo(
-					"Mobicents Cache stopped, status: " + cacheStoppedEvent.getCache().getCacheStatus() + 
-					", Mode: " + cacheStoppedEvent.getCache().getConfiguration().getCacheModeString());
+					"Mobicents Cache stopped, status: " + cacheStoppedEvent.getCacheManager().getCache().getStatus() +
+					", Mode: " + cacheStoppedEvent.getCacheManager().getCache().getCacheConfiguration().clustering().cacheModeString());
 		}
 	}
 	
-	@NodeCreated
-	public void nodeCreated(NodeCreatedEvent nodeCreatedEvent) {		
+	@CacheEntryCreated
+	public void nodeCreated(CacheEntryCreatedEvent nodeCreatedEvent) {
 		if(nodeCreatedEvent.isOriginLocal()) {
 			return ;
 		}
-		final Fqn fqn = nodeCreatedEvent.getFqn();
+		final Fqn fqn = ((NodeKey)nodeCreatedEvent.getKey()).getFqn();
 		if (!nodeCreatedEvent.isOriginLocal() && clusteredlogger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
 			clusteredlogger.logDebug("sipStack " + clusteredSipStack + 
 					" Node created : " + fqn);
 		}
 	}
 
-	@NodeModified
-	public void nodeModified(NodeModifiedEvent nodeModifiedEvent) {
+	@CacheEntryModified
+	public void nodeModified(CacheEntryModifiedEvent nodeModifiedEvent) {
 		if(nodeModifiedEvent.isOriginLocal()) {
 			return ;
 		}
-		final Fqn fqn = nodeModifiedEvent.getFqn();
+		final Fqn fqn = ((NodeKey)nodeModifiedEvent.getKey()).getFqn();
 		if (!nodeModifiedEvent.isOriginLocal() && clusteredlogger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
 			clusteredlogger.logDebug("sipStack " + clusteredSipStack + 
-					" Node modified : " + fqn + " " + nodeModifiedEvent.getData());
+					" Node modified : " + fqn + " " + nodeModifiedEvent.getValue());
 		}
 		
 	}
 
-	@NodeRemoved
-	public void nodeRemoved(NodeRemovedEvent nodeRemovedEvent) {
+	@CacheEntryRemoved
+	public void nodeRemoved(CacheEntryRemovedEvent nodeRemovedEvent) {
 		if(nodeRemovedEvent.isOriginLocal()) {
 			return ;
 		}
-		final Fqn fqn = nodeRemovedEvent.getFqn();
+		final Fqn fqn = ((NodeKey)nodeRemovedEvent.getKey()).getFqn();
 		if (!nodeRemovedEvent.isOriginLocal()) {
 			if(clusteredlogger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
 				clusteredlogger.logDebug("sipStack " + clusteredSipStack + 
@@ -118,10 +125,10 @@ public class JBossJainSipCacheListener {
 	}
 
 	@ViewChanged
-	public void viewChange(org.jboss.cache.notifications.event.ViewChangedEvent viewChangedEvent) {
+	public void viewChange(ViewChangedEvent viewChangedEvent) {
 		if (clusteredlogger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
 			clusteredlogger.logDebug("sipStack " + clusteredSipStack + 
-					" View changed : " + viewChangedEvent.getNewView().getVid());
+					" View changed : " + viewChangedEvent.getViewId());
 		}
 	}
 
