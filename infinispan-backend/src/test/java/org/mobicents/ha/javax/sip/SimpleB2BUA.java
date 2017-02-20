@@ -102,6 +102,8 @@ public class SimpleB2BUA implements SipListener {
         properties.setProperty(
 				"org.mobicents.ha.javax.sip.CACHE_CLASS_NAME",
 				"org.mobicents.ha.javax.sip.cache.infinispan.InfinispanCache");
+        properties.setProperty("org.mobicents.ha.javax.sip.HEARTBEAT_IP", "127.0.0.1");
+        properties.setProperty("org.mobicents.ha.javax.sip.HEARTBEAT_PORT","2222");
 //        properties.setProperty(ManagedMobicentsSipCache.STANDALONE, "true");
 //        System.setProperty("jgroups.bind_addr", ipAddress);
 //        System.setProperty("jgroups.udp.mcast_addr", "232.5.5.5");

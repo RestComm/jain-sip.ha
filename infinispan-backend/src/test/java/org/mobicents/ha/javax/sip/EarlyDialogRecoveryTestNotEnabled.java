@@ -803,6 +803,8 @@ public class EarlyDialogRecoveryTestNotEnabled extends TestCase {
 			// debug + traces.
 			// Your code will limp at 32 but it is best for debugging.
 			properties.setProperty("gov.nist.javax.sip.TRACE_LEVEL", "DEBUG");
+			properties.setProperty("org.mobicents.ha.javax.sip.HEARTBEAT_IP", "127.0.0.1");
+			properties.setProperty("org.mobicents.ha.javax.sip.HEARTBEAT_PORT","2222");
 
 			try {
 				// Create SipStack object

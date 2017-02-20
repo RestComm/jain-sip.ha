@@ -377,6 +377,8 @@ public class EarlyDialogRecoveryTest extends TestCase {
 					"org.mobicents.ha.javax.sip.HAZELCAST_INSTANCE_NAME",
 					cacheName);
 			properties.setProperty("org.mobicents.ha.javax.sip.REPLICATE_APPLICATION_DATA", "true");
+			properties.setProperty("org.mobicents.ha.javax.sip.HEARTBEAT_IP", "127.0.0.1");
+			properties.setProperty("org.mobicents.ha.javax.sip.HEARTBEAT_PORT","2222");
 
 			try {
 				// Create SipStack object

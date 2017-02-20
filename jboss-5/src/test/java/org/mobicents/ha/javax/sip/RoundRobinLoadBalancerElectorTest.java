@@ -260,6 +260,11 @@ public class RoundRobinLoadBalancerElectorTest  extends TestCase {
 			// TODO Auto-generated method stub
 			
 		}
+
+		public void setCustomInfo(SipLoadBalancer sipLoadBalancer) {
+			// TODO Auto-generated method stub
+			
+		}
 		
 	}
 	

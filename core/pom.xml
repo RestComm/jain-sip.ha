@@ -22,8 +22,8 @@
 		</dependency>
 		<dependency>
 			<groupId>org.mobicents.tools</groupId>
-			<artifactId>sip-balancer-jar</artifactId>		
-			<scope>provided</scope>
+			<artifactId>heartbeat</artifactId>		
+			<version>9.0.0-SNAPSHOT</version>
 		</dependency>
 	</dependencies>
 
@@ -38,6 +38,16 @@
 					<excludePoms />
 					<resolveTransitiveDependencies>true</resolveTransitiveDependencies>
 					<eclipseProjectName>jain-sip-ha-core</eclipseProjectName>
+				</configuration>
+			</plugin>
+			<plugin>
+				<artifactId>maven-compiler-plugin</artifactId>
+				<configuration>
+					<compilerArguments>
+						<g />
+					</compilerArguments>
+					<source>1.7</source>
+					<target>1.7</target>
 				</configuration>
 			</plugin>
 			<plugin>

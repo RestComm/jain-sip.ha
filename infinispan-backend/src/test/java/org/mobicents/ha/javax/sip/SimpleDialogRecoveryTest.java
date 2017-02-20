@@ -622,6 +622,8 @@ public class SimpleDialogRecoveryTest extends TestCase {
                     stackName + "debug.txt");
             properties.setProperty("gov.nist.javax.sip.SERVER_LOG", "logs/" +
                     stackName + "log.xml");
+            properties.setProperty("org.mobicents.ha.javax.sip.HEARTBEAT_IP", "127.0.0.1");
+            properties.setProperty("org.mobicents.ha.javax.sip.HEARTBEAT_PORT","2222");
 
             try {
                 // Create SipStack object

@@ -56,7 +56,11 @@ import javax.sip.ListeningPoint;
 public interface LoadBalancerHeartBeatingService {
 
 	final static String BALANCERS = "org.mobicents.ha.javax.sip.BALANCERS";
+	final static String HEARTBEAT_IP = "org.mobicents.ha.javax.sip.HEARTBEAT_IP";
+	final static String HEARTBEAT_PORT = "org.mobicents.ha.javax.sip.HEARTBEAT_PORT";
 	final static String HEARTBEAT_INTERVAL = "org.mobicents.ha.javax.sip.HEARTBEAT_INTERVAL";
+	final static String START_INTERVAL = "org.mobicents.ha.javax.sip.START_INTERVAL";
+	final static String MAX_HEARTBEAT_ERRORS = "org.mobicents.ha.javax.sip.MAX_HEARTBEAT_ERRORS";
 	final static String LB_HB_SERVICE_CLASS_NAME = "org.mobicents.ha.javax.sip.LoadBalancerHeartBeatingServiceClassName";
 	
 	void init(ClusteredSipStack clusteredSipStack, Properties stackProperties);

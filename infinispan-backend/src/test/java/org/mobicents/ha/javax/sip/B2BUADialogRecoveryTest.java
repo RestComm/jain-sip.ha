@@ -948,6 +948,8 @@ public class B2BUADialogRecoveryTest extends TestCase {
             // You need 16 (or TRACE) for logging traces. 32 (or DEBUG) for debug + traces.
             // Your code will limp at 32 but it is best for debugging.
             properties.setProperty("gov.nist.javax.sip.TRACE_LEVEL", "DEBUG");
+            properties.setProperty("org.mobicents.ha.javax.sip.HEARTBEAT_IP", "127.0.0.1");
+            properties.setProperty("org.mobicents.ha.javax.sip.HEARTBEAT_PORT","2222");
 
             try {
                 // Create SipStack object

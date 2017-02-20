@@ -55,7 +55,7 @@ public class SipLoadBalancer implements Serializable {
 	private InetAddress address;
 	private int sipPort;
 	private int httpPort;
-	private int rmiPort;
+	private int heartbeatPort;
 	private transient LoadBalancerHeartBeatingService loadBalancerHeartBeatingService;
 	private transient RouteHeader balancerRouteHeaderUdp;
 	private transient RouteHeader balancerRouteHeaderTcp;
@@ -70,14 +70,14 @@ public class SipLoadBalancer implements Serializable {
 	 * @param sipPort
 	 * @param hostName
 	 */
-	public SipLoadBalancer(LoadBalancerHeartBeatingService loadBalancerHeartBeatingService, InetAddress address, int sipPort, int httpPort, int rmiPort) {
+	public SipLoadBalancer(LoadBalancerHeartBeatingService loadBalancerHeartBeatingService, InetAddress address, int sipPort, int httpPort, int heartbeatPort) {
 		super();
 		this.available = false;
 		this.displayWarning = true;
 		this.address = address;
 		this.sipPort = sipPort;
 		this.httpPort = httpPort;
-		this.rmiPort = rmiPort;
+		this.heartbeatPort = heartbeatPort;
 		this.loadBalancerHeartBeatingService = loadBalancerHeartBeatingService;
 		try {
 			javax.sip.address.SipURI sipUriUdp = addressFactory.createSipURI(null, address.getHostAddress());
@@ -148,11 +148,11 @@ public class SipLoadBalancer implements Serializable {
 	public int getHttpPort(){
 		return httpPort;
 	}
-	public int getRmiPort() {
-		return rmiPort;
+	public int getHeartbeatPort() {
+		return heartbeatPort;
 	}
-	public void setRmiPort(int rmiPort) {
-		this.rmiPort = rmiPort;
+	public void setHeartbeatPort(int heartbeatPort) {
+		this.heartbeatPort = heartbeatPort;
 	}
 	public RouteHeader getBalancerRouteHeaderTcp() {
 		return balancerRouteHeaderTcp;
@@ -188,7 +188,7 @@ public class SipLoadBalancer implements Serializable {
 		result = prime * result + ((address == null) ? 0 : address.hashCode());
 //		result = prime * result + sipPort;
 //		result = prime * result + httpPort;
-		result = prime * result + rmiPort;
+		result = prime * result + heartbeatPort;
 		return result;
 	}
 	/* (non-Javadoc)
@@ -212,7 +212,7 @@ public class SipLoadBalancer implements Serializable {
 //			return false;
 //		if (httpPort != other.httpPort)
 //			return false;
-		if (rmiPort != other.rmiPort)
+		if (heartbeatPort != other.heartbeatPort)
 			return false;
 		return true;
 	}
@@ -224,7 +224,7 @@ public class SipLoadBalancer implements Serializable {
 		.append(getAddress().getHostAddress())
 		.append(":" + getSipPort())
 		.append(":" + getHttpPort())
-		.append(":" + getRmiPort());
+		.append(":" + getHeartbeatPort());
 		return stringBuilder.toString();
 	}
 

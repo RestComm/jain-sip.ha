@@ -35,7 +35,7 @@ import org.mobicents.ha.javax.sip.ClusteredSipStack;
 import org.mobicents.ha.javax.sip.ClusteredSipStackImpl;
 import org.mobicents.ha.javax.sip.HASipDialog;
 import org.mobicents.ha.javax.sip.LoadBalancerHeartBeatingService;
-import org.mobicents.ha.javax.sip.LoadBalancerHeartBeatingServiceImpl;
+import org.mobicents.ha.javax.sip.MultiNetworkLoadBalancerHeartBeatingServiceImpl;
 import org.mobicents.ha.javax.sip.cache.NoCache;
 
 /**
@@ -83,7 +83,7 @@ public class SipStackImpl extends ClusteredSipStackImpl implements SipStackImplM
 			configurationProperties.setProperty(ClusteredSipStack.CACHE_CLASS_NAME_PROPERTY, NoCache.class.getName());
 		}
 		if(configurationProperties.getProperty(LoadBalancerHeartBeatingService.LB_HB_SERVICE_CLASS_NAME) == null) {
-			configurationProperties.setProperty(LoadBalancerHeartBeatingService.LB_HB_SERVICE_CLASS_NAME, LoadBalancerHeartBeatingServiceImpl.class.getName());
+			configurationProperties.setProperty(LoadBalancerHeartBeatingService.LB_HB_SERVICE_CLASS_NAME, MultiNetworkLoadBalancerHeartBeatingServiceImpl.class.getName());
 		}
 		return configurationProperties;
 	}
