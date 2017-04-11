@@ -44,9 +44,9 @@ import javax.management.MBeanServer;
 import javax.management.ObjectName;
 import javax.sip.ListeningPoint;
 
+import org.mobicents.tools.heartbeat.api.Node;
+import org.mobicents.tools.heartbeat.api.Protocol;
 import org.mobicents.tools.heartbeat.impl.HeartbeatService;
-import org.mobicents.tools.heartbeat.impl.Node;
-import org.mobicents.tools.heartbeat.interfaces.Protocol;
 
 /**
  *  <p>implementation of the <code>LoadBalancerHeartBeatingService</code> interface.</p>
