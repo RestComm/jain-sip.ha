@@ -73,11 +73,11 @@ public abstract class AbstractLoadBalancerElector implements
 	 */
 	private Address createAddress(String balancerDescription) {
 		String host = balancerDescription;
-		int sipPort = MultiNetworkLoadBalancerHeartBeatingServiceImpl.DEFAULT_LB_SIP_PORT;
+		int sipPort = LoadBalancerHeartBeatingServiceImpl.DEFAULT_LB_SIP_PORT;
 		if (balancerDescription
-				.indexOf(MultiNetworkLoadBalancerHeartBeatingServiceImpl.BALANCER_SIP_PORT_CHAR_SEPARATOR) != -1) {
+				.indexOf(LoadBalancerHeartBeatingServiceImpl.BALANCER_SIP_PORT_CHAR_SEPARATOR) != -1) {
 			String[] balancerDescriptionSplitted = balancerDescription
-					.split(MultiNetworkLoadBalancerHeartBeatingServiceImpl.BALANCER_SIP_PORT_CHAR_SEPARATOR);
+					.split(LoadBalancerHeartBeatingServiceImpl.BALANCER_SIP_PORT_CHAR_SEPARATOR);
 			host = balancerDescriptionSplitted[0];
 			try {
 				sipPort = Integer.parseInt(balancerDescriptionSplitted[1]);

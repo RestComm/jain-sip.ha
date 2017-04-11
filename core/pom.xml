@@ -23,7 +23,12 @@
 		<dependency>
 			<groupId>org.mobicents.tools</groupId>
 			<artifactId>heartbeat</artifactId>		
-			<version>9.0.0-SNAPSHOT</version>
+			<version>9.0.191</version>
+		</dependency>
+		<dependency>
+			<groupId>org.mobicents.tools</groupId>
+			<artifactId>sip-balancer-jar</artifactId>		
+			<scope>provided</scope>
 		</dependency>
 	</dependencies>
 
