@@ -26,6 +26,7 @@
     </scm>
 
     <properties>
+        <mobicents.cluster.version>1.15.26</mobicents.cluster.version>
         <restcomm.cluster.version>3.0.0-SNAPSHOT</restcomm.cluster.version>
         <restcomm.jain.sip.ext.version>1.3.26</restcomm.jain.sip.ext.version>
         <restcomm.load.balancer.version>8.1.147</restcomm.load.balancer.version>
@@ -33,6 +34,18 @@
 
     <dependencyManagement>
         <dependencies>
+            <dependency>
+                <groupId>org.mobicents.cluster</groupId>
+                <artifactId>cache</artifactId>
+                <version>${mobicents.cluster.version}</version>
+                <scope>provided</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.mobicents.cluster</groupId>
+                <artifactId>core</artifactId>
+                <version>${mobicents.cluster.version}</version>
+                <scope>provided</scope>
+            </dependency>
             <dependency>
                 <groupId>org.restcomm.cluster</groupId>
                 <artifactId>cache</artifactId>

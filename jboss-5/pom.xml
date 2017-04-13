@@ -65,13 +65,13 @@
 		</dependency>
 		
 		<dependency>
-			<groupId>org.restcomm.cluster</groupId>
+			<groupId>org.mobicents.cluster</groupId>
 			<artifactId>cache</artifactId>
 			<scope>provided</scope>
 		</dependency>
 		
 		<dependency>
-			<groupId>org.restcomm.cluster</groupId>
+			<groupId>org.mobicents.cluster</groupId>
 			<artifactId>core</artifactId>
 			<scope>provided</scope>
 		</dependency>
