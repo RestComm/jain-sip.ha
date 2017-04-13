@@ -53,7 +53,7 @@ import javax.sip.header.HeaderFactory;
 import javax.sip.message.MessageFactory;
 import javax.sip.message.Request;
 
-import org.restcomm.cache.tree.Fqn;
+import org.infinispan.tree.Fqn;
 import org.mobicents.ha.javax.sip.cache.ManagedMobicentsSipCache;
 import org.mobicents.ha.javax.sip.cache.MobicentsSipCache;
 import org.mobicents.tools.sip.balancer.NodeRegisterRMIStub;

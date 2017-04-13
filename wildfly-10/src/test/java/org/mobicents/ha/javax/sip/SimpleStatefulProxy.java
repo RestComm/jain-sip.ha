@@ -71,8 +71,8 @@ import javax.sip.message.MessageFactory;
 import javax.sip.message.Request;
 import javax.sip.message.Response;
 
-import org.jboss.cache.CacheException;
-import org.jboss.cache.Fqn;
+import org.infinispan.tree.Fqn;
+import org.infinispan.commons.CacheException;
 import org.mobicents.ha.javax.sip.cache.ManagedMobicentsSipCache;
 import org.mobicents.ha.javax.sip.cache.MobicentsSipCache;
 import org.mobicents.tools.sip.balancer.NodeRegisterRMIStub;
@@ -271,7 +271,7 @@ public class SimpleStatefulProxy implements SipListener {
 	}	
 	
 	/**
-	 * @param incomingDialog2
+	 * @param peerPort
 	 * @return
 	 * @throws SipException 
 	 * @throws InvalidArgumentException 

@@ -79,7 +79,7 @@ import javax.sip.message.MessageFactory;
 import javax.sip.message.Request;
 import javax.sip.message.Response;
 
-import org.jboss.cache.Fqn;
+import org.infinispan.tree.Fqn;
 import org.mobicents.ha.javax.sip.cache.ManagedMobicentsSipCache;
 import org.mobicents.ha.javax.sip.cache.MobicentsSipCache;
 
