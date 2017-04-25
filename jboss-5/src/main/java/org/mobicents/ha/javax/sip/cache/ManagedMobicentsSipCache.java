@@ -31,8 +31,8 @@ import gov.nist.javax.sip.stack.SIPServerTransaction;
 import org.jboss.cache.CacheManager;
 import org.jboss.cache.Node;
 import org.jboss.ha.framework.server.CacheManagerLocator;
-import org.mobicents.cache.MobicentsCache;
-import org.mobicents.cluster.DefaultMobicentsCluster;
+import org.restcomm.cache.MobicentsCache;
+import org.restcomm.cluster.DefaultMobicentsCluster;
 
 /**
  * Implementation of the SipCache interface, backed by a Restcomm Cache (JBoss Cache 3.X Cache).

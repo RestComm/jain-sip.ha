@@ -28,10 +28,9 @@ import gov.nist.javax.sip.stack.SIPServerTransaction;
 
 import java.util.Properties;
 
-import org.jboss.cache.Fqn;
-import org.jboss.cache.Region;
-import org.mobicents.cache.MobicentsCache;
-import org.mobicents.cluster.MobicentsCluster;
+import org.restcomm.cache.FqnWrapper;
+import org.restcomm.cache.MobicentsCache;
+import org.restcomm.cluster.MobicentsCluster;
 import org.mobicents.ha.javax.sip.ClusteredSipStack;
 import org.mobicents.ha.javax.sip.ReplicationStrategy;
 
@@ -150,31 +149,48 @@ public abstract class MobicentsSipCache implements SipCache {
 	 */
 	public void start() throws SipCacheException {
 		cluster.getMobicentsCache().startCache();
-		dialogsCacheData = new SIPDialogCacheData(Fqn.fromElements(name,SipCache.DIALOG_PARENT_FQN_ELEMENT),cluster.getMobicentsCache(), clusteredSipStack);
+		dialogsCacheData = new SIPDialogCacheData(
+				FqnWrapper.fromElementsWrapper(name,SipCache.DIALOG_PARENT_FQN_ELEMENT),
+				cluster.getMobicentsCache(), clusteredSipStack);
 		dialogsCacheData.create();		
-		dialogDataRemovalListener = new DialogDataRemovalListener(dialogsCacheData.getNodeFqn(), clusteredSipStack);
+		dialogDataRemovalListener = new DialogDataRemovalListener(
+				dialogsCacheData.getNodeFqnWrapper(), clusteredSipStack);
 		cluster.addDataRemovalListener(dialogDataRemovalListener);
 		if(clusteredSipStack.getReplicationStrategy() == ReplicationStrategy.EarlyDialog) {
-			serverTransactionCacheData = new ServerTransactionCacheData(Fqn.fromElements(name,SipCache.SERVER_TX_PARENT_FQN_ELEMENT),cluster.getMobicentsCache(), clusteredSipStack);
+			serverTransactionCacheData = new ServerTransactionCacheData(
+					FqnWrapper.fromElementsWrapper(name,SipCache.SERVER_TX_PARENT_FQN_ELEMENT),
+					cluster.getMobicentsCache(), clusteredSipStack);
 			serverTransactionCacheData.create();
-			serverTransactionDataRemovalListener = new ServerTransactionDataRemovalListener(serverTransactionCacheData.getNodeFqn(), clusteredSipStack);
+			serverTransactionDataRemovalListener = new ServerTransactionDataRemovalListener(
+					serverTransactionCacheData.getNodeFqnWrapper(), clusteredSipStack);
 			cluster.addDataRemovalListener(serverTransactionDataRemovalListener);
-			clientTransactionCacheData = new ClientTransactionCacheData(Fqn.fromElements(name,SipCache.CLIENT_TX_PARENT_FQN_ELEMENT),cluster.getMobicentsCache(), clusteredSipStack);
+			clientTransactionCacheData = new ClientTransactionCacheData(
+					FqnWrapper.fromElementsWrapper(name,SipCache.CLIENT_TX_PARENT_FQN_ELEMENT),
+					cluster.getMobicentsCache(), clusteredSipStack);
 			clientTransactionCacheData.create();
-			clientTransactionDataRemovalListener = new ClientTransactionDataRemovalListener(clientTransactionCacheData.getNodeFqn(), clusteredSipStack);
+			clientTransactionDataRemovalListener = new ClientTransactionDataRemovalListener(
+					clientTransactionCacheData.getNodeFqnWrapper(), clusteredSipStack);
 			cluster.addDataRemovalListener(clientTransactionDataRemovalListener);
 		}
 		if (serializationClassLoader != null) {
-			Region region = getMobicentsCache().getJBossCache().getRegion(dialogsCacheData.getNodeFqn(),true);
-			region.registerContextClassLoader(serializationClassLoader);
-			region.activate();
+			//Region region = getMobicentsCache().getJBossCache().getRegion(dialogsCacheData.getNodeFqn(),true);
+			//region.registerContextClassLoader(serializationClassLoader);
+			//region.activate();
+			getMobicentsCache().registerClassLoader(serializationClassLoader,
+					dialogsCacheData.getNodeFqnWrapper());
+
 			if(clusteredSipStack.getReplicationStrategy() == ReplicationStrategy.EarlyDialog) {
-				Region stxRegion = getMobicentsCache().getJBossCache().getRegion(serverTransactionCacheData.getNodeFqn(),true);
-				stxRegion.registerContextClassLoader(serializationClassLoader);
-				stxRegion.activate();
-				Region ctxRegion = getMobicentsCache().getJBossCache().getRegion(clientTransactionCacheData.getNodeFqn(),true);
-				ctxRegion.registerContextClassLoader(serializationClassLoader);
-				ctxRegion.activate();
+				//Region stxRegion = getMobicentsCache().getJBossCache().getRegion(serverTransactionCacheData.getNodeFqn(),true);
+				//stxRegion.registerContextClassLoader(serializationClassLoader);
+				//stxRegion.activate();
+				getMobicentsCache().registerClassLoader(serializationClassLoader,
+						serverTransactionCacheData.getNodeFqnWrapper());
+
+				//Region ctxRegion = getMobicentsCache().getJBossCache().getRegion(clientTransactionCacheData.getNodeFqn(),true);
+				//ctxRegion.registerContextClassLoader(serializationClassLoader);
+				//ctxRegion.activate();
+				getMobicentsCache().registerClassLoader(serializationClassLoader,
+						clientTransactionCacheData.getNodeFqnWrapper());
 			}
 		}
 	}

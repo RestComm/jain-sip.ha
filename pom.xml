@@ -26,38 +26,12 @@
     </scm>
 
     <properties>
-        <mobicents.cluster.version>1.15.26</mobicents.cluster.version>
-        <restcomm.cluster.version>3.0.0-SNAPSHOT</restcomm.cluster.version>
         <restcomm.jain.sip.ext.version>1.3.26</restcomm.jain.sip.ext.version>
         <restcomm.load.balancer.version>8.1.147</restcomm.load.balancer.version>
     </properties>
 
     <dependencyManagement>
         <dependencies>
-            <dependency>
-                <groupId>org.mobicents.cluster</groupId>
-                <artifactId>cache</artifactId>
-                <version>${mobicents.cluster.version}</version>
-                <scope>provided</scope>
-            </dependency>
-            <dependency>
-                <groupId>org.mobicents.cluster</groupId>
-                <artifactId>core</artifactId>
-                <version>${mobicents.cluster.version}</version>
-                <scope>provided</scope>
-            </dependency>
-            <dependency>
-                <groupId>org.restcomm.cluster</groupId>
-                <artifactId>cache</artifactId>
-                <version>${restcomm.cluster.version}</version>
-                <scope>provided</scope>
-            </dependency>
-            <dependency>
-                <groupId>org.restcomm.cluster</groupId>
-                <artifactId>core</artifactId>
-                <version>${restcomm.cluster.version}</version>
-                <scope>provided</scope>
-            </dependency>
             <dependency>
                 <groupId>org.mobicents.tools</groupId>
                 <artifactId>sip-balancer-jar</artifactId>
@@ -71,6 +45,8 @@
         <module>core</module>
         <module>hazelcast-backend</module>
         <module>infinispan-backend</module>
+        <module>jboss-5</module>
+        <module>wildfly-10</module>
     </modules>
 
     <dependencies>
@@ -105,13 +81,15 @@
                 </plugins>
             </build>
         </profile>
+        <!--
         <profile>
             <id>jboss-5</id>
-            <!--
             <activation>
-                <activeByDefault>true</activeByDefault>
+                <activeByDefault>false</activeByDefault>
             </activation>
-            -->
+            <properties>
+                <restcomm.cluster.version>1.15.0-SNAPSHOT</restcomm.cluster.version>
+            </properties>
             <modules>
                 <module>jboss-5</module>
             </modules>
@@ -119,12 +97,17 @@
         <profile>
             <id>wildfly-10</id>
             <activation>
-                <activeByDefault>true</activeByDefault>
+                <activeByDefault>false</activeByDefault>
             </activation>
+            <properties>
+                <restcomm.cluster.version>3.0.0-SNAPSHOT</restcomm.cluster.version>
+            </properties>
             <modules>
                 <module>wildfly-10</module>
             </modules>
         </profile>
+        -->
+        <!--
         <profile>
             <id>all</id>
             <modules>
@@ -132,6 +115,7 @@
                 <module>wildfly-10</module>
             </modules>
         </profile>
+        -->
     </profiles>
 
     <build>

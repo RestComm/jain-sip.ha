@@ -17,9 +17,27 @@
 	<url>https://github.com/RestComm/jain-sip.ha</url>
 
 	<properties>
+		<restcomm.cluster.version>1.15.29</restcomm.cluster.version>
 		<IP_ADDRESS>192.168.10.213</IP_ADDRESS>
 		<maven.test.skip>true</maven.test.skip>
 	</properties>
+
+	<dependencyManagement>
+		<dependencies>
+			<dependency>
+				<groupId>org.restcomm.cluster</groupId>
+				<artifactId>cache</artifactId>
+				<version>${restcomm.cluster.version}</version>
+				<scope>provided</scope>
+			</dependency>
+			<dependency>
+				<groupId>org.restcomm.cluster</groupId>
+				<artifactId>core</artifactId>
+				<version>${restcomm.cluster.version}</version>
+				<scope>provided</scope>
+			</dependency>
+		</dependencies>
+	</dependencyManagement>
 	
 	<dependencies>	
 		<dependency>
@@ -65,21 +83,21 @@
 		</dependency>
 		
 		<dependency>
-			<groupId>org.mobicents.cluster</groupId>
+			<groupId>org.restcomm.cluster</groupId>
 			<artifactId>cache</artifactId>
 			<scope>provided</scope>
 		</dependency>
 		
 		<dependency>
-			<groupId>org.mobicents.cluster</groupId>
+			<groupId>org.restcomm.cluster</groupId>
 			<artifactId>core</artifactId>
 			<scope>provided</scope>
 		</dependency>
 		
 		<dependency>
-				<groupId>org.mobicents.tools</groupId>
-				<artifactId>sip-balancer-jar</artifactId>
-				<scope>provided</scope>
+			<groupId>org.mobicents.tools</groupId>
+			<artifactId>sip-balancer-jar</artifactId>
+			<scope>provided</scope>
 		</dependency>
 		
 		

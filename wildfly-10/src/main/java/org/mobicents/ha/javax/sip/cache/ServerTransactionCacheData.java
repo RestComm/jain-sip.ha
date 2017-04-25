@@ -41,15 +41,8 @@ import javax.transaction.RollbackException;
 import javax.transaction.Status;
 import javax.transaction.TransactionManager;
 
-//import org.infinispan.Cache;
-import org.infinispan.commons.CacheException;
-//import org.infinispan.configuration.cache.Configuration;
-
-import org.infinispan.tree.TreeCache;
-import org.infinispan.tree.Fqn;
-import org.infinispan.tree.Node;
-
 import org.restcomm.cache.CacheData;
+import org.restcomm.cache.FqnWrapper;
 import org.restcomm.cache.MobicentsCache;
 import org.mobicents.ha.javax.sip.ClusteredSipStack;
 
@@ -61,23 +54,17 @@ public class ServerTransactionCacheData extends CacheData {
 	private static StackLogger clusteredlogger = CommonLogger.getLogger(ServerTransactionCacheData.class);
 	private ClusteredSipStack clusteredSipStack;	
 	
-	public ServerTransactionCacheData(Fqn nodeFqn, MobicentsCache mobicentsCache, ClusteredSipStack clusteredSipStack) {
-		super(nodeFqn, mobicentsCache);
+	public ServerTransactionCacheData(FqnWrapper nodeFqnWrapper, MobicentsCache mobicentsCache, ClusteredSipStack clusteredSipStack) {
+		super(nodeFqnWrapper, mobicentsCache);
 		this.clusteredSipStack = clusteredSipStack;
 	}
 	
 	public SIPServerTransaction getServerTransaction(String txId) throws SipCacheException {
 		SIPServerTransaction haSipServerTransaction = null;
-		final TreeCache jbossCache = getMobicentsCache().getJBossCache();
-
-		// FIXME:
-		//Configuration config = jbossCache.getCache().getCacheConfiguration();
-		// TODO: Buddy Replication replacement
-		//final boolean isBuddyReplicationEnabled = config.getBuddyReplicationConfig() != null && config.getBuddyReplicationConfig().isEnabled();
-
-		//TransactionManager transactionManager = config.getRuntimeConfig().getTransactionManager();
-		TransactionManager transactionManager = jbossCache.getCache().getAdvancedCache().getTransactionManager();
-
+		//final Cache jbossCache = getMobicentsCache().getJBossCache();
+		//Configuration config = jbossCache.getConfiguration();
+		final boolean isBuddyReplicationEnabled = getMobicentsCache().isBuddyReplicationEnabled();
+		TransactionManager transactionManager = getMobicentsCache().getTxManager();
 		boolean doTx = false;
 		try {
 			if(clusteredlogger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
@@ -92,20 +79,26 @@ public class ServerTransactionCacheData extends CacheData {
 	        }
 			// Issue 1517 : http://code.google.com/p/restcomm/issues/detail?id=1517
 			// Adding code to handle Buddy replication to force data gravitation   
-			//if(isBuddyReplicationEnabled) {
-			//	if(clusteredlogger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
-			//		clusteredlogger.logDebug("forcing data gravitation since buddy replication is enabled");
-			//	}
-			//	jbossCache.getInvocationContext().getOptionOverrides().setForceDataGravitation(true);
-			//}
-            final Node<String,Object> childNode = getNode().getChild(txId);
+			if(isBuddyReplicationEnabled) {     
+				if(clusteredlogger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+					clusteredlogger.logDebug("forcing data gravitation since buddy replication is enabled");
+				}
+				getMobicentsCache().setForceDataGravitation(true);
+			}
+
+			//final Node<String,Object> childNode = getNode().getChild(txId);
+			final Object childNode = getChildNode(txId);
 			if(childNode != null) {
 				try {
-					final Map<String, Object> transactionMetaData = childNode.getData();		
-					final Object dialogAppData = childNode.get(APPDATA);
-						
+					//final Map<String, Object> transactionMetaData = childNode.getData();
+					final Map<String, Object> transactionMetaData = getChildNodeData(txId);
+
+					//final Object dialogAppData = childNode.get(APPDATA);
+					final Object dialogAppData = getChildNodeValue(txId, APPDATA);
+
 					haSipServerTransaction = createServerTransaction(txId, transactionMetaData, dialogAppData);
-				} catch (CacheException e) {
+				//} catch (CacheException e) {
+				} catch (Exception e) {
 					throw new SipCacheException("A problem occured while retrieving the following server transaction " + txId + " from the Cache", e);
 				} 
 			} else {
@@ -230,11 +223,8 @@ public class ServerTransactionCacheData extends CacheData {
 		if(clusteredlogger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
 			clusteredlogger.logDebug("put HA SIP Server Transaction " + serverTransaction + " with id " + transactionId);
 		}
-		final TreeCache jbossCache = getMobicentsCache().getJBossCache();
-
-		//TransactionManager transactionManager = jbossCache.getConfiguration().getRuntimeConfig().getTransactionManager();
-		TransactionManager transactionManager = jbossCache.getCache().getAdvancedCache().getTransactionManager();
-
+		//final Cache jbossCache = getMobicentsCache().getJBossCache();
+		TransactionManager transactionManager = getMobicentsCache().getTxManager();
 		boolean doTx = false;
 		try {
 			if(clusteredlogger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
@@ -247,13 +237,17 @@ public class ServerTransactionCacheData extends CacheData {
 				transactionManager.begin();				
 				doTx = true;				
 	        }					 
-			final Node childNode = getNode().addChild(Fqn.fromElements(transactionId));
+			//final Node childNode = getNode().addChild(Fqn.fromElements(transactionId));
+			final FqnWrapper fqnWrapper = FqnWrapper.fromElementsWrapper(transactionId);
+			final Object childNode = addChildNode(fqnWrapper);
 			for (Entry<String, Object> metaData : haServerTransaction.getMetaDataToReplicate().entrySet()) {
-				childNode.put(metaData.getKey(), metaData.getValue());
+				//childNode.put(metaData.getKey(), metaData.getValue());
+				putChildNodeValue(fqnWrapper, metaData.getKey(), metaData.getValue());
 			}
 			final Object transactionAppData = haServerTransaction.getApplicationDataToReplicate();
 			if(transactionAppData != null) {
-				childNode.put(APPDATA, transactionAppData);
+				//childNode.put(APPDATA, transactionAppData);
+				putChildNodeValue(fqnWrapper, APPDATA, transactionAppData);
 			}
 		} catch (Exception ex) {
 			try {
@@ -299,11 +293,8 @@ public class ServerTransactionCacheData extends CacheData {
 			clusteredlogger.logDebug("remove HA SIP Server Transaction " + transactionId);
 		}
 		boolean succeeded = false;
-		final TreeCache jbossCache = getMobicentsCache().getJBossCache();
-
-		//TransactionManager transactionManager = jbossCache.getConfiguration().getRuntimeConfig().getTransactionManager();
-		TransactionManager transactionManager = jbossCache.getCache().getAdvancedCache().getTransactionManager();
-
+		//final Cache jbossCache = getMobicentsCache().getJBossCache();
+		TransactionManager transactionManager = getMobicentsCache().getTxManager();
 		boolean doTx = false;
 		try {
 			if(clusteredlogger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
@@ -316,7 +307,8 @@ public class ServerTransactionCacheData extends CacheData {
 				transactionManager.begin();				
 				doTx = true;				
 	        }			
-			succeeded = getNode().removeChild(transactionId);
+			//succeeded = getNode().removeChild(transactionId);
+			succeeded = removeChildNode(transactionId);
 			if(clusteredlogger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
 				clusteredlogger.logDebug("removed HA SIP Server Transaction ? " + succeeded);
 			}

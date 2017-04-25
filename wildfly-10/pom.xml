@@ -18,6 +18,7 @@
     <url>https://github.com/RestComm/jain-sip.ha</url>
 
     <properties>
+        <restcomm.cluster.version>3.0.0.13</restcomm.cluster.version>
         <IP_ADDRESS>192.168.10.213</IP_ADDRESS>
         <maven.test.skip>true</maven.test.skip>
     </properties>
@@ -25,15 +26,15 @@
     <dependencyManagement>
         <dependencies>
             <dependency>
-                <groupId>org.infinispan</groupId>
-                <artifactId>infinispan-core</artifactId>
-                <version>8.2.4.Final</version>
+                <groupId>org.restcomm.cluster</groupId>
+                <artifactId>cache</artifactId>
+                <version>${restcomm.cluster.version}</version>
                 <scope>provided</scope>
             </dependency>
             <dependency>
-                <groupId>org.infinispan</groupId>
-                <artifactId>infinispan-tree</artifactId>
-                <version>8.2.4.Final</version>
+                <groupId>org.restcomm.cluster</groupId>
+                <artifactId>core</artifactId>
+                <version>${restcomm.cluster.version}</version>
                 <scope>provided</scope>
             </dependency>
         </dependencies>
@@ -61,20 +62,6 @@
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
             <scope>test</scope>
-        </dependency>
-
-        <!-- clustering deps -->
-        <dependency>
-            <groupId>org.infinispan</groupId>
-            <artifactId>infinispan-core</artifactId>
-            <!--<version>8.2.4.Final</version>-->
-            <scope>provided</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.infinispan</groupId>
-            <artifactId>infinispan-tree</artifactId>
-            <!--<version>8.2.4.Final</version>-->
-            <scope>provided</scope>
         </dependency>
 
         <dependency>
