@@ -23,7 +23,6 @@
 package org.mobicents.ha.javax.sip.cache;
 
 import org.mobicents.ha.javax.sip.ClusteredSipStack;
-import org.restcomm.cache.FqnWrapper;
 
 /**
  * 
@@ -36,11 +35,6 @@ public class DialogDataRemovalListener implements
 	/**
 	 * 
 	 */
-	private final FqnWrapper baseFqnWrapper;
-
-	/**
-	 * 
-	 */
 	private final ClusteredSipStack clusteredSipStack;
 
 	/**
@@ -48,32 +42,13 @@ public class DialogDataRemovalListener implements
 	 * @param baseFqnWrapper
 	 * @param clusteredSipStack
 	 */
-	public DialogDataRemovalListener(FqnWrapper baseFqnWrapper,
-			ClusteredSipStack clusteredSipStack) {
-		this.baseFqnWrapper = baseFqnWrapper;
+	public DialogDataRemovalListener(ClusteredSipStack clusteredSipStack) {
 		this.clusteredSipStack = clusteredSipStack;
 	}
-
-	/*
-	 * (non-Javadoc)
-	 * 
-	 * @see
-	 * org.mobicents.cluster.DataRemovalListener#dataRemoved(org.jboss.cache
-	 * .Fqn)
-	 */
-	@SuppressWarnings("unchecked")
-	public void dataRemoved(FqnWrapper fqnWrapper) {
-		clusteredSipStack.remoteDialogRemoval((String) fqnWrapper.getLastElement());
-	}
-
-	/*
-	 * (non-Javadoc)
-	 * 
-	 * @see org.mobicents.cluster.DataRemovalListener#getBaseFqn()
-	 */
-	@SuppressWarnings("unchecked")
-	public FqnWrapper getBaseFqn() {
-		return baseFqnWrapper;
-	}
+	
+    @Override
+    public void dataRemoved(Object paramObject) {
+        clusteredSipStack.remoteDialogRemoval((String) paramObject);
+    }
 
 }

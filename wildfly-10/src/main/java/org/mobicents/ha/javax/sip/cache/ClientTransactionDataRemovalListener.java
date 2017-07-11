@@ -23,7 +23,6 @@
 package org.mobicents.ha.javax.sip.cache;
 
 import org.mobicents.ha.javax.sip.ClusteredSipStack;
-import org.restcomm.cache.FqnWrapper;
 
 /**
  * 
@@ -33,12 +32,7 @@ import org.restcomm.cache.FqnWrapper;
 public class ClientTransactionDataRemovalListener implements
 		org.restcomm.cluster.DataRemovalListener {
 
-	/**
-	 * 
-	 */
-	private final FqnWrapper baseFqnWrapper;
-
-	/**
+    /**
 	 * 
 	 */
 	private final ClusteredSipStack clusteredSipStack;
@@ -48,32 +42,13 @@ public class ClientTransactionDataRemovalListener implements
 	 * @param baseFqnWrapper
 	 * @param clusteredSipStack
 	 */
-	public ClientTransactionDataRemovalListener(FqnWrapper baseFqnWrapper,
-			ClusteredSipStack clusteredSipStack) {
-		this.baseFqnWrapper = baseFqnWrapper;
+	public ClientTransactionDataRemovalListener(ClusteredSipStack clusteredSipStack) {
 		this.clusteredSipStack = clusteredSipStack;
 	}
 
-	/*
-	 * (non-Javadoc)
-	 * 
-	 * @see
-	 * org.mobicents.cluster.DataRemovalListener#dataRemoved(org.jboss.cache
-	 * .Fqn)
-	 */
-	@SuppressWarnings("unchecked")
-	public void dataRemoved(FqnWrapper fqnWrapper) {
-		clusteredSipStack.remoteClientTransactionRemoval((String) fqnWrapper.getLastElement());
-	}
-
-	/*
-	 * (non-Javadoc)
-	 * 
-	 * @see org.mobicents.cluster.DataRemovalListener#getBaseFqn()
-	 */
-	@SuppressWarnings("unchecked")
-	public FqnWrapper getBaseFqn() {
-		return baseFqnWrapper;
-	}
+    @Override
+    public void dataRemoved(Object paramObject) {
+        clusteredSipStack.remoteClientTransactionRemoval((String) paramObject);
+    }
 
 }

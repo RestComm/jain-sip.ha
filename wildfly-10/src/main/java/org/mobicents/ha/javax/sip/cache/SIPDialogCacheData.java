@@ -22,16 +22,8 @@
 
 package org.mobicents.ha.javax.sip.cache;
 
-import gov.nist.core.CommonLogger;
-import gov.nist.core.StackLogger;
-import gov.nist.javax.sip.SipProviderImpl;
-import gov.nist.javax.sip.message.SIPResponse;
-import gov.nist.javax.sip.stack.AbstractHASipDialog;
-import gov.nist.javax.sip.stack.SIPDialog;
-
 import java.text.ParseException;
 import java.util.Map;
-import java.util.Map.Entry;
 
 import javax.sip.PeerUnavailableException;
 import javax.sip.SipFactory;
@@ -41,33 +33,41 @@ import javax.transaction.RollbackException;
 import javax.transaction.Status;
 import javax.transaction.TransactionManager;
 
-import org.restcomm.cache.CacheData;
-import org.restcomm.cache.FqnWrapper;
-import org.restcomm.cache.MobicentsCache;
 import org.mobicents.ha.javax.sip.ClusteredSipStack;
 import org.mobicents.ha.javax.sip.HASipDialog;
 import org.mobicents.ha.javax.sip.HASipDialogFactory;
+import org.restcomm.cache.CacheData;
+import org.restcomm.cache.MobicentsCache;
+
+import gov.nist.core.CommonLogger;
+import gov.nist.core.StackLogger;
+import gov.nist.javax.sip.SipProviderImpl;
+import gov.nist.javax.sip.message.SIPResponse;
+import gov.nist.javax.sip.stack.AbstractHASipDialog;
+import gov.nist.javax.sip.stack.SIPDialog;
 
 /**
  * @author jean.deruelle@gmail.com
  * @author martins
  *
  */
-public class SIPDialogCacheData extends CacheData {
+public class SIPDialogCacheData extends CacheData<String, Map<String,Object>> {
 	private static final String APPDATA = "APPDATA";
-	private ClusteredSipStack clusteredSipStack;	
+	private ClusteredSipStack clusteredSipStack;
+	private MobicentsCache mobicentsCache;
 	private static StackLogger logger = CommonLogger.getLogger(SIPDialogCacheData.class);
-	public SIPDialogCacheData(FqnWrapper nodeFqnWrapper, MobicentsCache mobicentsCache, ClusteredSipStack clusteredSipStack) {
-		super(nodeFqnWrapper, mobicentsCache);
+	public SIPDialogCacheData(String dialogID, MobicentsCache mobicentsCache, ClusteredSipStack clusteredSipStack) {
+		super(dialogID, mobicentsCache);
 		this.clusteredSipStack = clusteredSipStack;
+		this.mobicentsCache = mobicentsCache;
 	}
 	
-	public SIPDialog getSIPDialog(String dialogId) throws SipCacheException {
+	public SIPDialog getSIPDialog() throws SipCacheException {
 		HASipDialog haSipDialog = null;
 		//final Cache jbossCache = getMobicentsCache().getJBossCache();
 		//Configuration config = jbossCache.getConfiguration();
-		final boolean isBuddyReplicationEnabled = getMobicentsCache().isBuddyReplicationEnabled();
-		TransactionManager transactionManager = getMobicentsCache().getTxManager();
+		final boolean isBuddyReplicationEnabled = mobicentsCache.isBuddyReplicationEnabled();
+		TransactionManager transactionManager = mobicentsCache.getTxManager();
 		boolean doTx = false;
 		try {
 			if(logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
@@ -86,24 +86,16 @@ public class SIPDialogCacheData extends CacheData {
 				if(logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
 					logger.logDebug("forcing data gravitation since buddy replication is enabled");
 				}
-				getMobicentsCache().setForceDataGravitation(true);
+				mobicentsCache.setForceDataGravitation(true);
 			}
 
-            //final Node<String,Object> childNode = getNode().getChild(dialogId);
-			final Object childNode = getChildNode(dialogId);
-			if(childNode != null) {
+			Map<String,Object> dialogData = get();
+			if(dialogData != null) {
 				try {
-					//final Map<String, Object> dialogMetaData = childNode.getData();
-					final Map<String, Object> dialogMetaData = getChildNodeData(dialogId);
-
-					//final Object dialogAppData = childNode.get(APPDATA);
-					final Object dialogAppData = getChildNodeValue(dialogId, APPDATA);
-						
-					haSipDialog = createDialog(dialogId, dialogMetaData, dialogAppData);
-											
-				//} catch (CacheException e) {
+					final Object dialogAppData = dialogData.remove(APPDATA);
+					haSipDialog = createDialog(getKey(), dialogData, dialogAppData);
 				} catch (Exception e) {
-					throw new SipCacheException("A problem occured while retrieving the following dialog " + dialogId + " from the Cache", e);
+					throw new SipCacheException("A problem occured while retrieving the following dialog " + getKey() + " from the Cache", e);
 				} 
 			}			
 		} catch (Exception ex) {
@@ -156,8 +148,8 @@ public class SIPDialogCacheData extends CacheData {
 		final String dialogId = sipDialog.getDialogId();
 		//final Cache jbossCache = getMobicentsCache().getJBossCache();
 		//Configuration config = jbossCache.getConfiguration();
-		final boolean isBuddyReplicationEnabled = getMobicentsCache().isBuddyReplicationEnabled();
-		TransactionManager transactionManager = getMobicentsCache().getTxManager();
+		final boolean isBuddyReplicationEnabled = mobicentsCache.isBuddyReplicationEnabled();
+		TransactionManager transactionManager = mobicentsCache.getTxManager();
 		boolean doTx = false;
 		try {
 			if(logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
@@ -176,19 +168,15 @@ public class SIPDialogCacheData extends CacheData {
 				if(logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
 					logger.logDebug("forcing data gravitation since buddy replication is enabled");
 				}
-				getMobicentsCache().setForceDataGravitation(true);
+				mobicentsCache.setForceDataGravitation(true);
 			}
-			//final Node<String,Object> childNode = getNode().getChild(dialogId);
-			final Object childNode = getChildNode(dialogId);
-			if(childNode != null) {
+
+			final Map<String, Object> dialogData = get();
+			if(dialogData != null) {
 				try {
-					//final Map<String, Object> dialogMetaData = childNode.getData();
-					final Map<String, Object> dialogMetaData = getChildNodeData(dialogId);
-					
 					final HASipDialog haSipDialog = (HASipDialog) sipDialog;
-					//final Object dialogAppData = childNode.get(APPDATA);
-					final Object dialogAppData = getChildNodeValue(dialogId, APPDATA);
-					updateDialog(haSipDialog, dialogMetaData, dialogAppData);
+					final Object dialogAppData = dialogData.remove(APPDATA);
+					updateDialog(haSipDialog, dialogData, dialogAppData);
 				//} catch (CacheException e) {
 				} catch (Exception e) {
 					throw new SipCacheException("A problem occured while retrieving the following dialog " + dialogId + " from the Cache", e);
@@ -327,7 +315,7 @@ public class SIPDialogCacheData extends CacheData {
 			logger.logDebug("put HA SIP Dialog " + dialog + " with dialog " + dialogId);
 		}
 		//final Cache jbossCache = getMobicentsCache().getJBossCache();
-		TransactionManager transactionManager = getMobicentsCache().getTxManager();
+		TransactionManager transactionManager = mobicentsCache.getTxManager();
 		boolean doTx = false;
 		try {
 			if(logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
@@ -340,19 +328,16 @@ public class SIPDialogCacheData extends CacheData {
 				transactionManager.begin();				
 				doTx = true;				
 	        }
-			//final Node childNode = getNode().addChild(Fqn.fromElements(dialogId));
-			final FqnWrapper fqnWrapper = FqnWrapper.fromElementsWrapper(dialogId);
-			final Object childNode = addChildNode(fqnWrapper);
-			if (childNode != null) {
-				for (Entry<String, Object> metaData : haSipDialog.getMetaDataToReplicate().entrySet()) {
-					//childNode.put(metaData.getKey(), metaData.getValue());
-					putChildNodeValue(fqnWrapper, metaData.getKey(), metaData.getValue());
-				}
-				final Object dialogAppData = haSipDialog.getApplicationDataToReplicate();
-				if (dialogAppData != null) {
-					//childNode.put(APPDATA, dialogAppData);
-					putChildNodeValue(fqnWrapper, APPDATA, dialogAppData);
-				}
+			
+			/*final FqnWrapper fqnWrapper = FqnWrapper.fromElementsWrapper(dialogId);
+			final Object childNode = addChildNode(fqnWrapper);*/
+			if (!exists()) {
+			    Map<String, Object> dialogData = haSipDialog.getMetaDataToReplicate();
+			    final Object dialogAppData = haSipDialog.getApplicationDataToReplicate();
+                if (dialogAppData != null) {
+                    dialogData.put(APPDATA, dialogAppData);
+                }
+                put(dialogData);
 			}
 		} catch (Exception ex) {
 			try {
@@ -393,13 +378,13 @@ public class SIPDialogCacheData extends CacheData {
 		}
 	}
 
-	public boolean removeSIPDialog(String dialogId) {
+	public boolean removeSIPDialog() {
 		if(logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
-			logger.logDebug("remove HA SIP Dialog " + dialogId);
+			logger.logDebug("remove HA SIP Dialog " + getKey());
 		}
 		boolean succeeded = false;
 		//final Cache jbossCache = getMobicentsCache().getJBossCache();
-		TransactionManager transactionManager = getMobicentsCache().getTxManager();
+		TransactionManager transactionManager = mobicentsCache.getTxManager();
 		boolean doTx = false;
 		try {
 			if(logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
@@ -412,8 +397,7 @@ public class SIPDialogCacheData extends CacheData {
 				transactionManager.begin();				
 				doTx = true;				
 	        }
-			//succeeded = getNode().removeChild(dialogId);
-			succeeded = removeChildNode(dialogId);
+			succeeded = remove() != null;
 		} catch (Exception ex) {
 			try {
 				if(transactionManager != null) {
@@ -454,12 +438,10 @@ public class SIPDialogCacheData extends CacheData {
 		return succeeded;
 	}
 
-	public void evictSIPDialog(String dialogId) {
-		//getMobicentsCache().getJBossCache().evict(Fqn.fromElements(getNodeFqn(), Fqn.fromString(dialogId)));
-		getMobicentsCache().evict(
-				FqnWrapper.fromElementsWrapper(getNodeFqnWrapper(), FqnWrapper.fromStringWrapper(dialogId)));
+	public void evictSIPDialog() {
+	    evict();
 		if(logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
-			logger.logDebug("HA SIP Dialog " + dialogId + " evicted");
+			logger.logDebug("HA SIP Dialog " + getKey() + " evicted");
 		}
 	}
 }

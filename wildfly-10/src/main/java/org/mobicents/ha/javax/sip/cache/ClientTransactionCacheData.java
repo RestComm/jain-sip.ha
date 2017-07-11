@@ -22,6 +22,20 @@
 
 package org.mobicents.ha.javax.sip.cache;
 
+import java.io.IOException;
+import java.net.InetAddress;
+import java.text.ParseException;
+import java.util.Map;
+
+import javax.sip.PeerUnavailableException;
+import javax.transaction.RollbackException;
+import javax.transaction.Status;
+import javax.transaction.TransactionManager;
+
+import org.mobicents.ha.javax.sip.ClusteredSipStack;
+import org.restcomm.cache.CacheData;
+import org.restcomm.cache.MobicentsCache;
+
 import gov.nist.core.CommonLogger;
 import gov.nist.core.StackLogger;
 import gov.nist.javax.sip.stack.MessageChannel;
@@ -30,42 +44,27 @@ import gov.nist.javax.sip.stack.MobicentsHASIPClientTransaction;
 import gov.nist.javax.sip.stack.SIPClientTransaction;
 import gov.nist.javax.sip.stack.SIPTransactionStack;
 
-import java.io.IOException;
-import java.net.InetAddress;
-import java.text.ParseException;
-import java.util.Map;
-import java.util.Map.Entry;
-
-import javax.sip.PeerUnavailableException;
-import javax.transaction.RollbackException;
-import javax.transaction.Status;
-import javax.transaction.TransactionManager;
-
-import org.restcomm.cache.CacheData;
-import org.restcomm.cache.FqnWrapper;
-import org.restcomm.cache.MobicentsCache;
-import org.mobicents.ha.javax.sip.ClusteredSipStack;
-
 /**
  * @author jean.deruelle@gmail.com
  */
-public class ClientTransactionCacheData extends CacheData {
+public class ClientTransactionCacheData extends CacheData<String,Map<String,Object>> {
 	private static final String APPDATA = "APPDATA";
 	private ClusteredSipStack clusteredSipStack;
-	
+	private MobicentsCache mobicentsCache;
 	private StackLogger logger = CommonLogger.getLogger(ClientTransactionCacheData.class);
 	
-	public ClientTransactionCacheData(FqnWrapper nodeFqnWrapper, MobicentsCache mobicentsCache, ClusteredSipStack clusteredSipStack) {
-		super(nodeFqnWrapper, mobicentsCache);
+	public ClientTransactionCacheData(String txId, MobicentsCache mobicentsCache, ClusteredSipStack clusteredSipStack) {
+		super(txId, mobicentsCache);
 		this.clusteredSipStack = clusteredSipStack;
+		this.mobicentsCache = mobicentsCache;
 	}
 	
-	public SIPClientTransaction getClientTransaction(String txId) throws SipCacheException {
+	public SIPClientTransaction getClientTransaction() throws SipCacheException {
 		SIPClientTransaction haSipClientTransaction = null;
 		//final Cache jbossCache = getMobicentsCache().getJBossCache();
 		//Configuration config = jbossCache.getConfiguration();
-		final boolean isBuddyReplicationEnabled = getMobicentsCache().isBuddyReplicationEnabled();
-		TransactionManager transactionManager = getMobicentsCache().getTxManager();
+		final boolean isBuddyReplicationEnabled = mobicentsCache.isBuddyReplicationEnabled();
+		TransactionManager transactionManager = mobicentsCache.getTxManager();
 		boolean doTx = false;
 		try {
 			if(logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
@@ -84,26 +83,23 @@ public class ClientTransactionCacheData extends CacheData {
 				if(logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
 					logger.logDebug("forcing data gravitation since buddy replication is enabled");
 				}
-				getMobicentsCache().setForceDataGravitation(true);
+				mobicentsCache.setForceDataGravitation(true);
 			}
             //final Node<String,Object> childNode = getNode().getChild(txId);
-			final Object childNode = getChildNode(txId);
-			if(childNode != null) {
+			Map<String, Object> transactionMetaData = get();
+			if(transactionMetaData != null) {
 				try {
-					//final Map<String, Object> transactionMetaData = childNode.getData();
-					final Map<String, Object> transactionMetaData = getChildNodeData(txId);
-
 					//final Object dialogAppData = childNode.get(APPDATA);
-					final Object dialogAppData = getChildNodeValue(txId, APPDATA);
+					final Object dialogAppData = transactionMetaData.remove(APPDATA);
 						
-					haSipClientTransaction = createClientTransaction(txId, transactionMetaData, dialogAppData);
+					haSipClientTransaction = createClientTransaction(transactionMetaData, dialogAppData);
 				//} catch (CacheException e) {
 				} catch (Exception e) {
-					throw new SipCacheException("A problem occured while retrieving the following client transaction " + txId + " from the Cache", e);
+					throw new SipCacheException("A problem occured while retrieving the following client transaction " + getKey() + " from the Cache", e);
 				} 
 			} else {
 				if(logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
-					logger.logDebug("no child node found for transactionId " + txId);
+					logger.logDebug("no child node found for transactionId " + getKey());
 				}				
 			}
 		} catch (Exception ex) {
@@ -146,9 +142,10 @@ public class ClientTransactionCacheData extends CacheData {
 		return haSipClientTransaction;
 	}
 	
-	public MobicentsHASIPClientTransaction createClientTransaction(String txId, Map<String, Object> transactionMetaData, Object transactionAppData) throws SipCacheException {
+	public MobicentsHASIPClientTransaction createClientTransaction(Map<String, Object> transactionMetaData, Object transactionAppData) throws SipCacheException {
 		MobicentsHASIPClientTransaction haClientTransaction = null; 
 		if(transactionMetaData != null) {
+		    String txId = getKey();
 			if(logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
 				logger.logDebug("sipStack " + this + " client transaction " + txId + " is present in the distributed cache, recreating it locally");
 			}
@@ -193,7 +190,7 @@ public class ClientTransactionCacheData extends CacheData {
 			}
 		} else {
 			if(logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
-				logger.logDebug("sipStack " + this + " client transaction " + txId + " not found in the distributed cache");
+				logger.logDebug("sipStack " + this + " client transaction " + getKey() + " not found in the distributed cache");
 			}
 		}
 		
@@ -222,12 +219,11 @@ public class ClientTransactionCacheData extends CacheData {
 			logger.logStackTrace();
 		}
 		final MobicentsHASIPClientTransaction haClientTransaction = (MobicentsHASIPClientTransaction) clientTransaction;
-		final String transactionId = haClientTransaction.getTransactionId();
 		if(logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
-			logger.logDebug("put HA SIP Client Transaction " + clientTransaction + " with id " + transactionId);
+			logger.logDebug("put HA SIP Client Transaction " + clientTransaction + " with id " + getKey());
 		}
 		//final Cache jbossCache = getMobicentsCache().getJBossCache();
-		TransactionManager transactionManager = getMobicentsCache().getTxManager();
+		TransactionManager transactionManager = mobicentsCache.getTxManager();
 		boolean doTx = false;
 		try {
 			if(logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
@@ -240,21 +236,16 @@ public class ClientTransactionCacheData extends CacheData {
 				transactionManager.begin();				
 				doTx = true;				
 	        }					
-			//final Node childNode = getNode().addChild(Fqn.fromElements(transactionId));
-			final FqnWrapper fqnWrapper = FqnWrapper.fromElementsWrapper(transactionId);
-			final Object childNode = addChildNode(fqnWrapper);
-			for (Entry<String, Object> metaData : haClientTransaction.getMetaDataToReplicate().entrySet()) {
-				//childNode.put(metaData.getKey(), metaData.getValue());
-				putChildNodeValue(fqnWrapper, metaData.getKey(), metaData.getValue());
-			}
+			
+			Map<String, Object> obj = haClientTransaction.getMetaDataToReplicate();
 			final Object transactionAppData = haClientTransaction.getApplicationDataToReplicate();
-			if(transactionAppData != null) {
-				if(logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
-					logger.logDebug("replicating application data " + transactionAppData);
-				}
-				//childNode.put(APPDATA, transactionAppData);
-				putChildNodeValue(fqnWrapper, APPDATA, transactionAppData);
-			}
+            if(transactionAppData != null) {
+                if(logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+                    logger.logDebug("replicating application data " + transactionAppData);
+                }
+                obj.put(APPDATA, transactionAppData);
+            }
+			put(obj);
 		} catch (Exception ex) {
 			try {
 				if(transactionManager != null) {
@@ -294,13 +285,13 @@ public class ClientTransactionCacheData extends CacheData {
 		}
 	}
 
-	public boolean removeClientTransaction(String transactionId) {
+	public boolean removeClientTransaction() {
 		if(logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
-			logger.logDebug("remove HA SIP Client Transaction " + transactionId);
+			logger.logDebug("remove HA SIP Client Transaction " + getKey());
 		}
 		boolean succeeded = false;
 		//final Cache jbossCache = getMobicentsCache().getJBossCache();
-		TransactionManager transactionManager = getMobicentsCache().getTxManager();
+		TransactionManager transactionManager = mobicentsCache.getTxManager();
 		boolean doTx = false;
 		try {
 			if(logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
@@ -314,7 +305,7 @@ public class ClientTransactionCacheData extends CacheData {
 				doTx = true;				
 	        }			
 			//succeeded = getNode().removeChild(transactionId);
-			succeeded = removeChildNode(transactionId);
+			succeeded = remove() != null ;
 			if(logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
 				logger.logDebug("removed HA SIP Client Transaction ? " + succeeded);
 			}
