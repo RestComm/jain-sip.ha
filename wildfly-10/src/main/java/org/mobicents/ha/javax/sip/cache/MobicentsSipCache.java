@@ -28,6 +28,7 @@ import org.mobicents.ha.javax.sip.ClusteredSipStack;
 import org.mobicents.ha.javax.sip.HASipDialog;
 import org.mobicents.ha.javax.sip.ReplicationStrategy;
 import org.restcomm.cluster.MobicentsCluster;
+import org.restcomm.cluster.MobicentsClusterFactory;
 
 import gov.nist.javax.sip.stack.SIPClientTransaction;
 import gov.nist.javax.sip.stack.SIPDialog;
@@ -46,6 +47,7 @@ public abstract class MobicentsSipCache implements SipCache {
 	
 	ClusteredSipStack clusteredSipStack = null;
 	protected Properties configProperties;
+	protected MobicentsClusterFactory clusterFactory;
 	protected MobicentsCluster ctCluster;
 	protected MobicentsCluster stCluster;
 	protected MobicentsCluster sdCluster;
@@ -157,22 +159,24 @@ public abstract class MobicentsSipCache implements SipCache {
 	 * @see org.mobicents.ha.javax.sip.cache.SipCache#start()
 	 */
 	public void start() throws SipCacheException {
+	    
+        sdCluster = clusterFactory.getCluster(getName() + "_" + SIP_DIALOG_APPENDER);
 	    sdCluster.startCluster();
 	    
-		//create 3 caches
-		
 		dialogDataRemovalListener = new DialogDataRemovalListener(clusteredSipStack);
 		sdCluster.addDataRemovalListener(dialogDataRemovalListener);
 		
 		if(clusteredSipStack.getReplicationStrategy() == ReplicationStrategy.EarlyDialog) {
-		    stCluster.startCluster();
-		    ctCluster.startCluster();	        
 		    
+		    ctCluster = clusterFactory.getCluster(getName() + "_" + CLIENT_TRANSACTION_APPENDER);
+		    ctCluster.startCluster();
+		    clientTransactionDataRemovalListener = new ClientTransactionDataRemovalListener(clusteredSipStack);
+            ctCluster.addDataRemovalListener(clientTransactionDataRemovalListener);
+		    
+	        stCluster = clusterFactory.getCluster(getName() + "_" + SERVER_TRANSACTION_APPENDER);
+		    stCluster.startCluster();
 			serverTransactionDataRemovalListener = new ServerTransactionDataRemovalListener(clusteredSipStack);
 			stCluster.addDataRemovalListener(serverTransactionDataRemovalListener);
-			
-			clientTransactionDataRemovalListener = new ClientTransactionDataRemovalListener(clusteredSipStack);
-			ctCluster.addDataRemovalListener(clientTransactionDataRemovalListener);
 		}
 	}
 
@@ -181,12 +185,12 @@ public abstract class MobicentsSipCache implements SipCache {
 	 * @see org.mobicents.ha.javax.sip.cache.SipCache#stop()
 	 */
 	public void stop() throws SipCacheException {
-	    sdCluster.stopCluster();
+	    clusterFactory.stopCluster(getName() + "_" + SIP_DIALOG_APPENDER);
 		sdCluster.removeDataRemovalListener(dialogDataRemovalListener);
 		if(clusteredSipStack.getReplicationStrategy() == ReplicationStrategy.EarlyDialog) {
-		    stCluster.stopCluster();
+		    clusterFactory.stopCluster(getName() + "_" + SERVER_TRANSACTION_APPENDER);
 			stCluster.removeDataRemovalListener(serverTransactionDataRemovalListener);
-			ctCluster.stopCluster();
+			clusterFactory.stopCluster(getName() + "_" + CLIENT_TRANSACTION_APPENDER);
 			ctCluster.removeDataRemovalListener(clientTransactionDataRemovalListener);
 		}
 	}
