@@ -33,8 +33,8 @@ import javax.transaction.Status;
 import javax.transaction.TransactionManager;
 
 import org.mobicents.ha.javax.sip.ClusteredSipStack;
-import org.restcomm.cache.CacheData;
 import org.restcomm.cache.MobicentsCache;
+import org.restcomm.cluster.cache.ClusteredCacheData;
 
 import gov.nist.core.CommonLogger;
 import gov.nist.core.StackLogger;
@@ -47,7 +47,7 @@ import gov.nist.javax.sip.stack.SIPTransactionStack;
 /**
  * @author jean.deruelle@gmail.com
  */
-public class ClientTransactionCacheData extends CacheData<String,Map<String,Object>> {
+public class ClientTransactionCacheData extends ClusteredCacheData<String,Map<String,Object>> {
 	private static final String APPDATA = "APPDATA";
 	private ClusteredSipStack clusteredSipStack;
 	private MobicentsCache mobicentsCache;
@@ -86,7 +86,7 @@ public class ClientTransactionCacheData extends CacheData<String,Map<String,Obje
 				mobicentsCache.setForceDataGravitation(true);
 			}
             //final Node<String,Object> childNode = getNode().getChild(txId);
-			Map<String, Object> transactionMetaData = get();
+			Map<String, Object> transactionMetaData = getValue();
 			if(transactionMetaData != null) {
 				try {
 					//final Object dialogAppData = childNode.get(APPDATA);
@@ -245,7 +245,7 @@ public class ClientTransactionCacheData extends CacheData<String,Map<String,Obje
                 }
                 obj.put(APPDATA, transactionAppData);
             }
-			put(obj);
+			putValue(obj);
 		} catch (Exception ex) {
 			try {
 				if(transactionManager != null) {

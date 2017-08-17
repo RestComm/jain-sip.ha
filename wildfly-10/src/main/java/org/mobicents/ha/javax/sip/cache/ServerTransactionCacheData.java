@@ -33,8 +33,8 @@ import javax.transaction.Status;
 import javax.transaction.TransactionManager;
 
 import org.mobicents.ha.javax.sip.ClusteredSipStack;
-import org.restcomm.cache.CacheData;
 import org.restcomm.cache.MobicentsCache;
+import org.restcomm.cluster.cache.ClusteredCacheData;
 
 import gov.nist.core.CommonLogger;
 import gov.nist.core.StackLogger;
@@ -47,7 +47,7 @@ import gov.nist.javax.sip.stack.SIPTransactionStack;
 /**
  * @author jean.deruelle@gmail.com
  */
-public class ServerTransactionCacheData extends CacheData<String,Map<String,Object>> {
+public class ServerTransactionCacheData extends ClusteredCacheData<String,Map<String,Object>> {
 	private static final String APPDATA = "APPDATA";
 	private static StackLogger clusteredlogger = CommonLogger.getLogger(ServerTransactionCacheData.class);
 	private ClusteredSipStack clusteredSipStack;	
@@ -86,7 +86,7 @@ public class ServerTransactionCacheData extends CacheData<String,Map<String,Obje
 				mobicentsCache.setForceDataGravitation(true);
 			}
 
-			Map<String,Object> transactionMetaData = get();
+			Map<String,Object> transactionMetaData = getValue();
 			if(transactionMetaData != null) {
 				try {
 					final Object dialogAppData = transactionMetaData.remove(APPDATA);
@@ -236,7 +236,7 @@ public class ServerTransactionCacheData extends CacheData<String,Map<String,Obje
             if(transactionAppData != null) {
                 obj.put(APPDATA, transactionAppData);
             }
-            put(obj);
+            putValue(obj);
 		} catch (Exception ex) {
 			try {
 				if(transactionManager != null) {

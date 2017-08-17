@@ -36,8 +36,8 @@ import javax.transaction.TransactionManager;
 import org.mobicents.ha.javax.sip.ClusteredSipStack;
 import org.mobicents.ha.javax.sip.HASipDialog;
 import org.mobicents.ha.javax.sip.HASipDialogFactory;
-import org.restcomm.cache.CacheData;
 import org.restcomm.cache.MobicentsCache;
+import org.restcomm.cluster.cache.ClusteredCacheData;
 
 import gov.nist.core.CommonLogger;
 import gov.nist.core.StackLogger;
@@ -51,7 +51,7 @@ import gov.nist.javax.sip.stack.SIPDialog;
  * @author martins
  *
  */
-public class SIPDialogCacheData extends CacheData<String, Map<String,Object>> {
+public class SIPDialogCacheData extends ClusteredCacheData<String, Map<String,Object>> {
 	private static final String APPDATA = "APPDATA";
 	private ClusteredSipStack clusteredSipStack;
 	private MobicentsCache mobicentsCache;
@@ -89,7 +89,7 @@ public class SIPDialogCacheData extends CacheData<String, Map<String,Object>> {
 				mobicentsCache.setForceDataGravitation(true);
 			}
 
-			Map<String,Object> dialogData = get();
+			Map<String,Object> dialogData = getValue();
 			if(dialogData != null) {
 				try {
 					final Object dialogAppData = dialogData.remove(APPDATA);
@@ -171,7 +171,7 @@ public class SIPDialogCacheData extends CacheData<String, Map<String,Object>> {
 				mobicentsCache.setForceDataGravitation(true);
 			}
 
-			final Map<String, Object> dialogData = get();
+			final Map<String, Object> dialogData = getValue();
 			if(dialogData != null) {
 				try {
 					final HASipDialog haSipDialog = (HASipDialog) sipDialog;
@@ -337,7 +337,7 @@ public class SIPDialogCacheData extends CacheData<String, Map<String,Object>> {
                 if (dialogAppData != null) {
                     dialogData.put(APPDATA, dialogAppData);
                 }
-                put(dialogData);
+                putValue(dialogData);
 			}
 		} catch (Exception ex) {
 			try {
