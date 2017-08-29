@@ -27,7 +27,7 @@
 
     <properties>
         <restcomm.jain.sip.ext.version>1.3.26</restcomm.jain.sip.ext.version>
-        <restcomm.load.balancer.version>8.1.147</restcomm.load.balancer.version>
+        <restcomm.load.balancer.version>10.1.223</restcomm.load.balancer.version>
     </properties>
 
     <dependencyManagement>
