@@ -25,6 +25,11 @@
 			<artifactId>sip-balancer-jar</artifactId>		
 			<scope>provided</scope>
 		</dependency>
+		<dependency>
+			<groupId>org.mobicents.tools</groupId>
+			<artifactId>heartbeat-api</artifactId>		
+			<scope>provided</scope>
+		</dependency>
 	</dependencies>
 
 	<build>
