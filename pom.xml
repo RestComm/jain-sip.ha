@@ -52,7 +52,6 @@
         <module>hazelcast-backend</module>
         <module>infinispan-backend</module>
         <module>jboss-5</module>
-        <module>wildfly-10</module>
     </modules>
 
     <dependencies>
@@ -87,41 +86,6 @@
                 </plugins>
             </build>
         </profile>
-        <!--
-        <profile>
-            <id>jboss-5</id>
-            <activation>
-                <activeByDefault>false</activeByDefault>
-            </activation>
-            <properties>
-                <restcomm.cluster.version>1.15.0-SNAPSHOT</restcomm.cluster.version>
-            </properties>
-            <modules>
-                <module>jboss-5</module>
-            </modules>
-        </profile>
-        <profile>
-            <id>wildfly-10</id>
-            <activation>
-                <activeByDefault>false</activeByDefault>
-            </activation>
-            <properties>
-                <restcomm.cluster.version>3.0.0-SNAPSHOT</restcomm.cluster.version>
-            </properties>
-            <modules>
-                <module>wildfly-10</module>
-            </modules>
-        </profile>
-        -->
-        <!--
-        <profile>
-            <id>all</id>
-            <modules>
-                <module>jboss-5</module>
-                <module>wildfly-10</module>
-            </modules>
-        </profile>
-        -->
     </profiles>
 
 	<build>
