@@ -17,7 +17,7 @@
 	<url>https://github.com/RestComm/jain-sip.ha</url>
 
 	<properties>
-		<restcomm.cluster.version>1.15.30</restcomm.cluster.version>
+		<restcomm.jboss.cluster.version>1.15.30</restcomm.jboss.cluster.version>
 		<IP_ADDRESS>192.168.10.213</IP_ADDRESS>
 		<maven.test.skip>true</maven.test.skip>
 	</properties>
@@ -27,13 +27,13 @@
 			<dependency>
 				<groupId>org.restcomm.cluster</groupId>
 				<artifactId>cache</artifactId>
-				<version>${restcomm.cluster.version}</version>
+				<version>${restcomm.jboss.cluster.version}</version>
 				<scope>provided</scope>
 			</dependency>
 			<dependency>
 				<groupId>org.restcomm.cluster</groupId>
 				<artifactId>core</artifactId>
-				<version>${restcomm.cluster.version}</version>
+				<version>${restcomm.jboss.cluster.version}</version>
 				<scope>provided</scope>
 			</dependency>
 		</dependencies>
