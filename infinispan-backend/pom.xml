@@ -5,11 +5,11 @@
   <parent>
     <groupId>org.mobicents.ha.javax.sip</groupId>
     <artifactId>restcomm-jain-sip-ha</artifactId>
-    <version>1.6.0-SNAPSHOT</version>
+    <version>1.7.0-75</version>
   </parent>
 
   <artifactId>restcomm-jain-sip-ha-infinispan-backend</artifactId>
-  <version>1.6.0-SNAPSHOT</version>
+  <version>1.7.0-75</version>
 
   <name>Restcomm JAIN SIP HA Infinispan backend</name>
   <description>Restcomm JAIN SIP HA Infinispan backend</description>
@@ -29,7 +29,7 @@
 	<dependency>
 		<groupId>org.mobicents.ha.javax.sip</groupId>
 		<artifactId>restcomm-jain-sip-ha-core</artifactId>
-		<version>1.6.0-SNAPSHOT</version>
+		<version>1.7.0-75</version>
 	</dependency>
 	<dependency>
 		<groupId>org.infinispan</groupId>
