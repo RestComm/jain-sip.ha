@@ -5,11 +5,11 @@
     <parent>
         <groupId>org.mobicents.ha.javax.sip</groupId>
         <artifactId>restcomm-jain-sip-ha</artifactId>
-        <version>1.6.0-SNAPSHOT</version>
+        <version>1.7.0-115</version>
     </parent>
 
     <artifactId>restcomm-jain-sip-wildfly10</artifactId>
-    <version>1.6.0-SNAPSHOT</version>
+    <version>1.7.0-115</version>
 
     <packaging>jar</packaging>
 
@@ -18,7 +18,7 @@
     <url>https://github.com/RestComm/jain-sip.ha</url>
 
     <properties>
-        <restcomm.cluster.version>7.0.0.16</restcomm.cluster.version>
+        <restcomm.cluster.version>3.0.1-117</restcomm.cluster.version>
         <IP_ADDRESS>192.168.10.213</IP_ADDRESS>
         <maven.test.skip>true</maven.test.skip>
     </properties>
