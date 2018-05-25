@@ -61,7 +61,12 @@ public interface LoadBalancerHeartBeatingService {
 	final static String HEARTBEAT_INTERVAL = "org.mobicents.ha.javax.sip.HEARTBEAT_INTERVAL";
 	final static String START_INTERVAL = "org.mobicents.ha.javax.sip.START_INTERVAL";
 	final static String MAX_HEARTBEAT_ERRORS = "org.mobicents.ha.javax.sip.MAX_HEARTBEAT_ERRORS";
+	final static String LOCAL_HTTP_PORT = "org.mobicents.ha.javax.sip.LOCAL_HTTP_PORT";
+    final static String LOCAL_SSL_PORT = "org.mobicents.ha.javax.sip.LOCAL_SSL_PORT";
+    final static String LOCAL_SMPP_PORT = "org.mobicents.ha.javax.sip.LOCAL_SMPP_PORT";
+    final static String LOCAL_SMPP_SSL_PORT = "org.mobicents.ha.javax.sip.LOCAL_SMPP_SSL_PORT";
 	final static String LB_HB_SERVICE_CLASS_NAME = "org.mobicents.ha.javax.sip.LoadBalancerHeartBeatingServiceClassName";
+	final static String SOCKET_BINDING_GROUP = "org.mobicents.ha.javax.sip.SOCKET_BINDING_GROUP";
 	
 	void init(ClusteredSipStack clusteredSipStack, Properties stackProperties);
 	

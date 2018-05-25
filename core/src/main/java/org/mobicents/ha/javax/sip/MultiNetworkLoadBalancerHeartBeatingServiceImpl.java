@@ -64,12 +64,6 @@ public class MultiNetworkLoadBalancerHeartBeatingServiceImpl implements LoadBala
 	private static StackLogger logger = CommonLogger.getLogger(MultiNetworkLoadBalancerHeartBeatingServiceImpl.class);
 	public static String LB_HB_SERVICE_MBEAN_NAME = "org.mobicents.jain.sip:type=load-balancer-heartbeat-service,name=";
     public final static String REACHABLE_CHECK = "org.mobicents.ha.javax.sip.REACHABLE_CHECK";
-    public final static String LOCAL_HTTP_PORT = "org.mobicents.ha.javax.sip.LOCAL_HTTP_PORT";
-    public final static String LOCAL_SSL_PORT = "org.mobicents.ha.javax.sip.LOCAL_SSL_PORT";
-    public final static String LOCAL_SMPP_PORT = "org.mobicents.ha.javax.sip.LOCAL_SMPP_PORT";
-    public final static String LOCAL_SMPP_SSL_PORT = "org.mobicents.ha.javax.sip.LOCAL_SMPP_SSL_PORT";
-    public final static String SOCKET_BINDING_GROUP = "org.mobicents.ha.javax.sip.SOCKET_BINDING_GROUP";
-	
 	public static final int DEFAULT_RMI_PORT = 2000;
 	public static final String BALANCER_SIP_PORT_CHAR_SEPARATOR = ":";
 	public static final String BALANCERS_CHAR_SEPARATOR = ";";
@@ -91,6 +85,7 @@ public class MultiNetworkLoadBalancerHeartBeatingServiceImpl implements LoadBala
 	protected int heartBeatInterval = 5000;
 	protected int startInterval = 5000;
 	protected int maxHeartbeatErrors = 3;
+	protected String sessionId;
 
 	protected List<String> cachedAnyLocalAddresses = new ArrayList<String>();
 	
@@ -124,6 +119,7 @@ public class MultiNetworkLoadBalancerHeartBeatingServiceImpl implements LoadBala
     
     public void start() 
     {    	
+    	sessionId = ""+System.currentTimeMillis();
     	heartbeatService.start();		
     	registerMBean();
 		if(logger.isLoggingEnabled(StackLogger.TRACE_DEBUG))
@@ -468,6 +464,7 @@ public class MultiNetworkLoadBalancerHeartBeatingServiceImpl implements LoadBala
 			if(jvmRoute != null) node.getProperties().put("jvmRoute", jvmRoute);
 			
 			node.getProperties().put("version", System.getProperty("org.mobicents.server.version", "0"));
+			node.getProperties().put("sessionId", sessionId);
 			
 			if(logger.isLoggingEnabled(StackLogger.TRACE_TRACE)) 
 				logger.logTrace("Added node [" + node + "] to the list for pinging the LB");

@@ -30,6 +30,11 @@
 			<artifactId>sip-balancer-jar</artifactId>		
 			<scope>provided</scope>
 		</dependency>
+		<dependency>
+            <groupId>org.mobicents.tools</groupId>
+            <artifactId>heartbeat-kube</artifactId>
+           	<version>10.0.0-SNAPSHOT</version>
+        </dependency>
 	</dependencies>
 
 	<build>
