@@ -144,16 +144,25 @@ public class MultiNetworkLoadBalancerHeartBeatingServiceImpl implements LoadBala
 		
 		// Delay the start with 2 seconds so nodes joining under load are really ready to serve requests
 		// Otherwise one of the listeneing points comes a bit later and results in errors.
-		this.heartBeatTimer.scheduleAtFixedRate(this.hearBeatTaskToRun, this.heartBeatInterval,
-				this.heartBeatInterval);
-		if(logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
-			logger.logDebug("Created and scheduled tasks for sending heartbeats to the sip balancer every " + heartBeatInterval + "ms.");
-		}
+//		this.heartBeatTimer.scheduleAtFixedRate(this.hearBeatTaskToRun, this.heartBeatInterval,
+//				this.heartBeatInterval);
+//		if(logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+//			logger.logDebug("Created and scheduled tasks for sending heartbeats to the sip balancer every " + heartBeatInterval + "ms.");
+//		}
 		
 		registerMBean();
 		
 		if(logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
 			logger.logDebug("Load Balancer Heart Beating Service has been started");
+		}
+    }
+    
+    public void startLoadBalancerHeartBeatingService()
+    {
+    	this.heartBeatTimer.scheduleAtFixedRate(this.hearBeatTaskToRun, this.heartBeatInterval,
+				this.heartBeatInterval);
+		if(logger.isLoggingEnabled(StackLogger.TRACE_DEBUG)) {
+			logger.logDebug("Created and scheduled tasks for sending heartbeats to the sip balancer every " + heartBeatInterval + "ms.");
 		}
     }
     

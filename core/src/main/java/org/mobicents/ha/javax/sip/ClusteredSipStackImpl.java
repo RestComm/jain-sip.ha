@@ -156,6 +156,13 @@ public abstract class ClusteredSipStackImpl extends SipStackImpl implements Clus
 		}
 		super.start();		
 	}
+	
+	public void startLoadBalancerHeartBeatingService()
+	{
+		if(loadBalancerHeartBeatingService != null) {
+			loadBalancerHeartBeatingService.startLoadBalancerHeartBeatingService();
+		}
+	}
 		
 	public void closeAllTcpSockets() {
 		
