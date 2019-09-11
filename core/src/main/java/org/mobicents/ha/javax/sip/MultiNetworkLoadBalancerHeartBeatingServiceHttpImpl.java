@@ -115,7 +115,7 @@ public class MultiNetworkLoadBalancerHeartBeatingServiceHttpImpl implements Load
         heartBeatPort = Integer.parseInt(stackProperties.getProperty(HEARTBEAT_PORT, "2222"));
 		heartBeatInterval = Integer.parseInt(stackProperties.getProperty(HEARTBEAT_INTERVAL, "5000"));
 		startInterval = Integer.parseInt(stackProperties.getProperty(START_INTERVAL, "5000"));
-		maxHeartbeatErrors = Integer.parseInt(stackProperties.getProperty(START_INTERVAL, "3"));
+		maxHeartbeatErrors = Integer.parseInt(stackProperties.getProperty(MAX_HEARTBEAT_ERRORS, "3"));
 		heartbeatService = new HeartbeatService(heartBeatIp, heartBeatPort, heartBeatInterval, startInterval, maxHeartbeatErrors);
 	}
 	
