@@ -34,7 +34,7 @@
 	<dependency>
 		<groupId>org.infinispan</groupId>
 		<artifactId>infinispan-core</artifactId>
-		<version>5.1.2.FINAL</version>
+		<version>10.0.0.Final</version>
 	</dependency> 
     <dependency>
 	   	<groupId>log4j</groupId>
